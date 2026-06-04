@@ -86,6 +86,7 @@ export default function OnboardingScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <View style={styles.form}>
           <View style={styles.brand}>
             <Text style={styles.brandText}>
               <Text style={styles.flag}>🏁 </Text>
@@ -172,6 +173,7 @@ export default function OnboardingScreen() {
               </Card>
             </>
           )}
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -181,6 +183,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg },
+  form: { width: '100%', maxWidth: 520, alignSelf: 'center' },
   brand: { marginBottom: spacing.xl },
   brandText: {
     fontSize: 24,

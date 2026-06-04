@@ -85,6 +85,7 @@ export default function AuthScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
+          <View style={styles.form}>
           <View style={styles.hero}>
             <Text style={styles.flag}>🏁</Text>
             <Text style={styles.logo}>
@@ -170,6 +171,7 @@ export default function AuthScreen() {
             para verte también en otros (móvil, web…) y usar el subidor de
             Content Manager.
           </Text>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -204,6 +206,7 @@ function friendlyAuthError(e: any): string {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, paddingTop: spacing.xxl, flexGrow: 1, justifyContent: 'center' },
+  form: { width: '100%', maxWidth: 460, alignSelf: 'center' },
   hero: { alignItems: 'center', marginBottom: spacing.xl },
   flag: { fontSize: 40, marginBottom: spacing.xs },
   logo: {

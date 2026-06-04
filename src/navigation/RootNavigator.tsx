@@ -4,6 +4,7 @@ import { Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { colors } from '../theme';
+import { useIsWideWeb } from '../responsive';
 import { RootStackParamList, TabParamList } from './types';
 import LapsScreen from '../screens/LapsScreen';
 import RecordsScreen from '../screens/RecordsScreen';
@@ -26,16 +27,27 @@ const ICONS: Record<keyof TabParamList, string> = {
 };
 
 function Tabs() {
+  // En web ancho (portátil/escritorio): navegación ARRIBA. En móvil: abajo.
+  const isWide = useIsWideWeb();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarPosition: isWide ? 'top' : 'bottom',
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textFaint,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-        },
+        tabBarLabelPosition: isWide ? 'beside-icon' : undefined,
+        tabBarStyle: isWide
+          ? {
+              backgroundColor: colors.surface,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+              height: 54,
+            }
+          : {
+              backgroundColor: colors.surface,
+              borderTopColor: colors.border,
+            },
         tabBarIcon: ({ focused }) => (
           <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.6 }}>
             {ICONS[route.name]}

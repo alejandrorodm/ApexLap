@@ -5,8 +5,10 @@
 import React, { useEffect } from 'react';
 import { Platform, View, Text, StyleSheet } from 'react-native';
 import { colors, spacing } from '../theme';
+import { useIsWideWeb } from '../responsive';
 
-const COLUMN_MAX_WIDTH = 480;
+const COLUMN_NARROW = 480; // móvil / ventana estrecha
+const COLUMN_WIDE = 960; // portátil / escritorio
 
 const GLOBAL_CSS = `
 :root { color-scheme: dark; }
@@ -60,6 +62,7 @@ function injectWebStyles() {
 
 export default function WebFrame({ children }: { children: React.ReactNode }) {
   const isWeb = Platform.OS === 'web';
+  const wide = useIsWideWeb();
 
   useEffect(() => {
     if (isWeb) injectWebStyles();
@@ -69,7 +72,10 @@ export default function WebFrame({ children }: { children: React.ReactNode }) {
 
   return (
     <View style={styles.page}>
-      <View style={styles.column} {...({ dataSet: { apexframe: '' } } as any)}>
+      <View
+        style={[styles.column, { maxWidth: wide ? COLUMN_WIDE : COLUMN_NARROW }]}
+        {...({ dataSet: { apexframe: '' } } as any)}
+      >
         <View style={styles.brandBar}>
           <Text style={styles.brand}>
             <Text style={styles.flag}>🏁 </Text>
@@ -92,7 +98,6 @@ const styles = StyleSheet.create({
   column: {
     flex: 1,
     width: '100%',
-    maxWidth: COLUMN_MAX_WIDTH,
     backgroundColor: colors.bg,
     borderLeftWidth: 1,
     borderRightWidth: 1,
