@@ -16,6 +16,8 @@ local IDENTITY = 'https://identitytoolkit.googleapis.com/v1'
 local SECURETOKEN = 'https://securetoken.googleapis.com/v1'
 local FIRESTORE = 'https://firestore.googleapis.com/v1'
 
+ac.log('[ApexLap] script cargado') -- si ves esto en el log, el .lua se cargó bien
+
 -- ── Estado persistente (se recuerda entre sesiones, solo en tu PC) ───────────
 -- onlyBest = true → MENOS ESCRITURAS: solo sube cuando mejoras tu mejor tiempo
 -- de ese coche+circuito (lo único que cuenta para récords y clasificación).
@@ -323,16 +325,21 @@ local function scanExistingBest()
 end
 
 -- ── Estilo / colores de marca ────────────────────────────────────────────────
-local RED = rgbm(0.882, 0.024, 0, 1)
-local RED_H = rgbm(1, 0.12, 0.06, 1)
-local RED_A = rgbm(0.70, 0.02, 0, 1)
-local YEL = rgbm(1, 0.839, 0.039, 1)
-local WHITE = rgbm(0.96, 0.97, 0.98, 1)
-local DIM = rgbm(0.60, 0.63, 0.68, 1)
-local FAINT = rgbm(0.42, 0.45, 0.51, 1)
-local GREEN = rgbm(0.22, 0.83, 0.33, 1)
-local SURF = rgbm(0.16, 0.17, 0.22, 1)
-local SURF_H = rgbm(0.22, 0.23, 0.28, 1)
+-- Se crean de forma perezosa (dentro del render protegido) por si rgbm fallara.
+local RED, RED_H, RED_A, YEL, WHITE, DIM, FAINT, GREEN, SURF, SURF_H
+local function ensureColors()
+  if RED then return end
+  RED = rgbm(0.882, 0.024, 0, 1)
+  RED_H = rgbm(1, 0.12, 0.06, 1)
+  RED_A = rgbm(0.70, 0.02, 0, 1)
+  YEL = rgbm(1, 0.839, 0.039, 1)
+  WHITE = rgbm(0.96, 0.97, 0.98, 1)
+  DIM = rgbm(0.60, 0.63, 0.68, 1)
+  FAINT = rgbm(0.42, 0.45, 0.51, 1)
+  GREEN = rgbm(0.22, 0.83, 0.33, 1)
+  SURF = rgbm(0.16, 0.17, 0.22, 1)
+  SURF_H = rgbm(0.22, 0.23, 0.28, 1)
+end
 
 local function gap(px) ui.dummy(vec2(0, px)) end
 
@@ -406,7 +413,8 @@ local function labeled(label, value, valueColor)
 end
 
 -- ── Ventana de la app ────────────────────────────────────────────────────────
-function script.windowMain(dt)
+local function renderMain(dt)
+  ensureColors()
   header()
 
   if not S.loggedIn then
@@ -475,5 +483,16 @@ function script.windowMain(dt)
     if not okS then log('scanExistingBest error') end
     local ok, e = pcall(detectLaps)
     if not ok then log('detectLaps error: ' .. tostring(e)) end
+  end
+end
+
+-- Punto de entrada de la ventana: si el render falla, muestra el error EN la
+-- ventana (en vez de quedarse en blanco) y lo manda al log de CSP.
+function script.windowMain(dt)
+  local ok, err = pcall(renderMain, dt)
+  if not ok then
+    ui.text('ApexLap - error de interfaz:')
+    ui.text(tostring(err))
+    ac.log('[ApexLap] UI error: ' .. tostring(err))
   end
 end
