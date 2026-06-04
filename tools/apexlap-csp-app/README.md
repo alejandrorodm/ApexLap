@@ -38,8 +38,15 @@ el subidor de escritorio en `../cm-uploader/`.
    tu liga. La ventana muestra el estado y cuántas llevas subidas.
 
 Notas:
-- Solo sube vueltas **válidas** (si cortas, el juego invalida la vuelta y se
-  descarta).
+- **Solo sube las vueltas que hagas con la app ABIERTA.** No importa tus tiempos
+  antiguos ya guardados en Assetto Corsa: la app vigila en vivo, no lee tu
+  histórico/récords del juego. Lo de antes de abrirla no se sube.
+- Solo sube vueltas **válidas y SIN penalización**: si cortas (el juego invalida
+  la vuelta) o tienes un *penalty* activo, la vuelta se descarta.
+- **Menos escrituras (recomendado):** con la casilla *"Subir solo tu mejor (PB)
+  por coche+circuito"* marcada (por defecto), solo sube cuando **mejoras** tu
+  tiempo en ese combo — que es lo único que cuenta para récords y clasificación.
+  Desmárcala si quieres subir todas las vueltas limpias.
 - No duplica: recuerda lo subido (por circuito + coche + tiempo).
 - Mantén la app **abierta/visible** mientras juegas; si la cierras, deja de vigilar.
 
@@ -64,7 +71,9 @@ no depende de CSP.
 
 - Login Firebase REST (`signInWithPassword`) y refresco de token ante 401.
 - Lee `profiles/{uid}` para tu liga y nombre de piloto.
-- Cada frame comprueba el contador de vueltas; al cerrar una vuelta válida, hace
-  `POST` a `leagues/{leagueId}/laps` con tu `idToken` (tu `userId` = tu uid, como
-  exigen las reglas de seguridad).
-- Persistencia de credenciales y de lo ya subido con `ac.storage`.
+- Cada frame comprueba el contador de vueltas; al cerrar una vuelta **válida y sin
+  penalización** hace `POST` a `leagues/{leagueId}/laps` con tu `idToken` (tu
+  `userId` = tu uid, como exigen las reglas de seguridad).
+- **Menos escrituras:** en modo PB (por defecto) solo sube si el tiempo mejora tu
+  mejor marca de ese coche+circuito; los PBs por combo se guardan en `ac.storage`.
+- Persistencia de credenciales, PBs y de lo ya subido con `ac.storage`.
