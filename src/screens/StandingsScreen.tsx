@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius } from '../theme';
-import { Card, EmptyState } from '../components/ui';
+import { Card, EmptyState, ScreenHeader } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import { subscribeChallenges, getChallengeBets } from '../firebase/db';
 import {
@@ -82,8 +82,7 @@ export default function StandingsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Liga</Text>
-        <Text style={styles.subtitle}>{league?.name ?? ''}</Text>
+        <ScreenHeader title="Liga" subtitle={league?.name ?? ''} />
 
         <Text style={styles.sectionTitle}>🏆 Clasificación por puntos</Text>
         <Card>
@@ -206,8 +205,6 @@ function ChallengeRow({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  title: { color: colors.text, fontSize: 28, fontWeight: '900' },
-  subtitle: { color: colors.primary, fontSize: 14, fontWeight: '700' },
   sectionTitle: {
     color: colors.textDim,
     fontSize: 12,

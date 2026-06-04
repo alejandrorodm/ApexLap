@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius } from '../theme';
-import { Button, Card, SectionTitle, Label } from '../components/ui';
+import { Button, Card, SectionTitle, Label, ScreenHeader } from '../components/ui';
 import { RootStackParamList } from '../navigation/types';
 import { useApp } from '../context/AppContext';
 import { driverStats } from '../utils/leaderboard';
@@ -117,7 +117,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Perfil</Text>
+        <ScreenHeader title="Perfil" />
 
         {/* Piloto */}
         <Card style={{ marginTop: spacing.md }}>
@@ -252,7 +252,6 @@ function Stat({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  title: { color: colors.text, fontSize: 28, fontWeight: '900' },
   input: {
     backgroundColor: colors.surfaceAlt,
     borderWidth: 1,

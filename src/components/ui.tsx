@@ -117,6 +117,37 @@ export function SectionTitle({ children }: { children: React.ReactNode }) {
   return <Text style={styles.section}>{children}</Text>;
 }
 
+// Cabecera de pantalla unificada: franja de acento + título + subtítulo.
+export function ScreenHeader({
+  title,
+  subtitle,
+  subtitleColor,
+  right,
+}: {
+  title: string;
+  subtitle?: string;
+  subtitleColor?: string;
+  right?: React.ReactNode;
+}) {
+  return (
+    <View style={styles.headerRow}>
+      <View style={styles.headerStripe} />
+      <View style={styles.headerTexts}>
+        <Text style={styles.headerTitle}>{title}</Text>
+        {subtitle ? (
+          <Text
+            style={[styles.headerSubtitle, subtitleColor ? { color: subtitleColor } : null]}
+            numberOfLines={1}
+          >
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+      {right ?? null}
+    </View>
+  );
+}
+
 export function Label({ children }: { children: React.ReactNode }) {
   return <Text style={styles.label}>{children}</Text>;
 }
@@ -170,6 +201,21 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom: spacing.sm,
+  },
+  headerRow: { flexDirection: 'row', alignItems: 'stretch', gap: spacing.md },
+  headerStripe: {
+    width: 4,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
+    marginVertical: 3,
+  },
+  headerTexts: { flex: 1, justifyContent: 'center' },
+  headerTitle: { color: colors.text, fontSize: 28, fontWeight: '900' },
+  headerSubtitle: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 1,
   },
   label: {
     color: colors.textDim,

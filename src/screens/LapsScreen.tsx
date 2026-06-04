@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius } from '../theme';
-import { Chip, EmptyState } from '../components/ui';
+import { Chip, EmptyState, ScreenHeader } from '../components/ui';
 import { PickerModal } from '../components/PickerModal';
 import { useApp } from '../context/AppContext';
 import {
@@ -69,10 +69,7 @@ export default function LapsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Tiempos</Text>
-          <Text style={styles.subtitle}>{league?.name ?? ''}</Text>
-        </View>
+        <ScreenHeader title="Tiempos" subtitle={league?.name ?? ''} />
       </View>
 
       {/* Filtros */}
@@ -263,13 +260,10 @@ function Badge({ text, color }: { text: string; color: string }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
   },
-  title: { color: colors.text, fontSize: 28, fontWeight: '900' },
-  subtitle: { color: colors.primary, fontSize: 14, fontWeight: '700' },
   filters: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, gap: spacing.sm },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   listContent: { paddingHorizontal: spacing.lg, paddingBottom: 120 },
@@ -283,7 +277,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     alignItems: 'center',
   },
-  rowMine: { borderColor: colors.primaryDim },
+  rowMine: {
+    borderColor: colors.primaryDim,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+  },
   rankBox: { width: 34, alignItems: 'center' },
   medal: { fontSize: 22 },
   rankNum: { color: colors.textDim, fontSize: 16, fontWeight: '800' },

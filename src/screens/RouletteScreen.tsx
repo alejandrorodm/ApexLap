@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius } from '../theme';
-import { Button, Card, Chip, SectionTitle } from '../components/ui';
+import { Button, Card, Chip, SectionTitle, ScreenHeader } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import { ALL_CARS } from '../data/cars';
 import { ALL_TRACKS } from '../data/tracks';
@@ -146,10 +146,13 @@ export default function RouletteScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Ruleta de piques</Text>
-        <Text style={styles.subtitle}>
-          Tira y que el destino decida coche y circuito 🎲
-        </Text>
+        <View style={styles.headerWrap}>
+          <ScreenHeader
+            title="Ruleta de piques"
+            subtitle="Tira y que el destino decida coche y circuito 🎲"
+            subtitleColor={colors.textDim}
+          />
+        </View>
 
         <Animated.View style={{ transform: [{ scale }] }}>
           <Animated.View style={[styles.reels, { borderColor: glowBorder }]}>
@@ -242,8 +245,7 @@ function Reel({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg },
-  title: { color: colors.text, fontSize: 28, fontWeight: '900' },
-  subtitle: { color: colors.textDim, fontSize: 14, marginTop: spacing.xs, marginBottom: spacing.lg },
+  headerWrap: { marginBottom: spacing.lg },
   reels: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,

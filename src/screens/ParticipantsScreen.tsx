@@ -6,7 +6,7 @@ import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius } from '../theme';
-import { Card, EmptyState } from '../components/ui';
+import { Card, EmptyState, ScreenHeader } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import { getLeagueMembers } from '../firebase/db';
 import { driverStats } from '../utils/leaderboard';
@@ -82,8 +82,7 @@ export default function ParticipantsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Participantes</Text>
-        <Text style={styles.subtitle}>{league?.name ?? ''}</Text>
+        <ScreenHeader title="Participantes" subtitle={league?.name ?? ''} />
 
         <Pressable style={styles.codeBox} onPress={copyCode}>
           <View>
@@ -140,8 +139,6 @@ export default function ParticipantsScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  title: { color: colors.text, fontSize: 28, fontWeight: '900' },
-  subtitle: { color: colors.primary, fontSize: 14, fontWeight: '700' },
   codeBox: {
     marginTop: spacing.lg,
     backgroundColor: colors.surfaceAlt,

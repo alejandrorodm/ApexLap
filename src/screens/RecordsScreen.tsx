@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius } from '../theme';
-import { EmptyState, Button, Chip, Label } from '../components/ui';
+import { EmptyState, Button, Chip, Label, ScreenHeader } from '../components/ui';
 import { PickerModal, PickerGroup } from '../components/PickerModal';
 import { useApp } from '../context/AppContext';
 import { recordsByCombo } from '../utils/leaderboard';
@@ -120,8 +120,7 @@ export default function RecordsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Récords</Text>
-        <Text style={styles.subtitle}>{league?.name ?? ''}</Text>
+        <ScreenHeader title="Récords" subtitle={league?.name ?? ''} />
       </View>
 
       <SectionList
@@ -306,9 +305,11 @@ function SelectField({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-  title: { color: colors.text, fontSize: 28, fontWeight: '900' },
-  subtitle: { color: colors.primary, fontSize: 14, fontWeight: '700' },
+  header: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
+  },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   sectionTitle: {
     color: colors.textDim,
