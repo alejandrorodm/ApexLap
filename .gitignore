@@ -43,3 +43,6 @@ yarn-error.*
 # Firebase CLI cache / junk
 .firebase/
 aaa.txt
+
+# logs de Assetto Corsa / CSP que se peguen para depurar el mod
+logs/
