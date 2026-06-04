@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1058766757504",
+    "project_id": "laptimersaver",
+    "storage_bucket": "laptimersaver.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1058766757504:android:69f545580b102862479065",
+        "android_client_info": {
+          "package_name": "com.laptimersaver.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMEW5uBH5NGXpsyAwysALFKXl391VR_QI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

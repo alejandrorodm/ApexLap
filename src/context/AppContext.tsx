@@ -1,0 +1,315 @@
+// Estado global de la app: sesión (cuenta real o invitado), perfil, liga y vueltas.
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+} from 'react';
+import { Platform } from 'react-native';
+import {
+  onAuthStateChanged,
+  signInAnonymously,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile as fbUpdateProfile,
+  signOut as fbSignOut,
+  GoogleAuthProvider,
+  signInWithPopup,
+  EmailAuthProvider,
+  linkWithCredential,
+} from 'firebase/auth';
+import { getAppAuth, isFirebaseConfigured } from '../firebase/config';
+import {
+  getProfile,
+  saveProfile,
+  getLeague,
+  subscribeLaps,
+  createLeague as dbCreateLeague,
+  joinLeagueByCode as dbJoinLeague,
+} from '../firebase/db';
+import { registerForPushNotifications } from '../notifications';
+import { Lap, Profile, League } from '../types';
+
+interface AppState {
+  ready: boolean; // se conoce el estado de auth (haya usuario o no)
+  userId: string | null;
+  userEmail: string | null;
+  isGuest: boolean; // true si la sesión es anónima (invitado)
+  profile: Profile | null;
+  league: League | null;
+  laps: Lap[];
+  lapsLoading: boolean;
+  error: string | null;
+  // sesión
+  signInEmail: (email: string, password: string) => Promise<void>;
+  signUpEmail: (name: string, email: string, password: string) => Promise<void>;
+  signInGoogle: () => Promise<void>;
+  signInGuest: () => Promise<void>;
+  signOut: () => Promise<void>;
+  // acciones de la app
+  setDriverName: (name: string) => Promise<void>;
+  createLeague: (name: string) => Promise<void>;
+  joinLeague: (code: string) => Promise<void>;
+  leaveLeague: () => Promise<void>;
+  refreshLeague: () => Promise<void>;
+}
+
+const Ctx = createContext<AppState | null>(null);
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [league, setLeague] = useState<League | null>(null);
+  const [laps, setLaps] = useState<Lap[]>([]);
+  const [lapsLoading, setLapsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const unsubLaps = useRef<(() => void) | null>(null);
+
+  // 1) Observa la sesión. NO inicia sesión solo: si no hay usuario, se muestra
+  //    la pantalla de login (con opción "entrar como invitado").
+  useEffect(() => {
+    if (!isFirebaseConfigured) {
+      setReady(true);
+      return;
+    }
+    const auth = getAppAuth();
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUserId(user.uid);
+        setUserEmail(user.email);
+        setIsGuest(user.isAnonymous);
+        // el efecto de perfil marcará ready cuando cargue
+      } else {
+        setUserId(null);
+        setUserEmail(null);
+        setIsGuest(false);
+        setProfile(null);
+        setReady(true);
+      }
+    });
+    return unsub;
+  }, []);
+
+  // 2) Cargar perfil cuando hay userId.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const p = await getProfile(userId);
+        if (!cancelled)
+          setProfile(p ?? { userId, driverName: '', createdAt: Date.now() });
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message ?? 'Error cargando el perfil.');
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  // 2b) Registrar el dispositivo para push y guardar su token en el perfil.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const token = await registerForPushNotifications();
+      if (cancelled || !token) return;
+      try {
+        await saveProfile(userId, { pushToken: token });
+        setProfile((p) => (p ? { ...p, pushToken: token } : p));
+      } catch {
+        /* el push es opcional: si falla, la app sigue igual */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  // 3) Cargar liga + suscribirse a vueltas cuando cambia profile.leagueId.
+  useEffect(() => {
+    unsubLaps.current?.();
+    unsubLaps.current = null;
+    setLaps([]);
+
+    const leagueId = profile?.leagueId;
+    if (!leagueId) {
+      setLeague(null);
+      return;
+    }
+    setLapsLoading(true);
+    let cancelled = false;
+    (async () => {
+      try {
+        const lg = await getLeague(leagueId);
+        if (!cancelled) setLeague(lg);
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message ?? 'Error cargando la liga.');
+      }
+    })();
+    unsubLaps.current = subscribeLaps(
+      leagueId,
+      (l) => {
+        setLaps(l);
+        setLapsLoading(false);
+      },
+      (e) => {
+        setError(e.message);
+        setLapsLoading(false);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.leagueId]);
+
+  useEffect(() => () => unsubLaps.current?.(), []);
+
+  // ── Sesión ────────────────────────────────────────────────────────────────
+
+  const signInEmail = useCallback(async (email: string, password: string) => {
+    await signInWithEmailAndPassword(getAppAuth(), email.trim(), password);
+  }, []);
+
+  const signUpEmail = useCallback(
+    async (name: string, email: string, password: string) => {
+      const auth = getAppAuth();
+      const current = auth.currentUser;
+      let uid: string;
+      // Si ya estaba como invitado, "subimos" esa cuenta para conservar sus datos.
+      if (current && current.isAnonymous) {
+        const credential = EmailAuthProvider.credential(email.trim(), password);
+        const res = await linkWithCredential(current, credential);
+        uid = res.user.uid;
+        await fbUpdateProfile(res.user, { displayName: name.trim() });
+      } else {
+        const res = await createUserWithEmailAndPassword(
+          auth,
+          email.trim(),
+          password
+        );
+        uid = res.user.uid;
+        await fbUpdateProfile(res.user, { displayName: name.trim() });
+      }
+      if (name.trim()) {
+        await saveProfile(uid, { driverName: name.trim() });
+        setProfile((p) => ({
+          userId: uid,
+          createdAt: p?.createdAt ?? Date.now(),
+          ...(p ?? {}),
+          driverName: name.trim(),
+        }));
+      }
+    },
+    []
+  );
+
+  const signInGoogle = useCallback(async () => {
+    if (Platform.OS !== 'web') {
+      throw new Error(
+        'Entrar con Google está disponible por ahora solo en la versión web.'
+      );
+    }
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(getAppAuth(), provider);
+  }, []);
+
+  const signInGuest = useCallback(async () => {
+    await signInAnonymously(getAppAuth());
+  }, []);
+
+  const signOut = useCallback(async () => {
+    await fbSignOut(getAppAuth());
+  }, []);
+
+  // ── Acciones de la app ──────────────────────────────────────────────────────
+
+  const setDriverName = useCallback(
+    async (name: string) => {
+      if (!userId) return;
+      await saveProfile(userId, { driverName: name.trim() });
+      setProfile((p) => ({
+        userId,
+        createdAt: p?.createdAt ?? Date.now(),
+        ...p,
+        driverName: name.trim(),
+      }));
+    },
+    [userId]
+  );
+
+  const createLeague = useCallback(
+    async (name: string) => {
+      if (!userId) return;
+      const lg = await dbCreateLeague(name, userId);
+      setLeague(lg);
+      setProfile((p) => (p ? { ...p, leagueId: lg.id } : p));
+    },
+    [userId]
+  );
+
+  const joinLeague = useCallback(
+    async (code: string) => {
+      if (!userId) return;
+      const lg = await dbJoinLeague(code, userId);
+      setLeague(lg);
+      setProfile((p) => (p ? { ...p, leagueId: lg.id } : p));
+    },
+    [userId]
+  );
+
+  const leaveLeague = useCallback(async () => {
+    if (!userId) return;
+    await saveProfile(userId, { leagueId: '' });
+    setProfile((p) => (p ? { ...p, leagueId: undefined } : p));
+    setLeague(null);
+  }, [userId]);
+
+  const refreshLeague = useCallback(async () => {
+    if (!profile?.leagueId) return;
+    const lg = await getLeague(profile.leagueId);
+    setLeague(lg);
+  }, [profile?.leagueId]);
+
+  return (
+    <Ctx.Provider
+      value={{
+        ready,
+        userId,
+        userEmail,
+        isGuest,
+        profile,
+        league,
+        laps,
+        lapsLoading,
+        error,
+        signInEmail,
+        signUpEmail,
+        signInGoogle,
+        signInGuest,
+        signOut,
+        setDriverName,
+        createLeague,
+        joinLeague,
+        leaveLeague,
+        refreshLeague,
+      }}
+    >
+      {children}
+    </Ctx.Provider>
+  );
+}
+
+export function useApp(): AppState {
+  const ctx = useContext(Ctx);
+  if (!ctx) throw new Error('useApp debe usarse dentro de <AppProvider>');
+  return ctx;
+}

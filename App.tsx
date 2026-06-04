@@ -1,20 +1,84 @@
+import React from 'react';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 
-export default function App() {
+import { colors } from './src/theme';
+import { isFirebaseConfigured } from './src/firebase/config';
+import { AppProvider, useApp } from './src/context/AppContext';
+import RootNavigator from './src/navigation/RootNavigator';
+import SetupScreen from './src/screens/SetupScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
+import AuthScreen from './src/screens/AuthScreen';
+
+const navTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: colors.bg,
+    card: colors.surface,
+    primary: colors.primary,
+    text: colors.text,
+    border: colors.border,
+  },
+};
+
+function Splash({ message }: { message?: string }) {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
+    <View style={styles.center}>
+      <Text style={styles.logo}>🏁</Text>
+      <ActivityIndicator color={colors.primary} style={{ marginTop: 16 }} />
+      {message ? <Text style={styles.msg}>{message}</Text> : null}
     </View>
   );
 }
 
+function Gate() {
+  const { ready, userId, profile, league, error } = useApp();
+
+  if (!ready) return <Splash />;
+  if (error) return <Splash message={error} />;
+
+  // Sin sesión (ni cuenta ni invitado): pantalla de login.
+  if (!userId) return <AuthScreen />;
+
+  const hasName = (profile?.driverName ?? '').trim().length > 0;
+  if (!hasName || !league) return <OnboardingScreen />;
+
+  return <RootNavigator />;
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <StatusBar style="light" />
+      <NavigationContainer theme={navTheme}>
+        {isFirebaseConfigured ? (
+          <AppProvider>
+            <Gate />
+          </AppProvider>
+        ) : (
+          <SetupScreen />
+        )}
+      </NavigationContainer>
+    </SafeAreaProvider>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
+  center: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.bg,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 24,
+  },
+  logo: { fontSize: 56 },
+  msg: {
+    color: colors.textDim,
+    marginTop: 16,
+    textAlign: 'center',
+    fontSize: 14,
   },
 });
