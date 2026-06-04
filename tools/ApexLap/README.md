@@ -15,15 +15,17 @@ el subidor de escritorio en `../cm-uploader/`.
 
 ## Instalación
 
-1. Copia la carpeta **`apexlap-csp-app`** entera dentro de:
+1. Copia la carpeta **`ApexLap`** entera dentro de:
    ```
    <Assetto Corsa>\apps\lua\
    ```
    (normalmente `C:\Program Files (x86)\Steam\steamapps\common\assettocorsa\apps\lua\`).
-   Renómbrala si quieres, p.ej. `ApexLap`. Debe quedar:
+   **NO la renombres:** CSP exige que el script principal se llame igual que la
+   carpeta. Debe quedar exactamente:
    ```
    assettocorsa\apps\lua\ApexLap\manifest.ini
-   assettocorsa\apps\lua\ApexLap\ApexLapUploader.lua
+   assettocorsa\apps\lua\ApexLap\ApexLap.lua
+   assettocorsa\apps\lua\ApexLap\icon.png
    ```
 2. Arranca Assetto Corsa.
 3. En la **barra lateral de apps** (en pista, mueve el ratón al borde derecho),
@@ -67,7 +69,7 @@ versión de CSP. Si das una vuelta limpia y **no sube**:
 2. Busca líneas con **`[ApexLap]`**. Te dirán si detecta la vuelta, si la descarta
    o si hubo error de subida.
 3. Pásame esas líneas y ajusto los puntos marcados como **`VERIFICAR`** en
-   `ApexLapUploader.lua` (campos como `car.lapCount`, `car.previousLapTimeMs`,
+   `ApexLap.lua` (campos como `car.lapCount`, `car.previousLapTimeMs`,
    `car.isLapValid`, `ac.getCarID`, `sim.trackId`).
 
 Mientras tanto, el **subidor de escritorio** (`../cm-uploader/`) funciona seguro y
