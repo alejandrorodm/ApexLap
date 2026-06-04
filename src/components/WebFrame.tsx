@@ -7,8 +7,7 @@ import { Platform, View, Text, StyleSheet } from 'react-native';
 import { colors, spacing } from '../theme';
 import { useIsWideWeb } from '../responsive';
 
-const COLUMN_NARROW = 480; // móvil / ventana estrecha
-const COLUMN_WIDE = 960; // portátil / escritorio
+const COLUMN_NARROW = 480; // móvil / ventana estrecha (en ancho: pantalla completa)
 
 const GLOBAL_CSS = `
 :root { color-scheme: dark; }
@@ -73,7 +72,11 @@ export default function WebFrame({ children }: { children: React.ReactNode }) {
   return (
     <View style={styles.page}>
       <View
-        style={[styles.column, { maxWidth: wide ? COLUMN_WIDE : COLUMN_NARROW }]}
+        style={[
+          styles.column,
+          // En ancho ocupa TODA la pantalla; en estrecho mantiene el ancho móvil.
+          { maxWidth: wide ? undefined : COLUMN_NARROW },
+        ]}
         {...({ dataSet: { apexframe: '' } } as any)}
       >
         <View style={styles.brandBar}>
