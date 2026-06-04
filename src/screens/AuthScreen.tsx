@@ -157,9 +157,7 @@ export default function AuthScreen() {
             <View style={styles.divLine} />
           </View>
 
-          {Platform.OS === 'web' ? (
-            <Button title="Entrar con Google" variant="secondary" onPress={google} />
-          ) : null}
+          <Button title="Entrar con Google" variant="secondary" onPress={google} />
 
           <Button
             title="Entrar como invitado"

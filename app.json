@@ -35,7 +35,8 @@
           "icon": "./assets/android-icon-monochrome.png",
           "color": "#3B82F6"
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "extra": {
       "eas": {

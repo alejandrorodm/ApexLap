@@ -17,6 +17,7 @@ import {
   signOut as fbSignOut,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithCredential,
   EmailAuthProvider,
   linkWithCredential,
 } from 'firebase/auth';
@@ -30,6 +31,7 @@ import {
   joinLeagueByCode as dbJoinLeague,
 } from '../firebase/db';
 import { registerForPushNotifications } from '../notifications';
+import { googleIdToken } from '../auth/googleSignIn';
 import { Lap, Profile, League } from '../types';
 
 interface AppState {
@@ -213,13 +215,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signInGoogle = useCallback(async () => {
-    if (Platform.OS !== 'web') {
-      throw new Error(
-        'Entrar con Google está disponible por ahora solo en la versión web.'
-      );
+    // Web: popup de Firebase. Nativo: selector de Google (id_token) + credencial.
+    if (Platform.OS === 'web') {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(getAppAuth(), provider);
+      return;
     }
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(getAppAuth(), provider);
+    const idToken = await googleIdToken();
+    if (!idToken) return; // el usuario canceló el selector
+    const credential = GoogleAuthProvider.credential(idToken);
+    await signInWithCredential(getAppAuth(), credential);
   }, []);
 
   const signInGuest = useCallback(async () => {
