@@ -1,9 +1,11 @@
 // Componentes de UI reutilizables con el tema "racing".
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Text,
   View,
   Pressable,
+  TextInput,
+  TextInputProps,
   StyleSheet,
   ActivityIndicator,
   ViewStyle,
@@ -11,6 +13,38 @@ import {
   StyleProp,
 } from 'react-native';
 import { colors, radius, spacing } from '../theme';
+
+// Input de texto que resalta el borde en rojo al enfocarlo. Reenvía todas las
+// props de TextInput y respeta el `style` que le pases (el foco va por encima).
+export function Field({ style, onFocus, onBlur, ...rest }: TextInputProps) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <TextInput
+      placeholderTextColor={colors.textFaint}
+      {...rest}
+      onFocus={(e) => {
+        setFocused(true);
+        onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        setFocused(false);
+        onBlur?.(e);
+      }}
+      style={[style, focused && { borderColor: colors.primary }]}
+    />
+  );
+}
+
+// Rayas de velocidad (rojo/amarillo/blanco) como motivo de marca.
+export function SpeedStripes({ style }: { style?: StyleProp<ViewStyle> }) {
+  return (
+    <View style={[styles.stripes, style]}>
+      <View style={[styles.stripe, { width: 28, backgroundColor: colors.primary }]} />
+      <View style={[styles.stripe, { width: 18, backgroundColor: colors.accent }]} />
+      <View style={[styles.stripe, { width: 10, backgroundColor: colors.text }]} />
+    </View>
+  );
+}
 
 export function Button({
   title,
@@ -209,6 +243,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     marginVertical: 3,
   },
+  stripes: { flexDirection: 'row', gap: 5, alignSelf: 'center' },
+  stripe: { height: 4, borderRadius: 2 },
   headerTexts: { flex: 1, justifyContent: 'center' },
   headerTitle: { color: colors.text, fontSize: 28, fontWeight: '900' },
   headerSubtitle: {

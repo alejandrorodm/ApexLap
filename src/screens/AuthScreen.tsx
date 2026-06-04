@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   ScrollView,
   KeyboardAvoidingView,
@@ -13,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius } from '../theme';
-import { Button } from '../components/ui';
+import { Button, Field, SpeedStripes } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import { notify } from '../utils/alerts';
 
@@ -86,10 +85,17 @@ export default function AuthScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.logo}>🏁 ApexLap</Text>
-          <Text style={styles.tagline}>
-            Tus tiempos de Assetto Corsa, con tus colegas.
-          </Text>
+          <View style={styles.hero}>
+            <Text style={styles.flag}>🏁</Text>
+            <Text style={styles.logo}>
+              <Text style={styles.logoApex}>Apex</Text>
+              <Text style={styles.logoLap}>Lap</Text>
+            </Text>
+            <SpeedStripes style={{ marginTop: spacing.md }} />
+            <Text style={styles.tagline}>
+              Tus tiempos de Assetto Corsa, con tus colegas.
+            </Text>
+          </View>
 
           <View style={styles.switcher}>
             <Pressable
@@ -111,31 +117,28 @@ export default function AuthScreen() {
           </View>
 
           {isSignup ? (
-            <TextInput
+            <Field
               value={name}
               onChangeText={setName}
               placeholder="Nombre de piloto"
-              placeholderTextColor={colors.textFaint}
               style={styles.input}
               autoCapitalize="words"
             />
           ) : null}
 
-          <TextInput
+          <Field
             value={email}
             onChangeText={setEmail}
             placeholder="Email"
-            placeholderTextColor={colors.textFaint}
             style={styles.input}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
           />
-          <TextInput
+          <Field
             value={password}
             onChangeText={setPassword}
             placeholder="Contraseña"
-            placeholderTextColor={colors.textFaint}
             style={styles.input}
             secureTextEntry
             autoCapitalize="none"
@@ -203,13 +206,22 @@ function friendlyAuthError(e: any): string {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, paddingTop: spacing.xxl, flexGrow: 1, justifyContent: 'center' },
-  logo: { color: colors.text, fontSize: 34, fontWeight: '900', textAlign: 'center' },
+  hero: { alignItems: 'center', marginBottom: spacing.xl },
+  flag: { fontSize: 40, marginBottom: spacing.xs },
+  logo: {
+    fontSize: 42,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'web' ? 'Orbitron, sans-serif' : undefined,
+  },
+  logoApex: { color: colors.text },
+  logoLap: { color: colors.primary },
   tagline: {
     color: colors.textDim,
     fontSize: 15,
     textAlign: 'center',
-    marginTop: spacing.xs,
-    marginBottom: spacing.xl,
+    marginTop: spacing.md,
   },
   switcher: {
     flexDirection: 'row',

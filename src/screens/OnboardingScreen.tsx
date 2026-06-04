@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   ScrollView,
   Alert,
@@ -12,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius } from '../theme';
-import { Button, Card, SectionTitle, Label } from '../components/ui';
+import { Button, Card, SectionTitle, Label, Field, SpeedStripes } from '../components/ui';
 import { useApp } from '../context/AppContext';
 
 export default function OnboardingScreen() {
@@ -87,7 +86,14 @@ export default function OnboardingScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.logo}>🏁 ApexLap</Text>
+          <View style={styles.brand}>
+            <Text style={styles.brandText}>
+              <Text style={styles.flag}>🏁 </Text>
+              <Text style={styles.brandApex}>Apex</Text>
+              <Text style={styles.brandLap}>Lap</Text>
+            </Text>
+            <SpeedStripes style={{ marginTop: spacing.sm, alignSelf: 'flex-start' }} />
+          </View>
 
           {!hasName ? (
             <>
@@ -97,11 +103,10 @@ export default function OnboardingScreen() {
               </Text>
               <Card style={{ marginTop: spacing.lg }}>
                 <Label>Nombre de piloto</Label>
-                <TextInput
+                <Field
                   value={name}
                   onChangeText={setName}
                   placeholder="p.ej. Carlos Sainz"
-                  placeholderTextColor={colors.textFaint}
                   style={styles.input}
                   autoFocus
                   maxLength={24}
@@ -125,11 +130,10 @@ export default function OnboardingScreen() {
               <Card style={{ marginTop: spacing.lg }}>
                 <SectionTitle>Crear liga nueva</SectionTitle>
                 <Label>Nombre de la liga</Label>
-                <TextInput
+                <Field
                   value={leagueName}
                   onChangeText={setLeagueName}
                   placeholder="p.ej. Piques del finde"
-                  placeholderTextColor={colors.textFaint}
                   style={styles.input}
                   maxLength={30}
                 />
@@ -150,11 +154,10 @@ export default function OnboardingScreen() {
               <Card>
                 <SectionTitle>Unirme con código</SectionTitle>
                 <Label>Código de la liga</Label>
-                <TextInput
+                <Field
                   value={code}
                   onChangeText={(t) => setCode(t.toUpperCase())}
                   placeholder="p.ej. K7M2P"
-                  placeholderTextColor={colors.textFaint}
                   style={[styles.input, styles.code]}
                   autoCapitalize="characters"
                   maxLength={6}
@@ -178,7 +181,16 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg },
-  logo: { color: colors.primary, fontSize: 16, fontWeight: '800', marginBottom: spacing.xl },
+  brand: { marginBottom: spacing.xl },
+  brandText: {
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: 1,
+    fontFamily: Platform.OS === 'web' ? 'Orbitron, sans-serif' : undefined,
+  },
+  flag: { fontSize: 20 },
+  brandApex: { color: colors.text },
+  brandLap: { color: colors.primary },
   h1: { color: colors.text, fontSize: 26, fontWeight: '900' },
   sub: { color: colors.textDim, fontSize: 15, marginTop: spacing.sm, lineHeight: 21 },
   input: {
