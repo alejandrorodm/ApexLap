@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius } from '../theme';
-import { Button, Card, SectionTitle, Label, ScreenHeader } from '../components/ui';
+import { Button, Card, SectionTitle, Label, ScreenHeader, Field } from '../components/ui';
 import { RootStackParamList } from '../navigation/types';
 import { useApp } from '../context/AppContext';
 import { driverStats } from '../utils/leaderboard';
@@ -33,13 +33,37 @@ export default function ProfileScreen() {
     userId,
     userEmail,
     isGuest,
+    hasPassword,
     setDriverName,
     leaveLeague,
     signOut,
+    linkPassword,
   } = useApp();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(profile?.driverName ?? '');
   const [busy, setBusy] = useState(false);
+  const [pass, setPass] = useState('');
+  const [passBusy, setPassBusy] = useState(false);
+
+  async function addPassword() {
+    if (pass.length < 6) {
+      notify('Contraseña', 'Mínimo 6 caracteres.');
+      return;
+    }
+    setPassBusy(true);
+    try {
+      await linkPassword(pass);
+      setPass('');
+      notify(
+        'Contraseña añadida ✓',
+        'Ya puedes entrar en el mod y el subidor con tu email y esta contraseña.'
+      );
+    } catch (e: any) {
+      notify('Error', e?.message ?? 'No se pudo añadir la contraseña.');
+    } finally {
+      setPassBusy(false);
+    }
+  }
 
   const stats = useMemo(() => driverStats(laps), [laps]);
   const myStats = stats.find((s) => s.userId === userId);
@@ -226,6 +250,33 @@ export default function ProfileScreen() {
               el móvil, la web y usar el subidor de Content Manager.
             </Text>
           ) : null}
+
+          {/* Cuentas de Google: añadir contraseña para el mod / subidor. */}
+          {!isGuest && !hasPassword ? (
+            <View style={styles.passBox}>
+              <Label>Añadir contraseña (para el mod y el subidor)</Label>
+              <Text style={styles.accountHint}>
+                Entraste con Google, que no funciona dentro del juego. Pon una
+                contraseña a tu cuenta y úsala con tu email en el mod y el
+                subidor (sigue siendo la misma cuenta).
+              </Text>
+              <Field
+                value={pass}
+                onChangeText={setPass}
+                placeholder="Nueva contraseña (mín. 6)"
+                style={styles.passInput}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+              <Button
+                title="Guardar contraseña"
+                variant="secondary"
+                onPress={addPassword}
+                loading={passBusy}
+              />
+            </View>
+          ) : null}
+
           <Button
             title="Cerrar sesión"
             variant="ghost"
@@ -314,6 +365,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     marginTop: spacing.sm,
+  },
+  passBox: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  passInput: {
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    color: colors.text,
+    paddingHorizontal: spacing.md,
+    height: 50,
+    fontSize: 16,
+    marginVertical: spacing.sm,
   },
   footer: {
     color: colors.textFaint,

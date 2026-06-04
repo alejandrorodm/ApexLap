@@ -39,6 +39,7 @@ interface AppState {
   userId: string | null;
   userEmail: string | null;
   isGuest: boolean; // true si la sesión es anónima (invitado)
+  hasPassword: boolean; // true si la cuenta ya tiene método email+contraseña
   profile: Profile | null;
   league: League | null;
   laps: Lap[];
@@ -50,6 +51,9 @@ interface AppState {
   signInGoogle: () => Promise<void>;
   signInGuest: () => Promise<void>;
   signOut: () => Promise<void>;
+  // añade una contraseña a la cuenta actual (p.ej. cuenta de Google) para poder
+  // usar el mod / subidor, que solo entran con email+contraseña.
+  linkPassword: (password: string) => Promise<void>;
   // acciones de la app
   setDriverName: (name: string) => Promise<void>;
   createLeague: (name: string) => Promise<void>;
@@ -65,6 +69,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isGuest, setIsGuest] = useState(false);
+  const [hasPassword, setHasPassword] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [league, setLeague] = useState<League | null>(null);
   const [laps, setLaps] = useState<Lap[]>([]);
@@ -85,11 +90,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setUserId(user.uid);
         setUserEmail(user.email);
         setIsGuest(user.isAnonymous);
+        setHasPassword(
+          user.providerData.some((p) => p.providerId === 'password')
+        );
         // el efecto de perfil marcará ready cuando cargue
       } else {
         setUserId(null);
         setUserEmail(null);
         setIsGuest(false);
+        setHasPassword(false);
         setProfile(null);
         setReady(true);
       }
@@ -235,6 +244,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await fbSignOut(getAppAuth());
   }, []);
 
+  const linkPassword = useCallback(async (password: string) => {
+    const auth = getAppAuth();
+    const user = auth.currentUser;
+    if (!user || !user.email) {
+      throw new Error('Tu cuenta no tiene email asociado.');
+    }
+    const credential = EmailAuthProvider.credential(user.email, password);
+    await linkWithCredential(user, credential);
+    setHasPassword(true);
+  }, []);
+
   // ── Acciones de la app ──────────────────────────────────────────────────────
 
   const setDriverName = useCallback(
@@ -291,6 +311,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         userId,
         userEmail,
         isGuest,
+        hasPassword,
         profile,
         league,
         laps,
@@ -301,6 +322,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         signInGoogle,
         signInGuest,
         signOut,
+        linkPassword,
         setDriverName,
         createLeague,
         joinLeague,
