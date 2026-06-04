@@ -1,6 +1,7 @@
 // Tema visual "racing" oscuro, compartido por toda la app.
 
 export const colors = {
+  bgDeep: '#08090C', // fondo de la "página" web, a los lados del marco
   bg: '#0E0F13',
   surface: '#181A21',
   surfaceAlt: '#21242E',

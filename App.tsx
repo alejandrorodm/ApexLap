@@ -11,6 +11,7 @@ import RootNavigator from './src/navigation/RootNavigator';
 import SetupScreen from './src/screens/SetupScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import AuthScreen from './src/screens/AuthScreen';
+import WebFrame from './src/components/WebFrame';
 
 const navTheme = {
   ...DarkTheme,
@@ -53,15 +54,23 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
-      <NavigationContainer theme={navTheme}>
-        {isFirebaseConfigured ? (
-          <AppProvider>
-            <Gate />
-          </AppProvider>
-        ) : (
-          <SetupScreen />
-        )}
-      </NavigationContainer>
+      <WebFrame>
+        <NavigationContainer
+          theme={navTheme}
+          documentTitle={{
+            formatter: (options, route) =>
+              `ApexLap${route?.name ? ` · ${route.name}` : ''}`,
+          }}
+        >
+          {isFirebaseConfigured ? (
+            <AppProvider>
+              <Gate />
+            </AppProvider>
+          ) : (
+            <SetupScreen />
+          )}
+        </NavigationContainer>
+      </WebFrame>
     </SafeAreaProvider>
   );
 }
