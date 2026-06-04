@@ -12,7 +12,20 @@
           "package_name": "com.laptimersaver.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1058766757504-673jdctcomd4b8mg7ho7abeoa77uomhn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.laptimersaver.app",
+            "certificate_hash": "980851dc3792b8e67d2b940beec1f70133888b91"
+          }
+        },
+        {
+          "client_id": "1058766757504-bbh7f0pjut6rfbhp049iftfkdebngi3v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAMEW5uBH5NGXpsyAwysALFKXl391VR_QI"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1058766757504-bbh7f0pjut6rfbhp049iftfkdebngi3v.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
