@@ -242,6 +242,11 @@ function LapRow({
           {lap.challengeId ? <Badge text="🎰 pique" color={colors.accent} /> : null}
           <Text style={styles.ago}>{timeAgo(lap.createdAt, now)}</Text>
         </View>
+        {lap.notes ? (
+          <Text style={styles.notes} numberOfLines={2}>
+            💬 {lap.notes}
+          </Text>
+        ) : null}
       </View>
     </Pressable>
   );
@@ -306,6 +311,13 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontSize: 10, fontWeight: '700' },
   ago: { color: colors.textFaint, fontSize: 11, marginLeft: spacing.xs },
+  notes: {
+    color: colors.textDim,
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginTop: spacing.xs,
+    lineHeight: 16,
+  },
   fab: {
     position: 'absolute',
     right: spacing.lg,

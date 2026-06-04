@@ -65,6 +65,7 @@ python cm_uploader.py --once
 | Campo | Qué hace | Por defecto |
 | --- | --- | --- |
 | `pollSeconds` | Cada cuántos segundos mira la carpeta. | `5` |
+| `settleSeconds` | Espera a que el fichero de resultados deje de cambiar este tiempo antes de subir, para hacerlo **una vez al terminar la sesión entera** (no vuelta a vuelta). | `8` |
 | `minLapTimeMs` | Ignora tiempos por debajo de esto (vueltas de salida/basura), en ms. | `15000` |
 | `onlyBest` | Si `true`, sube solo tu **mejor** vuelta limpia por coche+circuito de cada sesión. Si `false`, sube todas las limpias. | `true` |
 | `playerName` | Si juegas en multijugador y quieres filtrar solo tus vueltas, pon aquí tu nombre exacto del juego. Vacío = el jugador 0 (tú, en monojugador). | `""` |
@@ -101,8 +102,9 @@ Para "olvidar" lo subido y empezar de cero, borra `state.json`.
 
 - Login: `identitytoolkit.googleapis.com` (`signInWithPassword`) y refresco de
   token vía `securetoken.googleapis.com`.
-- Escritura: Firestore REST `POST .../leagues/{leagueId}/laps` con
-  `Authorization: Bearer <idToken>`. El `userId` de cada vuelta es tu uid, como
-  exigen las reglas de seguridad.
+- Escritura: Firestore REST `:commit` (un solo `POST` con un array de `writes`),
+  así todas las vueltas nuevas de una sesión suben en **una única llamada** en
+  vez de una por vuelta. El `userId` de cada vuelta es tu uid, como exigen las
+  reglas de seguridad.
 - Solo lectura local de los `*.json` de la carpeta `out`; no modifica nada del
   juego.

@@ -8,6 +8,7 @@
   "acResultsPath": "%USERPROFILE%\\Documents\\Assetto Corsa\\out",
 
   "pollSeconds": 5,
+  "settleSeconds": 8,
   "minLapTimeMs": 15000,
   "onlyBest": true,
   "playerName": "",

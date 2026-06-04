@@ -13,14 +13,19 @@ import {
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius } from '../theme';
 import { Button, Card, SectionTitle, Label } from '../components/ui';
+import { RootStackParamList } from '../navigation/types';
 import { useApp } from '../context/AppContext';
 import { driverStats } from '../utils/leaderboard';
 import { formatTime } from '../utils/time';
 import { confirmAction, notify } from '../utils/alerts';
 
 export default function ProfileScreen() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const {
     profile,
     league,
@@ -169,6 +174,12 @@ export default function ProfileScreen() {
             <Text style={styles.code}>{league?.code ?? '—'}</Text>
             <Text style={styles.codeShare}>Compartir ›</Text>
           </Pressable>
+          <Button
+            title="Ver participantes"
+            variant="secondary"
+            onPress={() => navigation.navigate('Participants')}
+            style={{ marginTop: spacing.md }}
+          />
           <Button
             title="Salir de la liga"
             variant="danger"

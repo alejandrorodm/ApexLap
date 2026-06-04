@@ -26,6 +26,7 @@ Cómo funciona:
 import argparse
 import json
 import os
+import secrets
 import sys
 import time
 import urllib.error
@@ -138,9 +139,29 @@ def encode_fields(lap):
     }
 
 
-def upload_lap(session, project_id, league_id, lap):
-    url = fs_doc_url(project_id, f"leagues/{league_id}/laps")
-    _post_json(url, {"fields": encode_fields(lap)}, session.auth_header())
+# IDs de documento estilo Firestore (auto-id de 20 caracteres alfanuméricos).
+_ID_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+
+
+def gen_doc_id():
+    return "".join(secrets.choice(_ID_ALPHABET) for _ in range(20))
+
+
+def commit_laps(session, project_id, league_id, laps):
+    """Sube TODAS las vueltas en UNA sola llamada (Firestore :commit), en vez de
+    un POST por vuelta. Cada vuelta lleva un id de documento generado en cliente."""
+    base = f"projects/{project_id}/databases/(default)/documents"
+    writes = [
+        {
+            "update": {
+                "name": f"{base}/leagues/{league_id}/laps/{gen_doc_id()}",
+                "fields": encode_fields(lap),
+            }
+        }
+        for lap in laps
+    ]
+    url = f"{FIRESTORE}/{base}:commit"
+    _post_json(url, {"writes": writes}, session.auth_header())
 
 
 # ── Parseo de resultados de Assetto Corsa ────────────────────────────────────
@@ -256,8 +277,10 @@ def process_file(path, session, cfg, project_id, league_id, driver_name, uploade
     if cfg.get("onlyBest", True):
         laps = best_per_combo(laps)
 
+    # Junta en un array todas las vueltas nuevas (las ya subidas se saltan) y las
+    # manda en una sola llamada, en vez de una petición por vuelta.
     defaults = cfg.get("defaults", {})
-    uploaded_now = 0
+    pending = []  # (key, lap_doc, etiqueta)
     for l in laps:
         key = lap_key(l)
         if key in uploaded:
@@ -275,16 +298,22 @@ def process_file(path, session, cfg, project_id, league_id, driver_name, uploade
             "gearbox": defaults.get("gearbox", "manual"),
             "createdAt": now_ms(),
         }
-        try:
-            upload_lap(session, project_id, league_id, lap_doc)
-            uploaded.add(key)
-            uploaded_now += 1
-            print(f"  ↑ {fmt_time(l['timeMs'])}  {car} @ {track}")
-        except Exception as e:
-            print(f"  ! Error subiendo vuelta ({car} @ {track}): {e}")
-    if uploaded_now:
-        save_state(state_path, uploaded)
-    return uploaded_now
+        pending.append((key, lap_doc, f"{fmt_time(l['timeMs'])}  {car} @ {track}"))
+
+    if not pending:
+        return 0
+
+    try:
+        commit_laps(session, project_id, league_id, [p[1] for p in pending])
+    except Exception as e:
+        print(f"  ! Error subiendo {len(pending)} vuelta(s): {e}")
+        return 0
+
+    for key, _doc, label in pending:
+        uploaded.add(key)
+        print(f"  ↑ {label}")
+    save_state(state_path, uploaded)
+    return len(pending)
 
 
 def fmt_time(ms):
@@ -361,32 +390,49 @@ def main():
         print(f"Hecho. Subidas {total} vueltas nuevas.")
         return
 
-    print("  Vigilando… (Ctrl+C para salir). Juega y tus vueltas limpias subirán solas.\n")
     poll = float(cfg.get("pollSeconds", 5))
-    mtimes = {}
-    # Marca los ficheros existentes como ya vistos para no resubir el histórico
-    # al arrancar (el anti-duplicados también protege, pero esto evita ruido).
+    # Espera a que el fichero deje de cambiar este tiempo antes de procesarlo:
+    # AC va escribiendo el resultado durante la sesión, así subimos UNA vez al
+    # terminar la carrera entera (no vuelta a vuelta).
+    settle = float(cfg.get("settleSeconds", 8))
+    print(
+        f"  Vigilando… (Ctrl+C para salir). Subo tus vueltas limpias al terminar\n"
+        f"  cada sesión (espero {settle:.0f}s a que AC acabe de guardar).\n"
+    )
+
+    # Estado al arrancar: marcamos los ficheros actuales como "ya vistos" para no
+    # resubir el histórico (el anti-duplicados también protege, pero evita ruido).
+    last_mt = {}
     for p in find_json_files(folder):
         try:
-            mtimes[p] = os.path.getmtime(p)
+            last_mt[p] = os.path.getmtime(p)
         except OSError:
             pass
-    # Procesa una vez al arrancar el más reciente, por si acabas de terminar.
+    last_change = {}  # path -> instante del último cambio detectado (pendiente)
+
     try:
         while True:
+            now = time.time()
             for path in find_json_files(folder):
                 try:
                     mt = os.path.getmtime(path)
                 except OSError:
                     continue
-                if mtimes.get(path) != mt:
-                    mtimes[path] = mt
+                if last_mt.get(path) != mt:
+                    last_mt[path] = mt
+                    last_change[path] = now  # sigue cambiando: reinicia el reloj
+
+            # Procesa solo los que llevan `settle` segundos sin cambiar (sesión
+            # ya cerrada y volcada por completo).
+            for path in list(last_change.keys()):
+                if now - last_change[path] >= settle:
                     name = os.path.basename(path)
-                    print(f"[{time.strftime('%H:%M:%S')}] cambio en {name}")
+                    print(f"[{time.strftime('%H:%M:%S')}] sesión cerrada: {name}")
                     process_file(
                         path, session, cfg, cfg["projectId"], league_id,
                         driver_name, uploaded, state_path,
                     )
+                    del last_change[path]
             time.sleep(poll)
     except KeyboardInterrupt:
         print("\nAdiós 🏁")
