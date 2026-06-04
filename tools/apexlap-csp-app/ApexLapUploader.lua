@@ -58,6 +58,7 @@ end
 
 local lastLapCount = -1
 local lapInvalidated = false
+local lastScanCombo = nil -- último combo escaneado al iniciar / cambiar de coche-pista
 
 -- ── Utilidades ───────────────────────────────────────────────────────────────
 local function log(msg)
@@ -275,6 +276,52 @@ local function detectLaps()
   }, false)
 end
 
+-- ── Escaneo al iniciar / cambiar de coche-pista ──────────────────────────────
+-- Sube el MEJOR tiempo que el juego ya conoce para el coche+circuito cargado,
+-- por si hiciste vueltas antes de abrir la app (o de una sesión anterior que el
+-- juego mantenga como referencia). Se ejecuta una vez por combo.
+local function scanExistingBest()
+  local sim = ac.getSim()
+  local car = ac.getCar(0)
+  if not car then return end
+  local carId = ac.getCarID(0) -- VERIFICAR
+  if not carId then return end
+  local trackId = sim.trackId or sim.track or 'circuito'
+  local trackCfg = sim.trackConfig or ''
+  local trackFull = (#trackCfg > 0) and (trackId .. ' ' .. trackCfg) or trackId
+  local combo = trackFull .. '|' .. tostring(carId)
+  if combo == lastScanCombo then return end -- ya escaneado este combo
+  lastScanCombo = combo
+
+  -- mejor vuelta conocida por el juego para este coche+circuito.
+  -- VERIFICAR: nombre del campo (bestLapTimeMs / personalBestLapMs según versión).
+  local t = car.bestLapTimeMs or sim.bestLapTimeMs or car.personalBestLapMs
+  if not t or t <= 0 or t >= 3600000 then return end
+
+  local key = combo .. '|' .. tostring(t)
+  if seen[key] then return end
+  if cfg.onlyBest then
+    local best = bestByCombo[combo]
+    if best and t >= best then return end -- ya tenemos ese tiempo (o mejor)
+  end
+
+  local conditions = 'dry'
+  local rain = sim.rainIntensity
+  if rain and rain > 0.02 then conditions = 'wet' end
+
+  seen[key] = true
+  S.status = 'Subiendo tu mejor ya registrado (' .. fmt(t) .. ')…'
+  log('scan combo ' .. combo .. ' best ' .. fmt(t))
+  uploadLap({
+    timeMs = t,
+    car = prettify(carId),
+    track = prettify(trackFull),
+    conditions = conditions,
+    key = key,
+    combo = combo,
+  }, false)
+end
+
 -- ── Estilo / colores de marca ────────────────────────────────────────────────
 local RED = rgbm(0.882, 0.024, 0, 1)
 local RED_H = rgbm(1, 0.12, 0.06, 1)
@@ -421,8 +468,11 @@ function script.windowMain(dt)
     S.status = 'Sesión cerrada.'
   end
 
+  -- escaneo del mejor ya registrado (al iniciar y al cambiar de coche/pista) +
   -- detección continua mientras la ventana esté abierta
   if S.leagueId then
+    local okS = pcall(scanExistingBest)
+    if not okS then log('scanExistingBest error') end
     local ok, e = pcall(detectLaps)
     if not ok then log('detectLaps error: ' .. tostring(e)) end
   end

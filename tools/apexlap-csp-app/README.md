@@ -38,9 +38,12 @@ el subidor de escritorio en `../cm-uploader/`.
    tu liga. La ventana muestra el estado y cuántas llevas subidas.
 
 Notas:
-- **Solo sube las vueltas que hagas con la app ABIERTA.** No importa tus tiempos
-  antiguos ya guardados en Assetto Corsa: la app vigila en vivo, no lee tu
-  histórico/récords del juego. Lo de antes de abrirla no se sube.
+- **Escaneo al iniciar:** al abrir la app (y cada vez que cambias de coche o
+  circuito) sube también el **mejor tiempo que el juego ya conoce** de ese
+  coche+circuito cargado — así no pierdes una vuelta buena que hicieras *antes*
+  de abrir la app. Solo mira el **combo cargado en ese momento**: para que suba
+  el mejor de otro coche/circuito, entra a ese combo con la app abierta.
+- A partir de ahí vigila en vivo y sube cada vuelta nueva limpia.
 - Solo sube vueltas **válidas y SIN penalización**: si cortas (el juego invalida
   la vuelta) o tienes un *penalty* activo, la vuelta se descarta.
 - **Menos escrituras (recomendado):** con la casilla *"Subir solo tu mejor (PB)
@@ -74,6 +77,8 @@ no depende de CSP.
 
 - Login Firebase REST (`signInWithPassword`) y refresco de token ante 401.
 - Lee `profiles/{uid}` para tu liga y nombre de piloto.
+- Al iniciar / cambiar de combo, escanea el mejor tiempo que el juego ya conoce
+  del coche+circuito cargado (`car.bestLapTimeMs`) y lo sube si te falta.
 - Cada frame comprueba el contador de vueltas; al cerrar una vuelta **válida y sin
   penalización** hace `POST` a `leagues/{leagueId}/laps` con tu `idToken` (tu
   `userId` = tu uid, como exigen las reglas de seguridad).
