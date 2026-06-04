@@ -47,6 +47,9 @@ Notas:
   por coche+circuito"* marcada (por defecto), solo sube cuando **mejoras** tu
   tiempo en ese combo — que es lo único que cuenta para récords y clasificación.
   Desmárcala si quieres subir todas las vueltas limpias.
+- **Ayudas y caja configurables:** en la ventana eliges si marcas tus vueltas
+  *con ayudas* (ABS/TC) y la *caja* (Manual / Manual+embrague / Automática). Se
+  aplica a las vueltas que subas a partir de ese momento y se recuerda.
 - No duplica: recuerda lo subido (por circuito + coche + tiempo).
 - Mantén la app **abierta/visible** mientras juegas; si la cierras, deja de vigilar.
 

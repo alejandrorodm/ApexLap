@@ -19,7 +19,11 @@ local FIRESTORE = 'https://firestore.googleapis.com/v1'
 -- ── Estado persistente (se recuerda entre sesiones, solo en tu PC) ───────────
 -- onlyBest = true → MENOS ESCRITURAS: solo sube cuando mejoras tu mejor tiempo
 -- de ese coche+circuito (lo único que cuenta para récords y clasificación).
-local cfg = ac.storage{ email = '', password = '', onlyBest = true }
+local cfg = ac.storage{
+  email = '', password = '', onlyBest = true,
+  assists = false,       -- con qué ayudas marcas tus vueltas
+  gearbox = 'manual',    -- 'manual' | 'manual-clutch' | 'auto'
+}
 local uploadedStore = ac.storage{ keys = '' } -- claves exactas ya subidas (';')
 local bestStore = ac.storage{ best = '' }      -- mejor tiempo por combo
 
@@ -171,8 +175,8 @@ local function uploadLap(lap, isRetry)
     track = { stringValue = lap.track },
     timeMs = { integerValue = tostring(lap.timeMs) },
     conditions = { stringValue = lap.conditions or 'dry' },
-    assists = { booleanValue = false },
-    gearbox = { stringValue = 'manual' },
+    assists = { booleanValue = cfg.assists == true },
+    gearbox = { stringValue = cfg.gearbox or 'manual' },
     createdAt = { integerValue = tostring(nowMs()) },
   }
   local url = FIRESTORE .. '/projects/' .. PROJECT
@@ -305,6 +309,24 @@ local function ghostButton(label, w)
   return r
 end
 
+-- Botón de un grupo (segmentado): rojo si está activo, gris si no.
+local function segButton(label, active)
+  if active then
+    ui.pushStyleColor(ui.StyleColor.Button, RED)
+    ui.pushStyleColor(ui.StyleColor.ButtonHovered, RED_H)
+    ui.pushStyleColor(ui.StyleColor.ButtonActive, RED_A)
+    ui.pushStyleColor(ui.StyleColor.Text, WHITE)
+  else
+    ui.pushStyleColor(ui.StyleColor.Button, SURF)
+    ui.pushStyleColor(ui.StyleColor.ButtonHovered, SURF_H)
+    ui.pushStyleColor(ui.StyleColor.ButtonActive, SURF)
+    ui.pushStyleColor(ui.StyleColor.Text, DIM)
+  end
+  local r = ui.button(label)
+  ui.popStyleColor(4)
+  return r
+end
+
 local function statusLine()
   local s = S.status or ''
   local c = DIM
@@ -377,6 +399,20 @@ function script.windowMain(dt)
   ui.textColored(
     cfg.onlyBest and 'Menos escrituras: solo sube cuando mejoras tu tiempo.'
       or 'Sube todas tus vueltas limpias.', FAINT)
+  gap(8)
+
+  -- Cómo se etiquetan tus vueltas (se aplica a las que subas a partir de ahora).
+  ui.textColored('CÓMO REGISTRAR TUS VUELTAS', FAINT)
+  gap(2)
+  cfg.assists = ui.checkbox('Con ayudas (ABS / control de tracción…)', cfg.assists)
+  gap(4)
+  ui.textColored('Caja:', DIM)
+  ui.sameLine()
+  if segButton('Manual', cfg.gearbox == 'manual') then cfg.gearbox = 'manual' end
+  ui.sameLine()
+  if segButton('M+embrague', cfg.gearbox == 'manual-clutch') then cfg.gearbox = 'manual-clutch' end
+  ui.sameLine()
+  if segButton('Auto', cfg.gearbox == 'auto') then cfg.gearbox = 'auto' end
   gap(10)
 
   if ghostButton('Cerrar sesión', 150) then
