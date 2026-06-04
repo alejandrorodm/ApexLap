@@ -1,0 +1,29 @@
+{
+  "email": "tu-email@example.com",
+  "password": "tu-contraseña-de-ApexLap",
+
+  "firebaseApiKey": "AIzaSyD262ll4I_E9lfN7DU82c7AjFpV_S6B-cI",
+  "projectId": "laptimersaver",
+
+  "acResultsPath": "%USERPROFILE%\\Documents\\Assetto Corsa\\out",
+
+  "pollSeconds": 5,
+  "minLapTimeMs": 15000,
+  "onlyBest": true,
+  "playerName": "",
+
+  "defaults": {
+    "conditions": "dry",
+    "assists": false,
+    "gearbox": "manual"
+  },
+
+  "carAliases": {
+    "ks_mazda_mx5_cup": "Mazda MX-5 Cup",
+    "ks_toyota_ae86": "Toyota AE86"
+  },
+  "trackAliases": {
+    "ks_brands_hatch": "Brands Hatch",
+    "magione": "Magione"
+  }
+}

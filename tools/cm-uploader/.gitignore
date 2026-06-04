@@ -1,0 +1,5 @@
+# Tu configuración con email/contraseña y el estado local: NUNCA subir.
+config.json
+state.json
+__pycache__/
+*.pyc
