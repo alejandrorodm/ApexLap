@@ -29,12 +29,16 @@ service cloud.firestore {
         && resource.data.createdBy == request.auth.uid;
 
       // Vueltas dentro de una liga.
+      // Crea cada quien las suyas. Editar/borrar: el dueño O el anfitrión de la
+      // liga (para que el anfitrión pueda verificar/rechazar/limpiar vueltas).
       match /laps/{lapId} {
         allow read: if signedIn();
         allow create: if signedIn()
           && request.resource.data.userId == request.auth.uid;
-        allow update, delete: if signedIn()
-          && resource.data.userId == request.auth.uid;
+        allow update, delete: if signedIn() && (
+          resource.data.userId == request.auth.uid
+          || get(/databases/$(database)/documents/leagues/$(leagueId)).data.createdBy == request.auth.uid
+        );
       }
 
       // Piques (challenges) dentro de una liga.

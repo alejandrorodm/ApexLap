@@ -20,6 +20,7 @@ import {
   byTime,
   bestPerDriver,
   uniqueValues,
+  isCounted,
   LapFilter,
 } from '../utils/leaderboard';
 import { formatTime, formatDelta, timeAgo } from '../utils/time';
@@ -32,23 +33,40 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 export default function LapsScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { laps, league, userId, lapsLoading } = useApp();
+  const { laps, league, userId, lapsLoading, approveLap, rejectLap } = useApp();
   const [filter, setFilter] = useState<LapFilter>({});
   const [bestOnly, setBestOnly] = useState(true);
   const [sortRecent, setSortRecent] = useState(false);
+  const [showPending, setShowPending] = useState(false);
   const [picker, setPicker] = useState<null | 'car' | 'track'>(null);
   const now = Date.now();
+
+  const isHost = !!league && league.createdBy === userId;
+  const pendingCount = useMemo(
+    () => laps.filter((l) => l.status === 'pending').length,
+    [laps]
+  );
 
   const present = useMemo(() => uniqueValues(laps), [laps]);
 
   const list = useMemo(() => {
-    const filtered = applyFilter(laps, filter);
+    if (showPending) {
+      // Cola de verificación: pendientes + rechazadas que su autor o el anfitrión
+      // aún pueden ver (las rechazadas ajenas se ocultan al resto).
+      return laps.filter(
+        (l) =>
+          l.status === 'pending' ||
+          (l.status === 'rejected' && (isHost || l.userId === userId))
+      );
+    }
+    // Vistas normales: solo vueltas que cuentan (verificadas o antiguas).
+    const filtered = applyFilter(laps.filter(isCounted), filter);
     if (sortRecent) return filtered; // ya viene ordenado por fecha desc
-    const ranked = bestOnly ? bestPerDriver(filtered) : byTime(filtered);
-    return ranked;
-  }, [laps, filter, bestOnly, sortRecent]);
+    return bestOnly ? bestPerDriver(filtered) : byTime(filtered);
+  }, [laps, filter, bestOnly, sortRecent, showPending, isHost, userId]);
 
-  const leaderMs = !sortRecent && list.length ? list[0].timeMs : null;
+  const leaderMs =
+    !sortRecent && !showPending && list.length ? list[0].timeMs : null;
 
   function confirmDelete(lap: Lap) {
     if (lap.userId !== userId || !league) return;
@@ -60,6 +78,22 @@ export default function LapsScreen() {
         onPress: () => deleteLap(league.id, lap.id).catch(() => {}),
       },
     ]);
+  }
+
+  function confirmReject(lap: Lap) {
+    if (!isHost || !league) return;
+    Alert.alert(
+      'Rechazar vuelta',
+      `${lap.driverName}: ${lap.car} · ${formatTime(lap.timeMs)}\nNo contará para la clasificación.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Rechazar',
+          style: 'destructive',
+          onPress: () => rejectLap(lap.id).catch(() => {}),
+        },
+      ]
+    );
   }
 
   function toggle<K extends keyof LapFilter>(key: K, value: LapFilter[K]) {
@@ -104,19 +138,31 @@ export default function LapsScreen() {
         <View style={styles.filterRow}>
           <Chip
             label="Mejor de cada piloto"
-            active={bestOnly && !sortRecent}
+            active={bestOnly && !sortRecent && !showPending}
             onPress={() => {
               setBestOnly((b) => !b);
               setSortRecent(false);
+              setShowPending(false);
             }}
             color={colors.accent}
           />
           <Chip
             label={sortRecent ? '🕒 Recientes' : '⏱ Por tiempo'}
-            active={sortRecent}
-            onPress={() => setSortRecent((s) => !s)}
+            active={sortRecent && !showPending}
+            onPress={() => {
+              setSortRecent((s) => !s);
+              setShowPending(false);
+            }}
             color={colors.blue}
           />
+          {pendingCount > 0 ? (
+            <Chip
+              label={`⏳ Por verificar (${pendingCount})`}
+              active={showPending}
+              onPress={() => setShowPending((s) => !s)}
+              color={colors.accent}
+            />
+          ) : null}
         </View>
       </View>
 
@@ -128,15 +174,24 @@ export default function LapsScreen() {
           <LapRow
             lap={item}
             index={index}
-            showRank={!sortRecent}
+            showRank={!sortRecent && !showPending}
             leaderMs={leaderMs}
             isMine={item.userId === userId}
+            isHost={isHost}
             now={now}
             onLongPress={() => confirmDelete(item)}
+            onApprove={() => approveLap(item.id).catch(() => {})}
+            onReject={() => confirmReject(item)}
           />
         )}
         ListEmptyComponent={
-          lapsLoading ? null : (
+          lapsLoading ? null : showPending ? (
+            <EmptyState
+              icon="✅"
+              title="Nada por verificar"
+              subtitle="Cuando alguien suba una vuelta a mano, aparecerá aquí para que la apruebes o la rechaces."
+            />
+          ) : (
             <EmptyState
               icon="🏁"
               title="Aún no hay vueltas"
@@ -182,16 +237,22 @@ function LapRow({
   showRank,
   leaderMs,
   isMine,
+  isHost,
   now,
   onLongPress,
+  onApprove,
+  onReject,
 }: {
   lap: Lap;
   index: number;
   showRank: boolean;
   leaderMs: number | null;
   isMine: boolean;
+  isHost: boolean;
   now: number;
   onLongPress: () => void;
+  onApprove: () => void;
+  onReject: () => void;
 }) {
   const medal = showRank && index < 3 ? MEDALS[index] : null;
   return (
@@ -237,12 +298,34 @@ function LapRow({
             <Badge text="mixto" color={colors.blue} />
           ) : null}
           {lap.challengeId ? <Badge text="🎰 pique" color={colors.accent} /> : null}
+          {lap.status === 'pending' ? (
+            <Badge text="⏳ por verificar" color={colors.accent} />
+          ) : null}
+          {lap.status === 'rejected' ? (
+            <Badge text="❌ rechazada" color={colors.primary} />
+          ) : null}
           <Text style={styles.ago}>{timeAgo(lap.createdAt, now)}</Text>
         </View>
         {lap.notes ? (
           <Text style={styles.notes} numberOfLines={2}>
             💬 {lap.notes}
           </Text>
+        ) : null}
+        {isHost && lap.status === 'pending' ? (
+          <View style={styles.verifyRow}>
+            <Pressable
+              style={[styles.verifyBtn, styles.approveBtn]}
+              onPress={onApprove}
+            >
+              <Text style={styles.approveText}>✓ Aprobar</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.verifyBtn, styles.rejectBtn]}
+              onPress={onReject}
+            >
+              <Text style={styles.rejectText}>✕ Rechazar</Text>
+            </Pressable>
+          </View>
         ) : null}
       </View>
     </Pressable>
@@ -309,6 +392,18 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontSize: 10, fontWeight: '700' },
   ago: { color: colors.textFaint, fontSize: 11, marginLeft: spacing.xs },
+  verifyRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  verifyBtn: {
+    flex: 1,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  approveBtn: { backgroundColor: colors.green, borderColor: colors.green },
+  approveText: { color: '#04210C', fontWeight: '800', fontSize: 13 },
+  rejectBtn: { backgroundColor: 'transparent', borderColor: colors.primary },
+  rejectText: { color: colors.primary, fontWeight: '800', fontSize: 13 },
   notes: {
     color: colors.textDim,
     fontSize: 12,

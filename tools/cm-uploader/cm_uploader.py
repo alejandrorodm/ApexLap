@@ -135,6 +135,9 @@ def encode_fields(lap):
         "conditions": {"stringValue": lap["conditions"]},
         "assists": {"booleanValue": bool(lap["assists"])},
         "gearbox": {"stringValue": lap["gearbox"]},
+        # Subida automática del subidor: entra ya verificada.
+        "source": {"stringValue": "auto"},
+        "status": {"stringValue": "verified"},
         "createdAt": {"integerValue": str(lap["createdAt"])},
     }
 

@@ -153,11 +153,23 @@ export function subscribeLaps(
   );
 }
 
-export async function addLap(leagueId: string, lap: NewLap): Promise<void> {
+export async function addLap(leagueId: string, lap: NewLap): Promise<string> {
   const db = getDb();
-  await addDoc(collection(db, 'leagues', leagueId, 'laps'), {
+  const ref = await addDoc(collection(db, 'leagues', leagueId, 'laps'), {
     ...lap,
     createdAt: Date.now(),
+  });
+  return ref.id;
+}
+
+/** Actualiza campos de una vuelta (estado de verificación, foto…). */
+export async function updateLap(
+  leagueId: string,
+  lapId: string,
+  data: Partial<Lap>
+): Promise<void> {
+  await setDoc(doc(getDb(), 'leagues', leagueId, 'laps', lapId), data, {
+    merge: true,
   });
 }
 

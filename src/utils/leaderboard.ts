@@ -7,6 +7,15 @@ export const POINTS = {
   correctBet: 5, // acertar quién ganaría el pique
 };
 
+/**
+ * Una vuelta cuenta para clasificación/récords/estadísticas si está verificada.
+ * Las vueltas antiguas (sin `status`) también cuentan; solo se excluyen las
+ * 'pending' (a la espera del anfitrión) y las 'rejected'.
+ */
+export function isCounted(l: Lap): boolean {
+  return l.status == null || l.status === 'verified';
+}
+
 export interface LapFilter {
   car?: string;
   track?: string;
@@ -32,7 +41,7 @@ export function byTime(laps: Lap[]): Lap[] {
 /** Deja solo la mejor vuelta de cada piloto dentro del conjunto dado. */
 export function bestPerDriver(laps: Lap[]): Lap[] {
   const best = new Map<string, Lap>();
-  for (const l of laps) {
+  for (const l of laps.filter(isCounted)) {
     const cur = best.get(l.userId);
     if (!cur || l.timeMs < cur.timeMs) best.set(l.userId, l);
   }
@@ -50,7 +59,7 @@ export interface Record {
 /** Récord (vuelta más rápida) por combinación coche+circuito. */
 export function recordsByCombo(laps: Lap[]): Record[] {
   const map = new Map<string, Record>();
-  for (const l of laps) {
+  for (const l of laps.filter(isCounted)) {
     const key = `${l.car}|${l.track}`;
     const cur = map.get(key);
     if (!cur) {
@@ -82,7 +91,7 @@ export function driverStats(laps: Lap[]): DriverStats[] {
   }
 
   const map = new Map<string, DriverStats>();
-  for (const l of laps) {
+  for (const l of laps.filter(isCounted)) {
     let s = map.get(l.userId);
     if (!s) {
       s = {
@@ -112,7 +121,7 @@ export function lapsForChallenge(laps: Lap[], challengeId: string): Lap[] {
 
 /** Ganador de un pique = la vuelta más rápida registrada en él (o null si no hay). */
 export function challengeWinner(laps: Lap[], challengeId: string): Lap | null {
-  const sorted = byTime(lapsForChallenge(laps, challengeId));
+  const sorted = byTime(lapsForChallenge(laps, challengeId).filter(isCounted));
   return sorted[0] ?? null;
 }
 

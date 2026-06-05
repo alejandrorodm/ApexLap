@@ -69,6 +69,9 @@ export default function AddLapScreen({ navigation, route }: Props) {
         gearbox,
         notes: notes.trim() || undefined,
         challengeId: params.challengeId,
+        // Alta manual: entra pendiente de que el anfitrión la verifique.
+        source: 'manual',
+        status: 'pending',
       });
       // Avisar al resto de la liga (best-effort, no bloquea el guardado).
       try {

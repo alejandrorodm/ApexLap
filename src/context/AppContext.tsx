@@ -27,6 +27,7 @@ import {
   saveProfile,
   getLeague,
   subscribeLaps,
+  updateLap,
   createLeague as dbCreateLeague,
   joinLeagueByCode as dbJoinLeague,
 } from '../firebase/db';
@@ -60,6 +61,9 @@ interface AppState {
   joinLeague: (code: string) => Promise<void>;
   leaveLeague: () => Promise<void>;
   refreshLeague: () => Promise<void>;
+  // verificación de vueltas (solo el anfitrión las usa de verdad)
+  approveLap: (lapId: string) => Promise<void>;
+  rejectLap: (lapId: string) => Promise<void>;
 }
 
 const Ctx = createContext<AppState | null>(null);
@@ -304,6 +308,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setLeague(lg);
   }, [profile?.leagueId]);
 
+  // Verificar/rechazar una vuelta manual (lo permite el anfitrión por reglas).
+  const approveLap = useCallback(
+    async (lapId: string) => {
+      if (!league) return;
+      await updateLap(league.id, lapId, { status: 'verified' });
+    },
+    [league]
+  );
+
+  const rejectLap = useCallback(
+    async (lapId: string) => {
+      if (!league) return;
+      await updateLap(league.id, lapId, { status: 'rejected' });
+    },
+    [league]
+  );
+
   return (
     <Ctx.Provider
       value={{
@@ -328,6 +349,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         joinLeague,
         leaveLeague,
         refreshLeague,
+        approveLap,
+        rejectLap,
       }}
     >
       {children}

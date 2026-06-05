@@ -180,6 +180,9 @@ local function uploadLap(lap, isRetry)
     conditions = { stringValue = lap.conditions or 'dry' },
     assists = { booleanValue = cfg.assists == true },
     gearbox = { stringValue = cfg.gearbox or 'manual' },
+    -- Subida automática del mod: validada en el juego, entra ya verificada.
+    source = { stringValue = 'auto' },
+    status = { stringValue = 'verified' },
     createdAt = { integerValue = tostring(nowMs()) },
   }
   local url = FIRESTORE .. '/projects/' .. PROJECT

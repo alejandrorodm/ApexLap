@@ -15,6 +15,13 @@ export interface Lap {
   gearbox: Gearbox;
   notes?: string;
   challengeId?: string; // si la vuelta nace de un pique de la ruleta
+  // Origen y verificación. Las manuales (app) entran 'pending' y el anfitrión las
+  // aprueba/rechaza; las del mod/subidor entran 'verified'. Una vuelta SIN estado
+  // es antigua (anterior a esta función) y se trata como verificada (cuenta igual).
+  source?: 'auto' | 'manual';
+  status?: 'verified' | 'pending' | 'rejected';
+  photoUrl?: string; // captura de prueba (opcional); se borra al verificar/rechazar
+  photoPath?: string; // ruta en Storage de esa captura (para poder borrarla)
   createdAt: number; // epoch ms
 }
 
