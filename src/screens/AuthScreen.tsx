@@ -20,7 +20,10 @@ type Mode = 'signin' | 'signup';
 
 export default function AuthScreen() {
   const { signInEmail, signUpEmail, signInGoogle, signInGuest } = useApp();
-  const [mode, setMode] = useState<Mode>('signup');
+  // Por defecto "Entrar": la mayoría que abre la app ya tiene cuenta. Arrancar en
+  // "Crear cuenta" hacía que alguien con cuenta (p.ej. de Google + contraseña) se
+  // creara sin querer una cuenta NUEVA y vacía con su mismo email.
+  const [mode, setMode] = useState<Mode>('signin');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
