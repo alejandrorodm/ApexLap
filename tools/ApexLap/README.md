@@ -35,12 +35,13 @@ el subidor de escritorio en `../cm-uploader/`.
 
 1. La primera vez, escribe tu **email y contraseña** de ApexLap y pulsa **Entrar**.
    (Se recuerdan para las próximas; quedan solo en tu PC.)
-   En las siguientes sesiones **inicia sesión solo** al abrir la app con esas
-   credenciales guardadas — no tienes que volver a pulsar "Entrar". (Si cierras
-   sesión a mano, se queda fuera hasta que vuelvas a pulsar "Entrar".)
-2. Cuando ponga *"Listo ✓"*, ya está: **deja la ventana abierta** y conduce.
+   En las siguientes sesiones **inicia sesión solo** en cuanto actives la app en
+   la barra lateral — **no hace falta abrir la ventana**. Si cierras sesión a
+   mano, se queda fuera hasta que vuelvas a pulsar "Entrar".
+2. Cuando ponga *"Listo ✓"*, ya está. **Basta con que la app esté activa** en la
+   barra lateral; puedes cerrar la ventana y conducir.
 3. Cada vez que **completes una vuelta limpia** (sin cortes), se sube automática a
-   tu liga. La ventana muestra el estado y cuántas llevas subidas.
+   tu liga. La ventana muestra el estado y cuántas llevas subidas si la abres.
 
 Notas:
 - **Escaneo al iniciar:** al abrir la app (y cada vez que cambias de coche o
@@ -51,15 +52,16 @@ Notas:
 - A partir de ahí vigila en vivo y sube cada vuelta nueva limpia.
 - Solo sube vueltas **válidas y SIN penalización**: si cortas (el juego invalida
   la vuelta) o tienes un *penalty* activo, la vuelta se descarta.
-- **Menos escrituras (recomendado):** con la casilla *"Subir solo tu mejor (PB)
-  por coche+circuito"* marcada (por defecto), solo sube cuando **mejoras** tu
-  tiempo en ese combo — que es lo único que cuenta para récords y clasificación.
-  Desmárcala si quieres subir todas las vueltas limpias.
-- **Ayudas y caja configurables:** en la ventana eliges si marcas tus vueltas
-  *con ayudas* (ABS/TC) y la *caja* (Manual / Manual+embrague / Automática). Se
-  aplica a las vueltas que subas a partir de ese momento y se recuerda.
+- **Menos escrituras (por defecto):** solo sube cuando **mejoras** tu tiempo en
+  ese combo coche+circuito — que es lo único que cuenta para récords y
+  clasificación. Editable en `ac.storage` (`onlyBest = false`) si quisieras subir
+  todas las vueltas limpias.
+- **Ayudas/caja:** las vueltas se suben marcadas como *sin ayudas* y caja
+  *Manual* (valores neutros). Si necesitas otra etiqueta, edítala desde la app
+  móvil/web después de la subida.
 - No duplica: recuerda lo subido (por circuito + coche + tiempo).
-- Mantén la app **abierta/visible** mientras juegas; si la cierras, deja de vigilar.
+- La detección corre en `script.update`, así que **basta con que la app esté
+  activa en la barra lateral** — la ventana puede estar cerrada.
 
 ## ⚙️ Importante: primera prueba (puede necesitar un retoque)
 

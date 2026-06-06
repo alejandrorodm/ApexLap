@@ -2,12 +2,9 @@
 -- Detecta tus vueltas LIMPIAS en tiempo real y las sube a tu liga de ApexLap.
 --
 -- Requiere CSP (Custom Shaders Patch) con soporte de apps Lua y acceso a web.
--- Mantén la ventana de la app abierta mientras juegas para que funcione.
---
--- NOTA: como no se puede probar fuera del juego, algunos nombres de la API de
--- CSP podrían variar según versión. Los puntos a verificar están marcados con
--- "VERIFICAR". Si algo no sube, revisa el log de CSP (icono de CSP → Logs, o
--- Documents/Assetto Corsa/logs/) buscando "ApexLap".
+-- La detección y el auto-login viven en script.update → corren mientras la app
+-- esté ACTIVA en la barra lateral, AUNQUE LA VENTANA ESTÉ CERRADA. No hace falta
+-- abrirla cada vez (solo para escribir email/contraseña la primera vez).
 
 -- ── Configuración fija (valores PÚBLICOS de cliente de Firebase) ─────────────
 local API_KEY = 'AIzaSyD262ll4I_E9lfN7DU82c7AjFpV_S6B-cI'
@@ -23,8 +20,6 @@ ac.log('[ApexLap] script cargado') -- si ves esto en el log, el .lua se cargó b
 -- de ese coche+circuito (lo único que cuenta para récords y clasificación).
 local cfg = ac.storage{
   email = '', password = '', onlyBest = true,
-  assists = false,       -- con qué ayudas marcas tus vueltas
-  gearbox = 'manual',    -- 'manual' | 'manual-clutch' | 'auto'
 }
 local uploadedStore = ac.storage{ keys = '' } -- claves exactas ya subidas (';')
 local bestStore = ac.storage{ best = '' }      -- mejor tiempo por combo
@@ -73,6 +68,16 @@ end
 local function nowMs()
   local ok, t = pcall(function() return os.time() end)
   return (ok and t or 0) * 1000
+end
+
+-- Lee un campo de un struct/userdata de CSP sin caer si no existe. En CSP, los
+-- campos inexistentes de `state_car` LANZAN error (no devuelven nil), así que
+-- hay que envolverlos en pcall.
+local function safeGet(obj, field)
+  if obj == nil then return nil end
+  local ok, val = pcall(function() return obj[field] end)
+  if ok then return val end
+  return nil
 end
 
 local PREFIXES = { 'ks_', 'rss_', 'tatuusfa1_', 'abarth500_' }
@@ -181,8 +186,10 @@ local function uploadLap(lap, isRetry)
     track = { stringValue = lap.track },
     timeMs = { integerValue = tostring(lap.timeMs) },
     conditions = { stringValue = lap.conditions or 'dry' },
-    assists = { booleanValue = cfg.assists == true },
-    gearbox = { stringValue = cfg.gearbox or 'manual' },
+    -- Sin botones de UI: marcamos las vueltas con valores neutros. Si quieres
+    -- ayudas/caja distintas, edítalas en la app (móvil/web) tras la subida.
+    assists = { booleanValue = false },
+    gearbox = { stringValue = 'manual' },
     -- Subida automática del mod: validada en el juego, entra ya verificada.
     source = { stringValue = 'auto' },
     status = { stringValue = 'verified' },
@@ -216,29 +223,22 @@ end
 -- ── Detección de vueltas completadas ─────────────────────────────────────────
 local function detectLaps()
   local sim = ac.getSim()
-  local car = ac.getCar(0) -- VERIFICAR: jugador local
+  local car = ac.getCar(0) -- jugador local
   if not car then return end
 
-  -- ¿se invalidó la vuelta en curso? (cortes / fuera de pista)
-  -- VERIFICAR: campo de validez (isLapValid / lapValid según versión).
-  local valid = car.isLapValid
-  if valid == nil then valid = car.lapValid end
+  -- ¿se invalidó la vuelta en curso? (cortes / fuera de pista). En esta versión
+  -- de CSP, `car.isLapValid` no existe y leerlo directo lanza error → safeGet.
+  local valid = safeGet(car, 'isLapValid')
+  if valid == nil then valid = safeGet(car, 'lapValid') end
   if valid == false then lapInvalidated = true end
 
-  -- También debe ir SIN PENALIZACIÓN: si hay penalty activo en cualquier
-  -- momento de la vuelta, no cuenta. VERIFICAR: penaltyTime / hasPenalty.
-  local penalty = car.penaltyTime
-  if penalty == nil then penalty = sim.penaltyTime end
-  if (penalty and penalty > 0) or car.hasPenalty == true then
-    lapInvalidated = true
-  end
-
-  local lapCount = car.lapCount -- VERIFICAR: contador de vueltas
+  local lapCount = safeGet(car, 'lapCount')
+  if not lapCount then return end
   if lastLapCount < 0 then lastLapCount = lapCount; return end
   if lapCount <= lastLapCount then return end
 
   -- acabamos de cerrar una vuelta
-  local t = car.previousLapTimeMs or car.lastLapTimeMs -- VERIFICAR
+  local t = safeGet(car, 'previousLapTimeMs') or safeGet(car, 'lastLapTimeMs')
   local wasValid = not lapInvalidated
   lastLapCount = lapCount
   lapInvalidated = false
@@ -248,9 +248,9 @@ local function detectLaps()
     return
   end
 
-  local carId = ac.getCarID(0) -- VERIFICAR
-  local trackId = sim.trackId or sim.track or 'circuito'
-  local trackCfg = sim.trackConfig or ''
+  local carId = ac.getCarID(0)
+  local trackId = safeGet(sim, 'trackId') or safeGet(sim, 'track') or 'circuito'
+  local trackCfg = safeGet(sim, 'trackConfig') or ''
   local trackFull = (#trackCfg > 0) and (trackId .. ' ' .. trackCfg) or trackId
   local combo = trackFull .. '|' .. tostring(carId)
   local key = combo .. '|' .. tostring(t)
@@ -267,9 +267,9 @@ local function detectLaps()
     end
   end
 
-  -- condiciones: seco por defecto; mojado si hay lluvia (CSP). VERIFICAR.
+  -- condiciones: seco por defecto; mojado si hay lluvia (CSP).
   local conditions = 'dry'
-  local rain = sim.rainIntensity
+  local rain = safeGet(sim, 'rainIntensity')
   if rain and rain > 0.02 then conditions = 'wet' end
 
   seen[key] = true -- marca ya para no duplicar mientras sube
@@ -292,18 +292,19 @@ local function scanExistingBest()
   local sim = ac.getSim()
   local car = ac.getCar(0)
   if not car then return end
-  local carId = ac.getCarID(0) -- VERIFICAR
+  local carId = ac.getCarID(0)
   if not carId then return end
-  local trackId = sim.trackId or sim.track or 'circuito'
-  local trackCfg = sim.trackConfig or ''
+  local trackId = safeGet(sim, 'trackId') or safeGet(sim, 'track') or 'circuito'
+  local trackCfg = safeGet(sim, 'trackConfig') or ''
   local trackFull = (#trackCfg > 0) and (trackId .. ' ' .. trackCfg) or trackId
   local combo = trackFull .. '|' .. tostring(carId)
   if combo == lastScanCombo then return end -- ya escaneado este combo
   lastScanCombo = combo
 
   -- mejor vuelta conocida por el juego para este coche+circuito.
-  -- VERIFICAR: nombre del campo (bestLapTimeMs / personalBestLapMs según versión).
-  local t = car.bestLapTimeMs or sim.bestLapTimeMs or car.personalBestLapMs
+  local t = safeGet(car, 'bestLapTimeMs')
+    or safeGet(sim, 'bestLapTimeMs')
+    or safeGet(car, 'personalBestLapMs')
   if not t or t <= 0 or t >= 3600000 then return end
 
   local key = combo .. '|' .. tostring(t)
@@ -314,7 +315,7 @@ local function scanExistingBest()
   end
 
   local conditions = 'dry'
-  local rain = sim.rainIntensity
+  local rain = safeGet(sim, 'rainIntensity')
   if rain and rain > 0.02 then conditions = 'wet' end
 
   seen[key] = true
@@ -328,6 +329,26 @@ local function scanExistingBest()
     key = key,
     combo = combo,
   }, false)
+end
+
+-- ── Tick global: corre con la app ACTIVA aunque la ventana esté cerrada ──────
+-- script.update es invocado por CSP en cada frame mientras la app esté activa
+-- en la barra lateral. Aquí dentro hacemos auto-login + detección de vueltas,
+-- de modo que NO hace falta tener la ventana desplegada para que funcione.
+function script.update(dt)
+  -- Auto-login con credenciales guardadas (una vez por sesión).
+  if not S.loggedIn and not S.busy and not S.autoLoginTried
+     and cfg.email ~= '' and cfg.password ~= '' then
+    S.autoLoginTried = true
+    login()
+  end
+
+  if not S.loggedIn or not S.leagueId then return end
+
+  local okS = pcall(scanExistingBest)
+  if not okS then log('scanExistingBest error') end
+  local ok, e = pcall(detectLaps)
+  if not ok then log('detectLaps error: ' .. tostring(e)) end
 end
 
 -- ── Estilo / colores de marca ────────────────────────────────────────────────
@@ -369,24 +390,6 @@ local function ghostButton(label, w)
   return r
 end
 
--- Botón de un grupo (segmentado): rojo si está activo, gris si no.
-local function segButton(label, active)
-  if active then
-    ui.pushStyleColor(ui.StyleColor.Button, RED)
-    ui.pushStyleColor(ui.StyleColor.ButtonHovered, RED_H)
-    ui.pushStyleColor(ui.StyleColor.ButtonActive, RED_A)
-    ui.pushStyleColor(ui.StyleColor.Text, WHITE)
-  else
-    ui.pushStyleColor(ui.StyleColor.Button, SURF)
-    ui.pushStyleColor(ui.StyleColor.ButtonHovered, SURF_H)
-    ui.pushStyleColor(ui.StyleColor.ButtonActive, SURF)
-    ui.pushStyleColor(ui.StyleColor.Text, DIM)
-  end
-  local r = ui.button(label)
-  ui.popStyleColor(4)
-  return r
-end
-
 local function statusLine()
   local s = S.status or ''
   local c = DIM
@@ -419,17 +422,11 @@ local function labeled(label, value, valueColor)
 end
 
 -- ── Ventana de la app ────────────────────────────────────────────────────────
+-- Solo PINTA estado. La lógica vive en script.update para que siga corriendo
+-- con la ventana cerrada (basta con que la app esté activa en la barra).
 local function renderMain(dt)
   ensureColors()
   header()
-
-  -- Auto-login: si ya hay credenciales guardadas de otra sesión, inicia sesión
-  -- solo (una vez) sin que el usuario tenga que pulsar "Entrar".
-  if not S.loggedIn and not S.busy and not S.autoLoginTried
-     and cfg.email ~= '' and cfg.password ~= '' then
-    S.autoLoginTried = true
-    login()
-  end
 
   if not S.loggedIn then
     ui.textColored('Inicia sesión con tu cuenta de ApexLap', DIM)
@@ -441,6 +438,9 @@ local function renderMain(dt)
       or cfg.password
     gap(6)
     if primaryButton(S.busy and 'Entrando…' or 'Entrar', 320) then login() end
+    gap(6)
+    ui.textColored('La próxima vez entrará sola al activar la app (no hace falta '
+      .. 'abrir esta ventana).', FAINT)
     gap(6)
     statusLine()
     return
@@ -462,41 +462,15 @@ local function renderMain(dt)
   ui.textColored('subidas esta sesión', DIM)
   gap(8)
 
-  -- Opción de MENOS ESCRITURAS
-  -- VERIFICAR: ui.checkbox devuelve el nuevo booleano en CSP.
-  cfg.onlyBest = ui.checkbox('Subir solo tu mejor (PB) por coche+circuito', cfg.onlyBest)
-  ui.textColored(
-    cfg.onlyBest and 'Menos escrituras: solo sube cuando mejoras tu tiempo.'
-      or 'Sube todas tus vueltas limpias.', FAINT)
-  gap(8)
-
-  -- Cómo se etiquetan tus vueltas (se aplica a las que subas a partir de ahora).
-  ui.textColored('CÓMO REGISTRAR TUS VUELTAS', FAINT)
-  gap(2)
-  cfg.assists = ui.checkbox('Con ayudas (ABS / control de tracción…)', cfg.assists)
-  gap(4)
-  ui.textColored('Caja:', DIM)
-  ui.sameLine()
-  if segButton('Manual', cfg.gearbox == 'manual') then cfg.gearbox = 'manual' end
-  ui.sameLine()
-  if segButton('M+embrague', cfg.gearbox == 'manual-clutch') then cfg.gearbox = 'manual-clutch' end
-  ui.sameLine()
-  if segButton('Auto', cfg.gearbox == 'auto') then cfg.gearbox = 'auto' end
+  ui.textColored('La app sigue vigilando aunque cierres esta ventana, mientras '
+    .. 'esté activa en la barra lateral.', FAINT)
   gap(10)
 
   if ghostButton('Cerrar sesión', 150) then
     S.loggedIn = false
     S.token = nil; S.uid = nil; S.leagueId = nil
+    S.autoLoginTried = true -- evita que vuelva a entrar solo hasta que pulses Entrar
     S.status = 'Sesión cerrada.'
-  end
-
-  -- escaneo del mejor ya registrado (al iniciar y al cambiar de coche/pista) +
-  -- detección continua mientras la ventana esté abierta
-  if S.leagueId then
-    local okS = pcall(scanExistingBest)
-    if not okS then log('scanExistingBest error') end
-    local ok, e = pcall(detectLaps)
-    if not ok then log('detectLaps error: ' .. tostring(e)) end
   end
 end
 
