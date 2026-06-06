@@ -41,6 +41,27 @@ service cloud.firestore {
         );
       }
 
+      // Catálogo de coches/circuitos personalizados de la liga (mods, DLC…).
+      // Lo crea cualquier miembro; lo borra quien lo creó O el anfitrión.
+      match /cars/{carId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.createdBy == request.auth.uid;
+        allow update, delete: if signedIn() && (
+          resource.data.createdBy == request.auth.uid
+          || get(/databases/$(database)/documents/leagues/$(leagueId)).data.createdBy == request.auth.uid
+        );
+      }
+      match /tracks/{trackId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.createdBy == request.auth.uid;
+        allow update, delete: if signedIn() && (
+          resource.data.createdBy == request.auth.uid
+          || get(/databases/$(database)/documents/leagues/$(leagueId)).data.createdBy == request.auth.uid
+        );
+      }
+
       // Piques (challenges) dentro de una liga.
       match /challenges/{challengeId} {
         allow read: if signedIn();

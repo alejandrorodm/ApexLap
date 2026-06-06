@@ -20,7 +20,16 @@ import {
   limit,
 } from 'firebase/firestore';
 import { getDb } from './config';
-import { Lap, NewLap, Profile, League, Challenge, Bet } from '../types';
+import {
+  Lap,
+  NewLap,
+  Profile,
+  League,
+  Challenge,
+  Bet,
+  CatalogEntry,
+  NewCatalogEntry,
+} from '../types';
 
 // ── Perfiles ───────────────────────────────────────────────────────────────
 
@@ -268,6 +277,57 @@ export async function closeChallenge(
     },
     { merge: true }
   );
+}
+
+// ── Catálogo de coches / circuitos personalizados ────────────────────────────
+// leagues/{leagueId}/cars/{id}  y  leagues/{leagueId}/tracks/{id}
+
+export type CatalogKindCollection = 'cars' | 'tracks';
+
+export function subscribeCatalog(
+  leagueId: string,
+  kind: CatalogKindCollection,
+  onChange: (entries: CatalogEntry[]) => void,
+  onError?: (e: Error) => void
+): () => void {
+  const db = getDb();
+  const q = query(
+    collection(db, 'leagues', leagueId, kind),
+    orderBy('name')
+  );
+  return onSnapshot(
+    q,
+    (snap) =>
+      onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() } as CatalogEntry))),
+    (err) => onError?.(err as Error)
+  );
+}
+
+export async function addCatalogEntry(
+  leagueId: string,
+  kind: CatalogKindCollection,
+  entry: NewCatalogEntry
+): Promise<string> {
+  const db = getDb();
+  // Limpia campos undefined (Firestore no los acepta) y normaliza la URL.
+  const data: Record<string, unknown> = {
+    name: entry.name,
+    kind: entry.kind,
+    createdBy: entry.createdBy,
+    createdAt: Date.now(),
+  };
+  if (entry.url) data.url = entry.url;
+  if (entry.createdByName) data.createdByName = entry.createdByName;
+  const ref = await addDoc(collection(db, 'leagues', leagueId, kind), data);
+  return ref.id;
+}
+
+export async function deleteCatalogEntry(
+  leagueId: string,
+  kind: CatalogKindCollection,
+  entryId: string
+): Promise<void> {
+  await deleteDoc(doc(getDb(), 'leagues', leagueId, kind, entryId));
 }
 
 // ── Apuestas (bets) ──────────────────────────────────────────────────────────

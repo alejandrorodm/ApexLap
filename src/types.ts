@@ -73,3 +73,28 @@ export interface Bet {
 
 // Datos que se mandan a Firestore al crear una vuelta (sin id ni metadatos derivados).
 export type NewLap = Omit<Lap, 'id' | 'createdAt'>;
+
+// ── Catálogo de coches/circuitos personalizados ──────────────────────────────
+// Cada liga guarda los coches y circuitos que sus miembros añaden a mano (mods,
+// DLC…), con una etiqueta de origen y, para los mods, la URL de descarga.
+// Viven en leagues/{id}/cars/{id} y leagues/{id}/tracks/{id}.
+
+export type CatalogKind = 'mod' | 'kunos' | 'ac';
+
+export interface CatalogEntry {
+  id: string;
+  name: string; // nombre del coche o "Circuito · Trazado"
+  kind: CatalogKind; // MOD / KUNOS / AC Original
+  url?: string; // origen del mod (descarga), opcional
+  createdBy: string;
+  createdByName?: string;
+  createdAt: number;
+}
+
+export type NewCatalogEntry = Omit<CatalogEntry, 'id' | 'createdAt'>;
+
+export const CATALOG_KIND_LABEL: Record<CatalogKind, string> = {
+  mod: 'MOD',
+  kunos: 'KUNOS',
+  ac: 'AC Original',
+};

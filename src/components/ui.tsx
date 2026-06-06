@@ -12,7 +12,7 @@ import {
   TextStyle,
   StyleProp,
 } from 'react-native';
-import { colors, radius, spacing } from '../theme';
+import { colors, radius, spacing, readableTextOn } from '../theme';
 
 // Input de texto que resalta el borde en rojo al enfocarlo. Reenvía todas las
 // props de TextInput y respeta el `style` que le pases (el foco va por encima).
@@ -124,21 +124,23 @@ export function Chip({
   onPress?: () => void;
   color?: string;
 }) {
+  const bg = color ?? colors.primary;
   return (
     <Pressable
       onPress={onPress}
       style={[
         styles.chip,
         {
-          backgroundColor: active ? color ?? colors.primary : colors.surfaceAlt,
-          borderColor: active ? color ?? colors.primary : colors.border,
+          backgroundColor: active ? bg : colors.surfaceAlt,
+          borderColor: active ? bg : colors.border,
         },
       ]}
     >
       <Text
         style={[
           styles.chipText,
-          { color: active ? colors.text : colors.textDim },
+          // Texto legible según el fondo activo (oscuro sobre amarillo/verde claros).
+          { color: active ? readableTextOn(bg) : colors.textDim },
         ]}
       >
         {label}

@@ -19,6 +19,19 @@ export const colors = {
   bronze: '#CD7F32',
 };
 
+// Color de texto legible (claro u oscuro) sobre un fondo dado. Sirve para que las
+// letras de un botón/chip resalten también sobre fondos claros como el amarillo.
+export function readableTextOn(bg: string): string {
+  const hex = bg.replace('#', '');
+  if (hex.length < 6) return colors.text;
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  // Luminancia perceptual (0–1). Por encima del umbral, el fondo es claro.
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.55 ? colors.bgDeep : colors.text;
+}
+
 export const spacing = {
   xs: 4,
   sm: 8,

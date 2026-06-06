@@ -30,10 +30,14 @@ import {
   updateLap,
   createLeague as dbCreateLeague,
   joinLeagueByCode as dbJoinLeague,
+  subscribeCatalog,
+  addCatalogEntry as dbAddCatalogEntry,
+  deleteCatalogEntry as dbDeleteCatalogEntry,
+  CatalogKindCollection,
 } from '../firebase/db';
 import { registerForPushNotifications } from '../notifications';
 import { googleIdToken } from '../auth/googleSignIn';
-import { Lap, Profile, League } from '../types';
+import { Lap, Profile, League, CatalogEntry, CatalogKind } from '../types';
 
 interface AppState {
   ready: boolean; // se conoce el estado de auth (haya usuario o no)
@@ -45,6 +49,9 @@ interface AppState {
   league: League | null;
   laps: Lap[];
   lapsLoading: boolean;
+  // Catálogo de coches/circuitos añadidos a mano en la liga (mods, DLC…).
+  customCars: CatalogEntry[];
+  customTracks: CatalogEntry[];
   error: string | null;
   // sesión
   signInEmail: (email: string, password: string) => Promise<void>;
@@ -61,6 +68,15 @@ interface AppState {
   joinLeague: (code: string) => Promise<void>;
   leaveLeague: () => Promise<void>;
   refreshLeague: () => Promise<void>;
+  // catálogo (coches/circuitos personalizados de la liga)
+  addCustom: (
+    kind: CatalogKindCollection,
+    entry: { name: string; kind: CatalogKind; url?: string }
+  ) => Promise<void>;
+  deleteCustom: (
+    kind: CatalogKindCollection,
+    entryId: string
+  ) => Promise<void>;
   // verificación de vueltas (solo el anfitrión las usa de verdad)
   approveLap: (lapId: string) => Promise<void>;
   rejectLap: (lapId: string) => Promise<void>;
@@ -78,8 +94,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [league, setLeague] = useState<League | null>(null);
   const [laps, setLaps] = useState<Lap[]>([]);
   const [lapsLoading, setLapsLoading] = useState(false);
+  const [customCars, setCustomCars] = useState<CatalogEntry[]>([]);
+  const [customTracks, setCustomTracks] = useState<CatalogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const unsubLaps = useRef<(() => void) | null>(null);
+  const unsubCatalog = useRef<(() => void)[]>([]);
 
   // 1) Observa la sesión. NO inicia sesión solo: si no hay usuario, se muestra
   //    la pantalla de login (con opción "entrar como invitado").
@@ -149,11 +168,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [userId]);
 
-  // 3) Cargar liga + suscribirse a vueltas cuando cambia profile.leagueId.
+  // 3) Cargar liga + suscribirse a vueltas y al catálogo cuando cambia leagueId.
   useEffect(() => {
     unsubLaps.current?.();
     unsubLaps.current = null;
+    unsubCatalog.current.forEach((u) => u());
+    unsubCatalog.current = [];
     setLaps([]);
+    setCustomCars([]);
+    setCustomTracks([]);
 
     const leagueId = profile?.leagueId;
     if (!leagueId) {
@@ -181,12 +204,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setLapsLoading(false);
       }
     );
+    unsubCatalog.current = [
+      subscribeCatalog(leagueId, 'cars', setCustomCars, () => {}),
+      subscribeCatalog(leagueId, 'tracks', setCustomTracks, () => {}),
+    ];
     return () => {
       cancelled = true;
     };
   }, [profile?.leagueId]);
 
-  useEffect(() => () => unsubLaps.current?.(), []);
+  useEffect(
+    () => () => {
+      unsubLaps.current?.();
+      unsubCatalog.current.forEach((u) => u());
+    },
+    []
+  );
 
   // ── Sesión ────────────────────────────────────────────────────────────────
 
@@ -308,6 +341,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setLeague(lg);
   }, [profile?.leagueId]);
 
+  // ── Catálogo (coches/circuitos personalizados de la liga) ──────────────────
+  const addCustom = useCallback(
+    async (
+      kind: CatalogKindCollection,
+      entry: { name: string; kind: CatalogKind; url?: string }
+    ) => {
+      if (!userId || !league) return;
+      await dbAddCatalogEntry(league.id, kind, {
+        name: entry.name.trim(),
+        kind: entry.kind,
+        url: entry.url?.trim() || undefined,
+        createdBy: userId,
+        createdByName: profile?.driverName || undefined,
+      });
+    },
+    [userId, league, profile?.driverName]
+  );
+
+  const deleteCustom = useCallback(
+    async (kind: CatalogKindCollection, entryId: string) => {
+      if (!league) return;
+      await dbDeleteCatalogEntry(league.id, kind, entryId);
+    },
+    [league]
+  );
+
   // Verificar/rechazar una vuelta manual (lo permite el anfitrión por reglas).
   const approveLap = useCallback(
     async (lapId: string) => {
@@ -337,6 +396,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         league,
         laps,
         lapsLoading,
+        customCars,
+        customTracks,
         error,
         signInEmail,
         signUpEmail,
@@ -349,6 +410,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         joinLeague,
         leaveLeague,
         refreshLeague,
+        addCustom,
+        deleteCustom,
         approveLap,
         rejectLap,
       }}

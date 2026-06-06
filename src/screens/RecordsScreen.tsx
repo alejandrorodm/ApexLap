@@ -7,7 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius } from '../theme';
 import { EmptyState, Button, Chip, Label, ScreenHeader } from '../components/ui';
-import { PickerModal, PickerGroup } from '../components/PickerModal';
+import { PickerModal, PickerGroup, PickerItem } from '../components/PickerModal';
 import { useApp } from '../context/AppContext';
 import { recordsByCombo } from '../utils/leaderboard';
 import { formatTime, timeAgo } from '../utils/time';
@@ -19,26 +19,47 @@ import {
 import { confirmAction, notify } from '../utils/alerts';
 import { CAR_GROUPS } from '../data/cars';
 import { TRACKS, trackLabel } from '../data/tracks';
-import { Challenge, Conditions } from '../types';
+import { Challenge, Conditions, CatalogEntry } from '../types';
 import { RootStackParamList } from '../navigation/types';
 
 const COND_ICON: Record<string, string> = { dry: '☀', wet: '🌧', mixed: '🌦' };
 
-const CAR_PICKER: PickerGroup[] = CAR_GROUPS.map((g) => ({
+const BASE_CAR_GROUPS: PickerGroup[] = CAR_GROUPS.map((g) => ({
   category: g.category,
   items: g.cars,
 }));
-const TRACK_PICKER: PickerGroup[] = TRACKS.map((t) => ({
+const BASE_TRACK_GROUPS: PickerGroup[] = TRACKS.map((t) => ({
   category: t.name,
   items: t.layouts.map((l) => trackLabel(t.name, l)),
 }));
 
+function withCustom(base: PickerGroup[], custom: CatalogEntry[]): PickerGroup[] {
+  if (custom.length === 0) return base;
+  const items: PickerItem[] = custom.map((c) => ({
+    value: c.name,
+    kind: c.kind,
+    url: c.url,
+    id: c.id,
+  }));
+  return [{ category: 'Personalizados (mods/DLC)', items }, ...base];
+}
+
 export default function RecordsScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { laps, league, userId } = useApp();
+  const { laps, league, userId, customCars, customTracks, addCustom, deleteCustom } =
+    useApp();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const now = Date.now();
+
+  const carGroups = useMemo(
+    () => withCustom(BASE_CAR_GROUPS, customCars),
+    [customCars]
+  );
+  const trackGroups = useMemo(
+    () => withCustom(BASE_TRACK_GROUPS, customTracks),
+    [customTracks]
+  );
 
   // Edición de un pique (solo del creador).
   const [editing, setEditing] = useState<Challenge | null>(null);
@@ -267,18 +288,22 @@ export default function RecordsScreen() {
       <PickerModal
         visible={ePicker === 'car'}
         title="Elegir coche"
-        groups={CAR_PICKER}
+        groups={carGroups}
         selected={eCar}
         onSelect={setECar}
         onClose={() => setEPicker(null)}
+        onAdd={(e) => addCustom('cars', e)}
+        onDelete={(it) => deleteCustom('cars', it.id)}
       />
       <PickerModal
         visible={ePicker === 'track'}
         title="Elegir circuito"
-        groups={TRACK_PICKER}
+        groups={trackGroups}
         selected={eTrack}
         onSelect={setETrack}
         onClose={() => setEPicker(null)}
+        onAdd={(e) => addCustom('tracks', e)}
+        onDelete={(it) => deleteCustom('tracks', it.id)}
       />
     </SafeAreaView>
   );

@@ -1,5 +1,5 @@
 // Ruleta tragaperras: sortea coche + circuito (+ condiciones) y convoca un pique.
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -34,7 +34,17 @@ const CONDITION_LABEL: Record<Conditions, string> = {
 export default function RouletteScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { league, userId, profile } = useApp();
+  const { league, userId, profile, customCars, customTracks } = useApp();
+
+  // El sorteo incluye también los coches/circuitos personalizados de la liga.
+  const carPool = useMemo(
+    () => [...ALL_CARS, ...customCars.map((c) => c.name)],
+    [customCars]
+  );
+  const trackPool = useMemo(
+    () => [...ALL_TRACKS, ...customTracks.map((t) => t.name)],
+    [customTracks]
+  );
 
   const [carText, setCarText] = useState('— — —');
   const [trackText, setTrackText] = useState('— — —');
@@ -64,8 +74,8 @@ export default function RouletteScreen() {
     setSpinning(true);
     glow.setValue(0);
 
-    const finalCar = lockCar && result ? result.car : pick(ALL_CARS);
-    const finalTrack = lockTrack && result ? result.track : pick(ALL_TRACKS);
+    const finalCar = lockCar && result ? result.car : pick(carPool);
+    const finalTrack = lockTrack && result ? result.track : pick(trackPool);
     const conds: Conditions[] = ['dry', 'wet', 'mixed'];
     const finalCond: Conditions = randomCond ? pick(conds) : 'dry';
 
@@ -98,8 +108,8 @@ export default function RouletteScreen() {
         return;
       }
       // mientras gira, muestra valores aleatorios (respeta locks)
-      setCarText(lockCar && result ? result.car : pick(ALL_CARS));
-      setTrackText(lockTrack && result ? result.track : pick(ALL_TRACKS));
+      setCarText(lockCar && result ? result.car : pick(carPool));
+      setTrackText(lockTrack && result ? result.track : pick(trackPool));
       if (randomCond) setCondText(CONDITION_LABEL[pick(conds)]);
       // desaceleración: el intervalo crece con cada tick
       const delay = 40 + Math.pow(tick / totalTicks, 3) * 320;

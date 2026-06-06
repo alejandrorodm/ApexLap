@@ -14,10 +14,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, spacing, radius } from '../theme';
 import { Button, Card, Label, Chip } from '../components/ui';
-import { PickerModal, PickerGroup } from '../components/PickerModal';
+import { PickerModal, PickerGroup, PickerItem } from '../components/PickerModal';
 import { useApp } from '../context/AppContext';
 import { CAR_GROUPS } from '../data/cars';
 import { TRACKS, trackLabel } from '../data/tracks';
+import { CatalogEntry } from '../types';
 import { parseTime, formatTime } from '../utils/time';
 import { addLap, getLeagueMemberTokens } from '../firebase/db';
 import { sendPushToTokens } from '../notifications';
@@ -27,18 +28,43 @@ import { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddLap'>;
 
-const CAR_PICKER: PickerGroup[] = CAR_GROUPS.map((g) => ({
+const BASE_CAR_GROUPS: PickerGroup[] = CAR_GROUPS.map((g) => ({
   category: g.category,
   items: g.cars,
 }));
-const TRACK_PICKER: PickerGroup[] = TRACKS.map((t) => ({
+const BASE_TRACK_GROUPS: PickerGroup[] = TRACKS.map((t) => ({
   category: t.name,
   items: t.layouts.map((l) => trackLabel(t.name, l)),
 }));
 
+// Añade un grupo "Personalizados (mods/DLC)" con las entradas del catálogo de la liga.
+function withCustom(
+  base: PickerGroup[],
+  custom: CatalogEntry[]
+): PickerGroup[] {
+  if (custom.length === 0) return base;
+  const items: PickerItem[] = custom.map((c) => ({
+    value: c.name,
+    kind: c.kind,
+    url: c.url,
+    id: c.id,
+  }));
+  return [{ category: 'Personalizados (mods/DLC)', items }, ...base];
+}
+
 export default function AddLapScreen({ navigation, route }: Props) {
-  const { userId, profile, league } = useApp();
+  const { userId, profile, league, customCars, customTracks, addCustom, deleteCustom } =
+    useApp();
   const params = route.params ?? {};
+
+  const carGroups = useMemo(
+    () => withCustom(BASE_CAR_GROUPS, customCars),
+    [customCars]
+  );
+  const trackGroups = useMemo(
+    () => withCustom(BASE_TRACK_GROUPS, customTracks),
+    [customTracks]
+  );
 
   const [car, setCar] = useState(params.car ?? '');
   const [track, setTrack] = useState(params.track ?? '');
@@ -184,18 +210,22 @@ export default function AddLapScreen({ navigation, route }: Props) {
       <PickerModal
         visible={picker === 'car'}
         title="Elegir coche"
-        groups={CAR_PICKER}
+        groups={carGroups}
         selected={car}
         onSelect={setCar}
         onClose={() => setPicker(null)}
+        onAdd={(e) => addCustom('cars', e)}
+        onDelete={(it) => deleteCustom('cars', it.id)}
       />
       <PickerModal
         visible={picker === 'track'}
         title="Elegir circuito"
-        groups={TRACK_PICKER}
+        groups={trackGroups}
         selected={track}
         onSelect={setTrack}
         onClose={() => setPicker(null)}
+        onAdd={(e) => addCustom('tracks', e)}
+        onDelete={(it) => deleteCustom('tracks', it.id)}
       />
     </SafeAreaView>
   );
