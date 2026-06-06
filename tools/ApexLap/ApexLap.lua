@@ -40,6 +40,9 @@ local S = {
   driverName = nil,
   status = 'Introduce tu email y contraseña de ApexLap.',
   uploadedCount = 0,
+  -- true en cuanto se ha intentado el auto-login de esta sesión (con éxito o no),
+  -- para no reintentar en bucle ni re-entrar si el usuario cerró sesión a mano.
+  autoLoginTried = false,
 }
 
 -- claves exactas ya subidas (anti-duplicado de la MISMA vuelta)
@@ -419,6 +422,14 @@ end
 local function renderMain(dt)
   ensureColors()
   header()
+
+  -- Auto-login: si ya hay credenciales guardadas de otra sesión, inicia sesión
+  -- solo (una vez) sin que el usuario tenga que pulsar "Entrar".
+  if not S.loggedIn and not S.busy and not S.autoLoginTried
+     and cfg.email ~= '' and cfg.password ~= '' then
+    S.autoLoginTried = true
+    login()
+  end
 
   if not S.loggedIn then
     ui.textColored('Inicia sesión con tu cuenta de ApexLap', DIM)

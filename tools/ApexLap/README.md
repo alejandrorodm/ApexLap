@@ -35,6 +35,9 @@ el subidor de escritorio en `../cm-uploader/`.
 
 1. La primera vez, escribe tu **email y contraseña** de ApexLap y pulsa **Entrar**.
    (Se recuerdan para las próximas; quedan solo en tu PC.)
+   En las siguientes sesiones **inicia sesión solo** al abrir la app con esas
+   credenciales guardadas — no tienes que volver a pulsar "Entrar". (Si cierras
+   sesión a mano, se queda fuera hasta que vuelvas a pulsar "Entrar".)
 2. Cuando ponga *"Listo ✓"*, ya está: **deja la ventana abierta** y conduce.
 3. Cada vez que **completes una vuelta limpia** (sin cortes), se sube automática a
    tu liga. La ventana muestra el estado y cuántas llevas subidas.
