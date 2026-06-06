@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ApexLap · Importar histórico de Content Manager</title>
+  <style>
+    :root {
+      --red: #e10600;
+      --red-h: #ff1f10;
+      --yel: #ffd60a;
+      --bg: #0f1014;
+      --surf: #191b21;
+      --surf-h: #23262f;
+      --line: #2a2e38;
+      --text: #f3f5f8;
+      --dim: #9aa0aa;
+      --faint: #6b7180;
+      --green: #38d258;
+    }
+    * { box-sizing: border-box; }
+    html, body { background: var(--bg); color: var(--text); }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, sans-serif;
+      line-height: 1.45;
+      min-height: 100vh;
+    }
+    a { color: var(--yel); }
+    header {
+      padding: 28px 24px 12px;
+      border-bottom: 1px solid var(--line);
+      display: flex; align-items: baseline; gap: 14px;
+    }
+    h1 { margin: 0; font-size: 28px; letter-spacing: -0.02em; }
+    h1 .apex { color: var(--text); }
+    h1 .lap   { color: var(--red); }
+    .stripe {
+      display: inline-flex; align-items: center; gap: 4px;
+      transform: translateY(-3px);
+    }
+    .stripe span { display: inline-block; width: 22px; height: 4px; border-radius: 2px; }
+    .stripe .a { background: var(--red); width: 32px; }
+    .stripe .b { background: var(--yel); }
+    .stripe .c { background: var(--text); width: 14px; }
+    main { max-width: 920px; margin: 0 auto; padding: 24px; }
+    .card {
+      background: var(--surf);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px 22px;
+      margin: 16px 0;
+    }
+    .card h2 { margin: 0 0 14px; font-size: 16px; letter-spacing: 0.04em; color: var(--dim); text-transform: uppercase; }
+    label { display: block; font-size: 12px; letter-spacing: 0.04em; color: var(--faint); text-transform: uppercase; margin-bottom: 6px; }
+    input[type=email], input[type=password], input[type=text], select {
+      width: 100%; padding: 11px 13px;
+      background: var(--bg); color: var(--text);
+      border: 1px solid var(--line); border-radius: 9px;
+      font-size: 14px; outline: none;
+    }
+    input:focus, select:focus { border-color: var(--red); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+    button {
+      cursor: pointer; border: 0; border-radius: 9px;
+      padding: 11px 18px; font-size: 14px; font-weight: 600;
+      transition: background 0.15s, transform 0.05s;
+    }
+    button:disabled { cursor: not-allowed; opacity: 0.5; }
+    button:active:not(:disabled) { transform: translateY(1px); }
+    .btn-primary { background: var(--red); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--red-h); }
+    .btn-ghost { background: var(--surf-h); color: var(--dim); }
+    .btn-ghost:hover:not(:disabled) { color: var(--text); }
+    .pilot {
+      display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
+      padding: 10px 14px; background: var(--bg); border-radius: 9px;
+      border: 1px solid var(--line); margin-bottom: 14px;
+    }
+    .pilot .label { font-size: 11px; letter-spacing: 0.06em; color: var(--faint); text-transform: uppercase; }
+    .pilot .val { font-weight: 600; }
+    .picker {
+      border: 2px dashed var(--line);
+      border-radius: 12px; padding: 28px; text-align: center;
+      transition: border-color 0.15s, background 0.15s;
+      cursor: pointer;
+    }
+    .picker:hover { border-color: var(--red); background: rgba(225, 6, 0, 0.04); }
+    .picker.drag { border-color: var(--yel); background: rgba(255, 214, 10, 0.06); }
+    .picker p { margin: 6px 0; }
+    .picker .hint { color: var(--faint); font-size: 13px; }
+    .picker input { display: none; }
+    .status { color: var(--dim); font-size: 14px; min-height: 1.5em; }
+    .status.ok { color: var(--green); }
+    .status.err { color: var(--red); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+    th { color: var(--faint); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+    td.time { font-variant-numeric: tabular-nums; color: var(--yel); font-weight: 600; }
+    td.dup { color: var(--faint); }
+    td.dup .badge { color: var(--faint); }
+    .badge {
+      display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 4px;
+      background: var(--surf-h); color: var(--dim);
+    }
+    .badge.new { background: rgba(56, 210, 88, 0.16); color: var(--green); }
+    .summary { display: flex; gap: 22px; flex-wrap: wrap; margin-bottom: 14px; }
+    .summary .stat { display: flex; flex-direction: column; }
+    .summary .num { font-size: 26px; font-weight: 700; line-height: 1; }
+    .summary .num.new { color: var(--green); }
+    .summary .num.dup { color: var(--dim); }
+    .summary .num.skip { color: var(--faint); }
+    .summary .lbl { font-size: 11px; letter-spacing: 0.06em; color: var(--faint); text-transform: uppercase; margin-top: 4px; }
+    footer { text-align: center; padding: 30px 20px; color: var(--faint); font-size: 12px; }
+    .hide { display: none !important; }
+    details { margin-top: 12px; }
+    details summary { cursor: pointer; color: var(--dim); font-size: 13px; }
+    .scroll { max-height: 440px; overflow-y: auto; border-radius: 8px; padding-right: 4px; }
+
+    /* Agrupación por circuito en la vista previa */
+    .track-group { margin-bottom: 18px; }
+    .track-group:last-child { margin-bottom: 0; }
+    .track-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px; margin: 0;
+      background: var(--surf-h); border-radius: 8px 8px 0 0;
+      border: 1px solid var(--line); border-bottom: 0;
+    }
+    .track-head .track-name { font-weight: 700; font-size: 14px; color: var(--text); }
+    .track-head .track-meta { font-size: 11px; color: var(--faint); letter-spacing: 0.04em; text-transform: uppercase; }
+    .track-group table { border-radius: 0 0 8px 8px; overflow: hidden; }
+    .track-group table tbody tr:last-child td { border-bottom: 1px solid var(--line); }
+    .track-group table tbody tr:first-child td { border-top: 1px solid var(--line); }
+
+    /* Modal de éxito */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100; padding: 20px;
+    }
+    .modal {
+      background: var(--surf);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 28px;
+      max-width: 420px; width: 100%;
+      text-align: center;
+      animation: pop 0.2s ease-out;
+    }
+    @keyframes pop {
+      from { transform: scale(0.92); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .modal .checkmark {
+      width: 60px; height: 60px; margin: 0 auto 14px;
+      border-radius: 50%; background: var(--green);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px; color: #04210C; font-weight: 900;
+    }
+    .modal h3 { margin: 0 0 8px; font-size: 22px; }
+    .modal p { margin: 0 0 20px; color: var(--dim); font-size: 14px; }
+    .modal .big { color: var(--yel); font-weight: 900; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>
+      <span class="apex">Apex</span><span class="lap">Lap</span>
+    </h1>
+    <span class="stripe"><span class="a"></span><span class="b"></span><span class="c"></span></span>
+    <span style="color: var(--faint); font-size: 14px;">Importar histórico de Content Manager</span>
+  </header>
+
+  <main>
+    <!-- 1. Login -->
+    <section id="auth" class="card">
+      <h2>1 · Iniciar sesión</h2>
+      <p style="margin: 0 0 14px; color: var(--dim); font-size: 14px;">
+        Con tu cuenta de ApexLap (la misma que en la app móvil). Tus credenciales
+        viajan solo hasta Firebase para autenticarte; no las guardamos.
+      </p>
+      <div class="row">
+        <div>
+          <label for="email">Email</label>
+          <input type="email" id="email" autocomplete="username" />
+        </div>
+        <div>
+          <label for="password">Contraseña</label>
+          <input type="password" id="password" autocomplete="current-password" />
+        </div>
+      </div>
+      <div style="margin-top: 14px; display: flex; gap: 10px; align-items: center;">
+        <button id="btn-login" class="btn-primary">Entrar</button>
+        <span id="auth-status" class="status"></span>
+      </div>
+    </section>
+
+    <!-- 2. Folder picker -->
+    <section id="step-files" class="card hide">
+      <h2>2 · Carpeta Progress\Sessions</h2>
+      <div class="pilot">
+        <div><div class="label">Piloto</div><div class="val" id="pilot-name">—</div></div>
+        <div><div class="label">Liga</div><div class="val" id="pilot-league">—</div></div>
+        <div style="margin-left: auto;">
+          <button id="btn-logout" class="btn-ghost">Cerrar sesión</button>
+        </div>
+      </div>
+      <p style="margin: 0 0 12px; color: var(--dim); font-size: 14px;">
+        Suele estar en <code style="color: var(--text);">%LOCALAPPDATA%\AcTools Content Manager\Progress\Sessions</code>.
+        Arrastra la carpeta entera o pulsa para elegirla. Los <code>.json</code> se leen
+        en tu navegador — nada se sube a ningún servidor hasta que pulses <b>Subir PBs</b>.
+      </p>
+      <div class="picker" id="picker" tabindex="0" role="button" aria-label="Elegir carpeta Sessions">
+        <input type="file" id="files" webkitdirectory multiple />
+        <p style="font-size: 16px;">📁 Suelta aquí tu carpeta <b>Sessions</b></p>
+        <p class="hint">o pulsa para elegirla</p>
+      </div>
+      <div id="files-status" class="status" style="margin-top: 12px;"></div>
+    </section>
+
+    <!-- 3. Filter player + condiciones -->
+    <section id="step-filter" class="card hide">
+      <h2>3 · Tu nombre en el juego</h2>
+      <p style="margin: 0 0 14px; color: var(--dim); font-size: 14px;">
+        En sesiones online aparecen varios pilotos por fichero. Elige tu nombre para
+        coger solo tus vueltas.
+      </p>
+      <div class="row">
+        <div>
+          <label for="player">Nombre del piloto en AC</label>
+          <select id="player"></select>
+        </div>
+        <div>
+          <label for="conditions">Condiciones por defecto</label>
+          <select id="conditions">
+            <option value="dry">Seco</option>
+            <option value="wet">Mojado</option>
+            <option value="mixed">Mixto</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Preview -->
+    <section id="step-preview" class="card hide">
+      <h2>4 · Vista previa</h2>
+      <div class="summary">
+        <div class="stat"><div class="num new" id="num-new">0</div><div class="lbl">PBs nuevos</div></div>
+        <div class="stat"><div class="num dup" id="num-dup">0</div><div class="lbl">Ya estaban en la liga</div></div>
+        <div class="stat"><div class="num skip" id="num-skip">0</div><div class="lbl">Vueltas descartadas (cortes/tiempos raros)</div></div>
+      </div>
+      <div class="scroll" id="preview-groups"></div>
+      <div style="margin-top: 16px; display: flex; gap: 10px; align-items: center;">
+        <button id="btn-upload" class="btn-primary">Subir PBs nuevos</button>
+        <button id="btn-reset" class="btn-ghost">Volver a empezar</button>
+        <span id="upload-status" class="status" style="margin-left: 8px;"></span>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    🏁 ApexLap · Importador web · Solo lee los <code>.json</code> de CM en tu navegador
+  </footer>
+
+  <!-- Modal de éxito de subida -->
+  <div id="success-modal" class="modal-backdrop hide">
+    <div class="modal" role="dialog" aria-labelledby="success-title" aria-modal="true">
+      <div class="checkmark">✓</div>
+      <h3 id="success-title">¡Tiempos subidos!</h3>
+      <p>Has añadido <span class="big" id="success-count">0</span> récords nuevos a tu liga. Ya aparecen para tus colegas en la app.</p>
+      <button id="success-ok" class="btn-primary" style="min-width: 140px;">Genial</button>
+    </div>
+  </div>
+
+<script>
+// ─── Config Firebase (cliente, valores PÚBLICOS) ─────────────────────────────
+const API_KEY = 'AIzaSyD262ll4I_E9lfN7DU82c7AjFpV_S6B-cI';
+const PROJECT = 'laptimersaver';
+const IDENTITY = 'https://identitytoolkit.googleapis.com/v1';
+const FIRESTORE = 'https://firestore.googleapis.com/v1';
+const FS_BASE = `projects/${PROJECT}/databases/(default)/documents`;
+
+// Vueltas por debajo de esto se ignoran (vueltas de salida / basura).
+const MIN_LAP_MS = 15000;
+const MAX_LAP_MS = 3_600_000;
+
+// Mismos prefijos que el subidor Python para limpiar ids internos de AC.
+const PREFIXES = ['ks_', 'rss_', 'tatuusfa1_', 'abarth500_', 'abarth500s_'];
+
+// ─── Estado ──────────────────────────────────────────────────────────────────
+const S = {
+  idToken: null,
+  uid: null,
+  leagueId: null,
+  driverName: null,
+  detectedPlayers: [],   // nombres encontrados en los ficheros
+  filesAggregated: null, // { byCombo: Map<combo, {car, track, timeMs, driverName, fileCount}>, skipped: number }
+  existingKeys: null,    // Set<`${track}|${car}|${timeMs}`> de la liga
+  preview: null,         // [{car, track, timeMs, isNew}]
+};
+
+// ─── Utilidades HTTP ─────────────────────────────────────────────────────────
+async function postJson(url, body, headers = {}) {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+  });
+  const text = await r.text();
+  if (!r.ok) throw new Error(`HTTP ${r.status}: ${text.slice(0, 200)}`);
+  return text ? JSON.parse(text) : null;
+}
+
+async function getJson(url, headers = {}) {
+  const r = await fetch(url, { headers });
+  const text = await r.text();
+  if (!r.ok) throw new Error(`HTTP ${r.status}: ${text.slice(0, 200)}`);
+  return text ? JSON.parse(text) : null;
+}
+
+// ─── Formato y prettify ──────────────────────────────────────────────────────
+function fmtMs(ms) {
+  const m = Math.floor(ms / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  const mil = ms % 1000;
+  return `${m}:${String(s).padStart(2, '0')}.${String(mil).padStart(3, '0')}`;
+}
+
+function prettify(raw) {
+  if (!raw) return 'Desconocido';
+  let name = raw;
+  for (const p of PREFIXES) {
+    if (name.startsWith(p)) { name = name.slice(p.length); break; }
+  }
+  name = name.replace(/[_-]/g, ' ').trim();
+  return name.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+async function login(email, password) {
+  const res = await postJson(
+    `${IDENTITY}/accounts:signInWithPassword?key=${API_KEY}`,
+    { email, password, returnSecureToken: true },
+  );
+  S.idToken = res.idToken;
+  S.uid = res.localId;
+}
+
+async function fetchProfile() {
+  const url = `${FIRESTORE}/${FS_BASE}/profiles/${S.uid}`;
+  const doc = await getJson(url, { Authorization: `Bearer ${S.idToken}` });
+  const f = doc.fields || {};
+  S.leagueId = f.leagueId?.stringValue || null;
+  S.driverName = f.driverName?.stringValue || null;
+}
+
+// ─── Leer existentes de la liga (para no duplicar) ───────────────────────────
+async function fetchExistingKeys() {
+  const url = `${FIRESTORE}/${FS_BASE}/leagues/${S.leagueId}:runQuery`;
+  const body = {
+    structuredQuery: {
+      from: [{ collectionId: 'laps' }],
+      where: {
+        fieldFilter: {
+          field: { fieldPath: 'userId' },
+          op: 'EQUAL',
+          value: { stringValue: S.uid },
+        },
+      },
+    },
+  };
+  const rows = await postJson(url, body, { Authorization: `Bearer ${S.idToken}` });
+  const set = new Set();
+  for (const row of rows || []) {
+    if (!row.document) continue;
+    const f = row.document.fields || {};
+    const car = f.car?.stringValue || '';
+    const track = f.track?.stringValue || '';
+    const timeMs = parseInt(f.timeMs?.integerValue || '0', 10);
+    if (car && track && timeMs) set.add(`${track}|${car}|${timeMs}`);
+  }
+  return set;
+}
+
+// ─── Parseo de ficheros de CM ────────────────────────────────────────────────
+// Cada fichero de Progress\Sessions tiene esta forma (mismo que race_out.json):
+//   { track, players: [{name, car, ...}], sessions: [{ laps: [{car, time, cuts}], ... }] }
+// Devuelve un agregado best-por-(carId, trackId) de TODOS los ficheros para el
+// playerName seleccionado, además del set de nombres detectados.
+function aggregateFiles(jsonDocs, playerName) {
+  const byCombo = new Map(); // key = `${trackId}|${carId}` → mejor vuelta
+  const detectedSet = new Set();
+  let skipped = 0;
+  const wanted = (playerName || '').trim().toLowerCase();
+
+  for (const data of jsonDocs) {
+    if (!data || typeof data !== 'object') continue;
+    const players = data.players || [];
+    for (const p of players) if (p?.name) detectedSet.add(p.name);
+
+    let trackId = data.track || data.trackName || '';
+    const trackCfg = data.trackConfig || data.track_config || '';
+    if (trackCfg && !trackId.includes(trackCfg)) {
+      trackId = `${trackId} ${trackCfg}`.trim();
+    }
+    if (!trackId) continue;
+
+    for (const sess of data.sessions || []) {
+      for (const lap of sess.laps || []) {
+        const cuts = parseInt(lap.cuts ?? 0, 10);
+        const t = parseInt(lap.time ?? 0, 10);
+        if (cuts !== 0 || t <= 0 || t >= MAX_LAP_MS || t < MIN_LAP_MS) {
+          skipped++;
+          continue;
+        }
+        const idx = parseInt(lap.car ?? 0, 10);
+        if (idx < 0 || idx >= players.length) continue;
+        const player = players[idx];
+        const pname = (player?.name || '').trim();
+        if (wanted && pname.toLowerCase() !== wanted) continue;
+        const carId = player?.car || '';
+        if (!carId) continue;
+
+        const combo = `${trackId}|${carId}`;
+        const prev = byCombo.get(combo);
+        if (!prev || t < prev.timeMs) {
+          byCombo.set(combo, {
+            carId, trackId, timeMs: t,
+            driverNameAc: pname,
+          });
+        }
+      }
+    }
+  }
+
+  return {
+    byCombo,
+    skipped,
+    detectedPlayers: [...detectedSet].sort((a, b) => a.localeCompare(b)),
+  };
+}
+
+// ─── Construir preview (con prettify + dedup vs liga) ────────────────────────
+function buildPreview(agg, existingKeys) {
+  const rows = [];
+  for (const { carId, trackId, timeMs } of agg.byCombo.values()) {
+    const car = prettify(carId);
+    const track = prettify(trackId);
+    const key = `${track}|${car}|${timeMs}`;
+    rows.push({ car, track, timeMs, isNew: !existingKeys.has(key) });
+  }
+  rows.sort((a, b) => {
+    if (a.isNew !== b.isNew) return a.isNew ? -1 : 1;
+    return a.track.localeCompare(b.track) || a.car.localeCompare(b.car);
+  });
+  return rows;
+}
+
+// ─── Subida ──────────────────────────────────────────────────────────────────
+const ID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+function genDocId() {
+  let out = '';
+  const arr = crypto.getRandomValues(new Uint32Array(20));
+  for (let i = 0; i < 20; i++) out += ID_ALPHABET[arr[i] % ID_ALPHABET.length];
+  return out;
+}
+
+function encodeLap(lap, conditions) {
+  return {
+    userId: { stringValue: S.uid },
+    driverName: { stringValue: S.driverName || 'Piloto' },
+    car: { stringValue: lap.car },
+    track: { stringValue: lap.track },
+    timeMs: { integerValue: String(lap.timeMs) },
+    conditions: { stringValue: conditions },
+    assists: { booleanValue: false },
+    gearbox: { stringValue: 'manual' },
+    source: { stringValue: 'auto' },
+    status: { stringValue: 'verified' },
+    createdAt: { integerValue: String(Date.now()) },
+  };
+}
+
+async function uploadNewLaps(rows, conditions) {
+  if (!rows.length) return;
+  // Firestore :commit acepta hasta ~500 writes por llamada. Lo partimos por si acaso.
+  const CHUNK = 400;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const slice = rows.slice(i, i + CHUNK);
+    const writes = slice.map(lap => ({
+      update: {
+        name: `${FS_BASE}/leagues/${S.leagueId}/laps/${genDocId()}`,
+        fields: encodeLap(lap, conditions),
+      },
+    }));
+    await postJson(
+      `${FIRESTORE}/${FS_BASE}:commit`,
+      { writes },
+      { Authorization: `Bearer ${S.idToken}` },
+    );
+  }
+}
+
+// ─── UI helpers ──────────────────────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+function setStatus(el, msg, kind = '') {
+  el.className = 'status ' + kind;
+  el.textContent = msg;
+}
+function show(id) { $(id).classList.remove('hide'); }
+function hide(id) { $(id).classList.add('hide'); }
+
+// ─── Flujo ───────────────────────────────────────────────────────────────────
+async function handleLogin() {
+  const email = $('email').value.trim();
+  const password = $('password').value;
+  if (!email || !password) {
+    setStatus($('auth-status'), 'Pon email y contraseña.', 'err');
+    return;
+  }
+  $('btn-login').disabled = true;
+  setStatus($('auth-status'), 'Iniciando sesión…');
+  try {
+    await login(email, password);
+    await fetchProfile();
+    if (!S.leagueId) {
+      setStatus($('auth-status'), 'Tu perfil no tiene liga. Únete a una desde la app.', 'err');
+      $('btn-login').disabled = false;
+      return;
+    }
+    $('pilot-name').textContent = S.driverName || '(sin nombre)';
+    $('pilot-league').textContent = S.leagueId;
+    setStatus($('auth-status'), '');
+    hide('auth');
+    show('step-files');
+  } catch (e) {
+    setStatus($('auth-status'), 'Error de login: revisa email/contraseña.', 'err');
+    $('btn-login').disabled = false;
+  }
+}
+
+function handleLogout() {
+  S.idToken = null; S.uid = null; S.leagueId = null; S.driverName = null;
+  S.filesAggregated = null; S.existingKeys = null; S.preview = null;
+  hide('step-files'); hide('step-filter'); hide('step-preview');
+  $('btn-login').disabled = false;
+  $('files').value = '';
+  setStatus($('files-status'), '');
+  setStatus($('upload-status'), '');
+  show('auth');
+}
+
+async function handleFiles(fileList) {
+  const jsons = [...fileList].filter(f => f.name.toLowerCase().endsWith('.json'));
+  if (!jsons.length) {
+    setStatus($('files-status'), 'No hay ningún .json en la carpeta.', 'err');
+    return;
+  }
+  setStatus($('files-status'), `Leyendo ${jsons.length} fichero(s)…`);
+
+  const docs = [];
+  let unread = 0;
+  for (const f of jsons) {
+    try {
+      const text = await f.text();
+      docs.push(JSON.parse(text));
+    } catch {
+      unread++;
+    }
+  }
+  // Primer paso: agregamos SIN filtro para detectar todos los nombres que aparecen.
+  const probe = aggregateFiles(docs, '');
+  S.detectedPlayers = probe.detectedPlayers;
+  S._docs = docs; // lo guardamos para re-agregar tras elegir nombre
+
+  // Rellena el selector: prefiere driverName del perfil si está en la lista.
+  const sel = $('player');
+  sel.innerHTML = '';
+  for (const name of S.detectedPlayers) {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    if (S.driverName && name.toLowerCase() === S.driverName.toLowerCase()) {
+      opt.selected = true;
+    }
+    sel.appendChild(opt);
+  }
+  if (!S.detectedPlayers.length) {
+    setStatus($('files-status'), 'No encontré jugadores en esos ficheros.', 'err');
+    return;
+  }
+
+  setStatus(
+    $('files-status'),
+    `${jsons.length} ficheros leídos${unread ? ` (${unread} ilegibles)` : ''}, ${S.detectedPlayers.length} piloto(s) detectado(s).`,
+    'ok'
+  );
+  show('step-filter');
+  await refreshPreview();
+}
+
+async function refreshPreview() {
+  const playerName = $('player').value;
+  const conditions = $('conditions').value;
+  if (!S._docs || !playerName) return;
+
+  const agg = aggregateFiles(S._docs, playerName);
+  S.filesAggregated = agg;
+
+  if (!S.existingKeys) {
+    setStatus($('upload-status'), 'Comprobando lo que ya hay en tu liga…');
+    try {
+      S.existingKeys = await fetchExistingKeys();
+    } catch (e) {
+      setStatus($('upload-status'), 'No pude leer tus vueltas existentes: ' + e.message, 'err');
+      return;
+    }
+  }
+
+  const rows = buildPreview(agg, S.existingKeys);
+  S.preview = rows;
+  const news = rows.filter(r => r.isNew).length;
+  const dups = rows.length - news;
+
+  $('num-new').textContent = String(news);
+  $('num-dup').textContent = String(dups);
+  $('num-skip').textContent = String(agg.skipped);
+
+  // Agrupar por circuito: un tiempo solo se entiende dentro de su trazado
+  // (6 min en Nürburgring vs en otra pista no son comparables).
+  renderGroupedPreview(rows);
+
+  $('btn-upload').disabled = news === 0;
+  $('btn-upload').textContent = news === 0
+    ? 'Nada nuevo que subir'
+    : `Subir ${news} PB${news === 1 ? '' : 's'} nuevos`;
+
+  setStatus($('upload-status'), '');
+  show('step-preview');
+}
+
+async function handleUpload() {
+  if (!S.preview) return;
+  const news = S.preview.filter(r => r.isNew);
+  if (!news.length) return;
+  const conditions = $('conditions').value;
+
+  $('btn-upload').disabled = true;
+  setStatus($('upload-status'), `Subiendo ${news.length} vueltas…`);
+  try {
+    await uploadNewLaps(news, conditions);
+    const count = news.length;
+    // Marca las claves como existentes para que el preview se actualice.
+    for (const r of news) S.existingKeys.add(`${r.track}|${r.car}|${r.timeMs}`);
+    setStatus($('upload-status'), `Subidas ${count} vueltas ✓`, 'ok');
+    await refreshPreview();
+    showSuccessModal(count);
+  } catch (e) {
+    setStatus($('upload-status'), 'Error subiendo: ' + e.message, 'err');
+    $('btn-upload').disabled = false;
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[c]);
+}
+
+// Renderiza el preview agrupado por circuito. Dentro de cada grupo, las filas
+// van por tiempo asc (mejor primero), así se lee como un mini-leaderboard por
+// pista en vez de una lista plana donde no se sabe si 6 min son buenos o no.
+function renderGroupedPreview(rows) {
+  const groups = new Map(); // track -> rows[]
+  for (const r of rows) {
+    if (!groups.has(r.track)) groups.set(r.track, []);
+    groups.get(r.track).push(r);
+  }
+  const sortedTracks = [...groups.keys()].sort((a, b) => a.localeCompare(b));
+
+  const container = $('preview-groups');
+  container.innerHTML = '';
+  for (const track of sortedTracks) {
+    const grp = groups.get(track);
+    grp.sort((a, b) => a.timeMs - b.timeMs);
+    const news = grp.filter(r => r.isNew).length;
+
+    const block = document.createElement('div');
+    block.className = 'track-group';
+    const meta = news === grp.length
+      ? `${grp.length} ${grp.length === 1 ? 'récord' : 'récords'} · todo nuevo`
+      : news === 0
+        ? `${grp.length} ${grp.length === 1 ? 'récord' : 'récords'} · ya en la liga`
+        : `${news} nuevo${news === 1 ? '' : 's'} · ${grp.length - news} ya en la liga`;
+    block.innerHTML =
+      `<div class="track-head">` +
+        `<span class="track-name">📍 ${escapeHtml(track)}</span>` +
+        `<span class="track-meta">${meta}</span>` +
+      `</div>` +
+      `<table><tbody></tbody></table>`;
+
+    const tbody = block.querySelector('tbody');
+    for (const r of grp) {
+      const tr = document.createElement('tr');
+      const badge = r.isNew
+        ? '<span class="badge new">NUEVO</span>'
+        : '<span class="badge">YA EN LIGA</span>';
+      const cls = r.isNew ? 'time' : 'time dup';
+      tr.innerHTML =
+        `<td style="width: 110px;">${badge}</td>` +
+        `<td${r.isNew ? '' : ' class="dup"'}>${escapeHtml(r.car)}</td>` +
+        `<td class="${cls}" style="text-align: right;">${fmtMs(r.timeMs)}</td>`;
+      tbody.appendChild(tr);
+    }
+    container.appendChild(block);
+  }
+}
+
+// Modal de éxito tras subir
+function showSuccessModal(count) {
+  $('success-count').textContent = String(count);
+  $('success-modal').classList.remove('hide');
+}
+function hideSuccessModal() {
+  $('success-modal').classList.add('hide');
+}
+
+// ─── Drag & drop sobre el picker ─────────────────────────────────────────────
+function wirePicker() {
+  const picker = $('picker');
+  const input = $('files');
+  picker.addEventListener('click', () => input.click());
+  input.addEventListener('change', e => handleFiles(e.target.files));
+  ['dragenter', 'dragover'].forEach(ev => picker.addEventListener(ev, e => {
+    e.preventDefault(); picker.classList.add('drag');
+  }));
+  ['dragleave', 'drop'].forEach(ev => picker.addEventListener(ev, e => {
+    e.preventDefault(); picker.classList.remove('drag');
+  }));
+  picker.addEventListener('drop', async e => {
+    const items = e.dataTransfer?.items;
+    if (!items) return;
+    const files = await collectFilesFromDrop(items);
+    handleFiles(files);
+  });
+}
+
+// El input webkitdirectory funciona al hacer clic, pero el drop trae DataTransferItems.
+// Recorremos directorios recursivamente con la File System API antigua de Chrome.
+async function collectFilesFromDrop(items) {
+  const out = [];
+  const entries = [];
+  for (const item of items) {
+    const entry = item.webkitGetAsEntry?.();
+    if (entry) entries.push(entry);
+  }
+  async function walk(entry) {
+    if (entry.isFile) {
+      const file = await new Promise((res, rej) => entry.file(res, rej));
+      out.push(file);
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      // readEntries devuelve por lotes, hay que llamar hasta que dé vacío.
+      let batch;
+      do {
+        batch = await new Promise((res, rej) => reader.readEntries(res, rej));
+        for (const e of batch) await walk(e);
+      } while (batch.length);
+    }
+  }
+  for (const e of entries) await walk(e);
+  return out;
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  $('btn-login').addEventListener('click', handleLogin);
+  $('password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+  $('btn-logout').addEventListener('click', handleLogout);
+  $('btn-upload').addEventListener('click', handleUpload);
+  $('btn-reset').addEventListener('click', () => {
+    S.filesAggregated = null; S.preview = null;
+    $('files').value = '';
+    hide('step-filter'); hide('step-preview');
+    setStatus($('files-status'), '');
+  });
+  $('player').addEventListener('change', refreshPreview);
+  $('conditions').addEventListener('change', refreshPreview);
+  $('success-ok').addEventListener('click', hideSuccessModal);
+  $('success-modal').addEventListener('click', e => {
+    if (e.target.id === 'success-modal') hideSuccessModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !$('success-modal').classList.contains('hide')) {
+      hideSuccessModal();
+    }
+  });
+  wirePicker();
+});
+</script>
+</body>
+</html>
