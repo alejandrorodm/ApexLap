@@ -1,7 +1,7 @@
 // "Detalle de circuito": leaderboard de un trazado concreto. Se llega tocando
 // una tarjeta de "Tiempos · Por circuito". Aquí sí tiene sentido comparar
 // tiempos (todos son del mismo trazado) y aquí es donde nace el pique.
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   FlatList,
   Pressable,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -18,11 +19,13 @@ import {
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius } from '../theme';
-import { EmptyState } from '../components/ui';
+import { Chip, EmptyState } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import { lapsForTrack } from '../utils/leaderboard';
 import { formatTime, formatDelta, timeAgo } from '../utils/time';
 import { deleteLap } from '../firebase/db';
+import { getTrackImage } from '../data/tracks';
+import { Image } from 'react-native';
 import { Lap } from '../types';
 import { RootStackParamList } from '../navigation/types';
 
@@ -35,16 +38,36 @@ export default function TrackDetailScreen() {
   const { track } = route.params;
   const { laps, league, userId } = useApp();
   const now = Date.now();
+  const [carFilter, setCarFilter] = useState<string | null>(null);
 
   const trackLaps = useMemo(() => lapsForTrack(laps, track), [laps, track]);
-  const leaderMs = trackLaps[0]?.timeMs ?? null;
+  const trackImage = useMemo(() => getTrackImage(track), [track]);
 
-  // Cuántos pilotos distintos han firmado vueltas en este trazado.
+  // Coches con vueltas en este trazado, ordenados por nº de registros (más
+  // populares primero). Sirven como filtro: 1:23 con Ferrari y 1:50 con Mazda
+  // no se comparan, dentro del mismo coche sí.
+  const carsHere = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const l of trackLaps) counts.set(l.car, (counts.get(l.car) ?? 0) + 1);
+    return [...counts.entries()]
+      .sort(
+        (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+      )
+      .map(([car, count]) => ({ car, count }));
+  }, [trackLaps]);
+
+  const displayed = useMemo(
+    () => (carFilter ? trackLaps.filter((l) => l.car === carFilter) : trackLaps),
+    [trackLaps, carFilter]
+  );
+  const leaderMs = displayed[0]?.timeMs ?? null;
+
+  // Cuántos pilotos distintos han firmado vueltas (con el filtro aplicado).
   const driversCount = useMemo(() => {
     const set = new Set<string>();
-    for (const l of trackLaps) set.add(l.userId);
+    for (const l of displayed) set.add(l.userId);
     return set.size;
-  }, [trackLaps]);
+  }, [displayed]);
 
   function confirmDelete(lap: Lap) {
     if (lap.userId !== userId || !league) return;
@@ -85,8 +108,52 @@ export default function TrackDetailScreen() {
         </View>
       </View>
 
+      {/* Silueta del trazado: ayuda a reconocer el circuito de un vistazo.
+          Si todavía no hay PNG (asset o URL en src/data/tracks.ts), se pinta
+          un placeholder blanco vacío para reservar el hueco. */}
+      <View style={styles.imageBox}>
+        {trackImage ? (
+          <Image
+            source={typeof trackImage === 'string' ? { uri: trackImage } : trackImage}
+            style={styles.image}
+            resizeMode="contain"
+          />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <Text style={styles.imagePlaceholderIcon}>🏁</Text>
+            <Text style={styles.imagePlaceholderText}>Silueta del circuito</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Filtros por coche: cada chip filtra el leaderboard a un coche concreto
+          (donde sí tiene sentido comparar tiempos entre pilotos). */}
+      {carsHere.length > 1 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.carFilterRow}
+        >
+          <Chip
+            label={`Todos (${trackLaps.length})`}
+            active={carFilter == null}
+            onPress={() => setCarFilter(null)}
+            color={colors.accent}
+          />
+          {carsHere.map(({ car, count }) => (
+            <Chip
+              key={car}
+              label={`🚗 ${car} · ${count}`}
+              active={carFilter === car}
+              onPress={() => setCarFilter(carFilter === car ? null : car)}
+              color={colors.accent}
+            />
+          ))}
+        </ScrollView>
+      ) : null}
+
       <FlatList
-        data={trackLaps}
+        data={displayed}
         keyExtractor={(l) => l.id}
         contentContainerStyle={styles.listContent}
         renderItem={({ item, index }) => (
@@ -100,11 +167,19 @@ export default function TrackDetailScreen() {
           />
         )}
         ListEmptyComponent={
-          <EmptyState
-            icon="🏁"
-            title="Sin vueltas aquí todavía"
-            subtitle="Cuando alguien registre una vuelta en este trazado, aparecerá en esta clasificación."
-          />
+          carFilter ? (
+            <EmptyState
+              icon="🚗"
+              title={`Nadie ha rodado aquí con ${carFilter}`}
+              subtitle="Quita el filtro para ver todos los coches del trazado."
+            />
+          ) : (
+            <EmptyState
+              icon="🏁"
+              title="Sin vueltas aquí todavía"
+              subtitle="Cuando alguien registre una vuelta en este trazado, aparecerá en esta clasificación."
+            />
+          )
         }
       />
     </SafeAreaView>
@@ -238,6 +313,41 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.4,
+  },
+  imageBox: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    height: 140,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  imagePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+  },
+  imagePlaceholderIcon: { fontSize: 34, opacity: 0.7, marginBottom: 4 },
+  imagePlaceholderText: {
+    color: '#6B7180',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  carFilterRow: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+    alignItems: 'center',
   },
   listContent: {
     padding: spacing.lg,
