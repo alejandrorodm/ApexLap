@@ -23,6 +23,7 @@ import {
   uniqueValues,
   isCounted,
   LapFilter,
+  TrackRecord,
 } from '../utils/leaderboard';
 import { formatTime, formatDelta, timeAgo } from '../utils/time';
 import { Lap } from '../types';
@@ -82,7 +83,7 @@ export default function LapsScreen() {
   // del mismo "contexto" (mismo circuito). byTrack mezcla circuitos, así que no.
   const leaderMs =
     (mode === 'bestPerDriver' || mode === 'byTime') && !showPending && list.length
-      ? list[0].timeMs
+      ? (list[0] as Lap).timeMs
       : null;
 
   function confirmDelete(lap: Lap) {
@@ -201,28 +202,38 @@ export default function LapsScreen() {
       </View>
 
       <FlatList
-        data={list}
-        keyExtractor={(l) => l.id}
+        data={list as any[]}
+        keyExtractor={(item) =>
+          // En modo byTrack cada item es un TrackRecord; en el resto, un Lap.
+          mode === 'byTrack' && !showPending
+            ? `t:${(item as TrackRecord).track}`
+            : (item as Lap).id
+        }
         contentContainerStyle={styles.listContent}
         renderItem={({ item, index }) =>
           mode === 'byTrack' && !showPending ? (
             <TrackRecordRow
-              lap={item}
-              isMine={item.userId === userId}
-              onLongPress={() => confirmDelete(item)}
+              record={item as TrackRecord}
+              isMine={(item as TrackRecord).lap.userId === userId}
+              onPress={() =>
+                navigation.navigate('Track', {
+                  track: (item as TrackRecord).track,
+                })
+              }
+              onLongPress={() => confirmDelete((item as TrackRecord).lap)}
             />
           ) : (
             <LapRow
-              lap={item}
+              lap={item as Lap}
               index={index}
               showRank={mode === 'bestPerDriver' || mode === 'byTime'}
               leaderMs={leaderMs}
-              isMine={item.userId === userId}
+              isMine={(item as Lap).userId === userId}
               isHost={isHost}
               now={now}
-              onLongPress={() => confirmDelete(item)}
-              onApprove={() => approveLap(item.id).catch(() => {})}
-              onReject={() => confirmReject(item)}
+              onLongPress={() => confirmDelete(item as Lap)}
+              onApprove={() => approveLap((item as Lap).id).catch(() => {})}
+              onReject={() => confirmReject(item as Lap)}
             />
           )
         }
@@ -376,18 +387,23 @@ function LapRow({
 
 // Fila del modo "Por circuito": una tarjeta por trazado, con el circuito como
 // protagonista, el mejor tiempo grande a la derecha y debajo el coche que lo
-// logró y el piloto que lo firmó.
+// logró y el piloto que lo firmó. Pulsable: abre el detalle (leaderboard) del
+// circuito para ver el pique completo.
 function TrackRecordRow({
-  lap,
+  record,
   isMine,
+  onPress,
   onLongPress,
 }: {
-  lap: Lap;
+  record: TrackRecord;
   isMine: boolean;
+  onPress: () => void;
   onLongPress: () => void;
 }) {
+  const { lap, count } = record;
   return (
     <Pressable
+      onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={350}
       style={[styles.trackCard, isMine && styles.rowMine]}
@@ -407,17 +423,22 @@ function TrackRecordRow({
           {isMine ? ' · tú' : ''}
         </Text>
       </View>
-      <View style={styles.badges}>
-        {lap.assists ? (
-          <Badge text="ayudas" color={colors.textFaint} />
-        ) : (
-          <Badge text="sin ayudas" color={colors.green} />
-        )}
-        {lap.conditions === 'wet' ? (
-          <Badge text="mojado" color={colors.blue} />
-        ) : lap.conditions === 'mixed' ? (
-          <Badge text="mixto" color={colors.blue} />
-        ) : null}
+      <View style={styles.trackMetaRow}>
+        <View style={styles.badges}>
+          {lap.assists ? (
+            <Badge text="ayudas" color={colors.textFaint} />
+          ) : (
+            <Badge text="sin ayudas" color={colors.green} />
+          )}
+          {lap.conditions === 'wet' ? (
+            <Badge text="mojado" color={colors.blue} />
+          ) : lap.conditions === 'mixed' ? (
+            <Badge text="mixto" color={colors.blue} />
+          ) : null}
+        </View>
+        <Text style={styles.trackCount}>
+          {count} {count === 1 ? 'vuelta' : 'vueltas'} ›
+        </Text>
       </View>
     </Pressable>
   );
@@ -563,5 +584,18 @@ const styles = StyleSheet.create({
     color: colors.gold,
     fontSize: 13,
     fontWeight: '700',
+  },
+  trackMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.xs,
+    gap: spacing.sm,
+  },
+  trackCount: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
 });

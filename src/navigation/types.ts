@@ -10,6 +10,7 @@ export type RootStackParamList = {
   };
   Challenge: { challengeId: string };
   Participants: undefined;
+  Track: { track: string };
 };
 
 export type TabParamList = {

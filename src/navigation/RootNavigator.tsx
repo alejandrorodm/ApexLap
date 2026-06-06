@@ -14,6 +14,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import AddLapScreen from '../screens/AddLapScreen';
 import ChallengeScreen from '../screens/ChallengeScreen';
 import ParticipantsScreen from '../screens/ParticipantsScreen';
+import TrackDetailScreen from '../screens/TrackDetailScreen';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -88,6 +89,11 @@ export default function RootNavigator() {
       <Stack.Screen
         name="Participants"
         component={ParticipantsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Track"
+        component={TrackDetailScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
