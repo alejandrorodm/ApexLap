@@ -68,12 +68,21 @@ export default function TrackDetailScreen() {
         <Text style={styles.title} numberOfLines={2}>
           📍 {track}
         </Text>
-        <Text style={styles.subtitle}>
-          {trackLaps.length} {trackLaps.length === 1 ? 'vuelta' : 'vueltas'}
-          {driversCount > 0
-            ? ` · ${driversCount} ${driversCount === 1 ? 'piloto' : 'pilotos'}`
-            : ''}
-        </Text>
+        <View style={styles.headerFoot}>
+          <Text style={styles.subtitle}>
+            {trackLaps.length} {trackLaps.length === 1 ? 'vuelta' : 'vueltas'}
+            {driversCount > 0
+              ? ` · ${driversCount} ${driversCount === 1 ? 'piloto' : 'pilotos'}`
+              : ''}
+          </Text>
+          <Pressable
+            style={styles.challengeBtn}
+            onPress={() => navigation.navigate('NewChallenge', { track })}
+            hitSlop={6}
+          >
+            <Text style={styles.challengeBtnText}>🎰 Pique aquí</Text>
+          </Pressable>
+        </View>
       </View>
 
       <FlatList
@@ -207,8 +216,28 @@ const styles = StyleSheet.create({
   subtitle: {
     color: colors.textDim,
     fontSize: 13,
-    marginTop: 4,
     fontWeight: '600',
+    flex: 1,
+  },
+  headerFoot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+    gap: spacing.sm,
+  },
+  challengeBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.accent,
+  },
+  challengeBtnText: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
   listContent: {
     padding: spacing.lg,

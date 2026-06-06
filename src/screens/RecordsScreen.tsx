@@ -199,12 +199,22 @@ export default function RecordsScreen() {
           if (section.kind === 'challenges') {
             return (
               <View>
-                <Text style={styles.sectionTitle}>
-                  🎰 Piques activos ({challenges.length})
-                </Text>
+                <View style={styles.challengesHead}>
+                  <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0 }]}>
+                    🎰 Piques activos ({challenges.length})
+                  </Text>
+                  <Pressable
+                    style={styles.newChallengeBtn}
+                    onPress={() => navigation.navigate('NewChallenge', {})}
+                    hitSlop={8}
+                  >
+                    <Text style={styles.newChallengeText}>+ Nuevo</Text>
+                  </Pressable>
+                </View>
                 {challenges.length === 0 ? (
                   <Text style={styles.hint}>
-                    Ninguno todavía. Ve a la Ruleta y convoca uno.
+                    Ninguno todavía. Usa "+ Nuevo" para convocar uno, o sortéalo
+                    en la Ruleta.
                   </Text>
                 ) : (
                   challenges.map((c) => {
@@ -346,6 +356,27 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   hint: { color: colors.textFaint, fontSize: 14, marginBottom: spacing.sm },
+  challengesHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  newChallengeBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    backgroundColor: 'transparent',
+  },
+  newChallengeText: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
   editor: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
