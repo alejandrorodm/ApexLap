@@ -19,6 +19,7 @@ import {
   applyFilter,
   byTime,
   bestPerDriver,
+  recordsByTrack,
   uniqueValues,
   isCounted,
   LapFilter,
@@ -30,13 +31,17 @@ import { RootStackParamList } from '../navigation/types';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
+// Modos de la lista. "byTrack" es el default: una fila por circuito con la
+// mejor vuelta absoluta y el coche que la consiguió — los tiempos solo se
+// comparan dentro del mismo trazado.
+type ViewMode = 'byTrack' | 'bestPerDriver' | 'byTime' | 'recent';
+
 export default function LapsScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { laps, league, userId, lapsLoading, approveLap, rejectLap } = useApp();
   const [filter, setFilter] = useState<LapFilter>({});
-  const [bestOnly, setBestOnly] = useState(true);
-  const [sortRecent, setSortRecent] = useState(false);
+  const [mode, setMode] = useState<ViewMode>('byTrack');
   const [showPending, setShowPending] = useState(false);
   const [picker, setPicker] = useState<null | 'car' | 'track'>(null);
   const now = Date.now();
@@ -61,12 +66,24 @@ export default function LapsScreen() {
     }
     // Vistas normales: solo vueltas que cuentan (verificadas o antiguas).
     const filtered = applyFilter(laps.filter(isCounted), filter);
-    if (sortRecent) return filtered; // ya viene ordenado por fecha desc
-    return bestOnly ? bestPerDriver(filtered) : byTime(filtered);
-  }, [laps, filter, bestOnly, sortRecent, showPending, isHost, userId]);
+    switch (mode) {
+      case 'byTrack':
+        return recordsByTrack(filtered);
+      case 'bestPerDriver':
+        return bestPerDriver(filtered);
+      case 'byTime':
+        return byTime(filtered);
+      case 'recent':
+        return filtered; // ya viene ordenado por fecha desc
+    }
+  }, [laps, filter, mode, showPending, isHost, userId]);
 
+  // Para el delta vs leader: solo cuando hay un ranking real por tiempo dentro
+  // del mismo "contexto" (mismo circuito). byTrack mezcla circuitos, así que no.
   const leaderMs =
-    !sortRecent && !showPending && list.length ? list[0].timeMs : null;
+    (mode === 'bestPerDriver' || mode === 'byTime') && !showPending && list.length
+      ? list[0].timeMs
+      : null;
 
   function confirmDelete(lap: Lap) {
     if (lap.userId !== userId || !league) return;
@@ -137,20 +154,37 @@ export default function LapsScreen() {
         </View>
         <View style={styles.filterRow}>
           <Chip
-            label="Mejor de cada piloto"
-            active={bestOnly && !sortRecent && !showPending}
+            label="📍 Por circuito"
+            active={mode === 'byTrack' && !showPending}
             onPress={() => {
-              setBestOnly((b) => !b);
-              setSortRecent(false);
+              setMode('byTrack');
               setShowPending(false);
             }}
             color={colors.accent}
           />
           <Chip
-            label={sortRecent ? '🕒 Recientes' : '⏱ Por tiempo'}
-            active={sortRecent && !showPending}
+            label="👤 Mejor por piloto"
+            active={mode === 'bestPerDriver' && !showPending}
             onPress={() => {
-              setSortRecent((s) => !s);
+              setMode('bestPerDriver');
+              setShowPending(false);
+            }}
+            color={colors.accent}
+          />
+          <Chip
+            label="⏱ Por tiempo"
+            active={mode === 'byTime' && !showPending}
+            onPress={() => {
+              setMode('byTime');
+              setShowPending(false);
+            }}
+            color={colors.blue}
+          />
+          <Chip
+            label="🕒 Recientes"
+            active={mode === 'recent' && !showPending}
+            onPress={() => {
+              setMode('recent');
               setShowPending(false);
             }}
             color={colors.blue}
@@ -170,20 +204,28 @@ export default function LapsScreen() {
         data={list}
         keyExtractor={(l) => l.id}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item, index }) => (
-          <LapRow
-            lap={item}
-            index={index}
-            showRank={!sortRecent && !showPending}
-            leaderMs={leaderMs}
-            isMine={item.userId === userId}
-            isHost={isHost}
-            now={now}
-            onLongPress={() => confirmDelete(item)}
-            onApprove={() => approveLap(item.id).catch(() => {})}
-            onReject={() => confirmReject(item)}
-          />
-        )}
+        renderItem={({ item, index }) =>
+          mode === 'byTrack' && !showPending ? (
+            <TrackRecordRow
+              lap={item}
+              isMine={item.userId === userId}
+              onLongPress={() => confirmDelete(item)}
+            />
+          ) : (
+            <LapRow
+              lap={item}
+              index={index}
+              showRank={mode === 'bestPerDriver' || mode === 'byTime'}
+              leaderMs={leaderMs}
+              isMine={item.userId === userId}
+              isHost={isHost}
+              now={now}
+              onLongPress={() => confirmDelete(item)}
+              onApprove={() => approveLap(item.id).catch(() => {})}
+              onReject={() => confirmReject(item)}
+            />
+          )
+        }
         ListEmptyComponent={
           lapsLoading ? null : showPending ? (
             <EmptyState
@@ -332,6 +374,55 @@ function LapRow({
   );
 }
 
+// Fila del modo "Por circuito": una tarjeta por trazado, con el circuito como
+// protagonista, el mejor tiempo grande a la derecha y debajo el coche que lo
+// logró y el piloto que lo firmó.
+function TrackRecordRow({
+  lap,
+  isMine,
+  onLongPress,
+}: {
+  lap: Lap;
+  isMine: boolean;
+  onLongPress: () => void;
+}) {
+  return (
+    <Pressable
+      onLongPress={onLongPress}
+      delayLongPress={350}
+      style={[styles.trackCard, isMine && styles.rowMine]}
+    >
+      <View style={styles.trackHeader}>
+        <Text style={styles.trackName} numberOfLines={1}>
+          📍 {lap.track}
+        </Text>
+        <Text style={styles.trackTime}>{formatTime(lap.timeMs)}</Text>
+      </View>
+      <View style={styles.trackFoot}>
+        <Text style={styles.trackCar} numberOfLines={1}>
+          🚗 {lap.car}
+        </Text>
+        <Text style={styles.trackDriver} numberOfLines={1}>
+          👑 {lap.driverName || 'Anónimo'}
+          {isMine ? ' · tú' : ''}
+        </Text>
+      </View>
+      <View style={styles.badges}>
+        {lap.assists ? (
+          <Badge text="ayudas" color={colors.textFaint} />
+        ) : (
+          <Badge text="sin ayudas" color={colors.green} />
+        )}
+        {lap.conditions === 'wet' ? (
+          <Badge text="mojado" color={colors.blue} />
+        ) : lap.conditions === 'mixed' ? (
+          <Badge text="mixto" color={colors.blue} />
+        ) : null}
+      </View>
+    </Pressable>
+  );
+}
+
 function Badge({ text, color }: { text: string; color: string }) {
   return (
     <View style={[styles.badge, { borderColor: color }]}>
@@ -428,4 +519,49 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   fabText: { color: colors.text, fontSize: 32, fontWeight: '300', marginTop: -2 },
+  // Tarjeta del modo "Por circuito"
+  trackCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  trackHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+  trackName: {
+    flex: 1,
+    marginRight: spacing.sm,
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  trackTime: {
+    color: colors.accent,
+    fontSize: 22,
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
+  },
+  trackFoot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  trackCar: {
+    flex: 1,
+    color: colors.textDim,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  trackDriver: {
+    color: colors.gold,
+    fontSize: 13,
+    fontWeight: '700',
+  },
 });

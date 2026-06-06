@@ -56,6 +56,21 @@ export interface Record {
   count: number; // nº de vueltas registradas en ese combo
 }
 
+/**
+ * Récord absoluto por circuito (una fila por trazado, la vuelta más rápida
+ * registrada ahí con cualquier coche). Vista por defecto de "Tiempos": un
+ * tiempo solo se entiende dentro de su circuito, comparar tiempos entre
+ * Nürburgring y Brands Hatch no tiene sentido.
+ */
+export function recordsByTrack(laps: Lap[]): Lap[] {
+  const best = new Map<string, Lap>();
+  for (const l of laps.filter(isCounted)) {
+    const cur = best.get(l.track);
+    if (!cur || l.timeMs < cur.timeMs) best.set(l.track, l);
+  }
+  return [...best.values()].sort((a, b) => a.track.localeCompare(b.track));
+}
+
 /** Récord (vuelta más rápida) por combinación coche+circuito. */
 export function recordsByCombo(laps: Lap[]): Record[] {
   const map = new Map<string, Record>();
