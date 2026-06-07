@@ -6,7 +6,7 @@
 // Mientras esté el placeholder, el botón de Google en el APK avisará de que
 // falta configurar. Tras rellenarlo hay que recompilar el APK.
 export const GOOGLE_WEB_CLIENT_ID =
-  '1058766757504-bbh7f0pjut6rfbhp049iftfkdebngi3v.apps.googleusercontent.com';
+  '17800222085-ne7jjtl65cbotfne6bcikr4jjkhdds75.apps.googleusercontent.com';
 
 export const isGoogleConfigured =
   !GOOGLE_WEB_CLIENT_ID.startsWith('PEGA_AQUI');
