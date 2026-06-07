@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, radius } from '../theme';
+import { colors, spacing, radius, font } from '../theme';
 import { Button, Card, SectionTitle, Label, Field, SpeedStripes } from '../components/ui';
 import { useApp } from '../context/AppContext';
 
@@ -88,10 +88,10 @@ export default function OnboardingScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.form}>
           <View style={styles.brand}>
-            <Text style={styles.brandText}>
+            <Text style={styles.brandText} {...({ dataSet: { brandglow: '' } } as any)}>
               <Text style={styles.flag}>🏁 </Text>
-              <Text style={styles.brandApex}>Apex</Text>
-              <Text style={styles.brandLap}>Lap</Text>
+              <Text style={styles.brandApex}>APEX</Text>
+              <Text style={styles.brandLap}>LAP</Text>
             </Text>
             <SpeedStripes style={{ marginTop: spacing.sm, alignSelf: 'flex-start' }} />
           </View>
@@ -186,15 +186,21 @@ const styles = StyleSheet.create({
   form: { width: '100%', maxWidth: 520, alignSelf: 'center' },
   brand: { marginBottom: spacing.xl },
   brandText: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '900',
-    letterSpacing: 1,
-    fontFamily: Platform.OS === 'web' ? 'Orbitron, sans-serif' : undefined,
+    letterSpacing: 3,
+    fontFamily: font.display,
   },
   flag: { fontSize: 20 },
   brandApex: { color: colors.text },
   brandLap: { color: colors.primary },
-  h1: { color: colors.text, fontSize: 26, fontWeight: '900' },
+  h1: {
+    color: colors.text,
+    fontSize: 28,
+    fontWeight: '900',
+    fontFamily: font.display,
+    letterSpacing: 0.5,
+  },
   sub: { color: colors.textDim, fontSize: 15, marginTop: spacing.sm, lineHeight: 21 },
   input: {
     backgroundColor: colors.surfaceAlt,
@@ -203,10 +209,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     color: colors.text,
     paddingHorizontal: spacing.md,
-    height: 50,
-    fontSize: 16,
+    height: 54,
+    fontSize: 17,
   },
-  code: { letterSpacing: 4, fontWeight: '800', fontSize: 22, textAlign: 'center' },
+  code: { letterSpacing: 6, fontWeight: '900', fontSize: 24, textAlign: 'center', fontFamily: font.display },
   orRow: { flexDirection: 'row', alignItems: 'center', marginVertical: spacing.lg },
   line: { flex: 1, height: 1, backgroundColor: colors.border },
   or: { color: colors.textFaint, marginHorizontal: spacing.md, fontWeight: '700' },

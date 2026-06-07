@@ -11,7 +11,7 @@ import {
   Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, radius } from '../theme';
+import { colors, spacing, radius, font, glow } from '../theme';
 import { Button, Field, SpeedStripes } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import { notify } from '../utils/alerts';
@@ -88,12 +88,12 @@ export default function AuthScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.form}>
+          <View style={styles.form} {...({ dataSet: { anim: 'rise' } } as any)}>
           <View style={styles.hero}>
             <Text style={styles.flag}>🏁</Text>
-            <Text style={styles.logo}>
-              <Text style={styles.logoApex}>Apex</Text>
-              <Text style={styles.logoLap}>Lap</Text>
+            <Text style={styles.logo} {...({ dataSet: { brandglow: '' } } as any)}>
+              <Text style={styles.logoApex}>APEX</Text>
+              <Text style={styles.logoLap}>LAP</Text>
             </Text>
             <SpeedStripes style={{ marginTop: spacing.md }} />
             <Text style={styles.tagline}>
@@ -213,11 +213,11 @@ const styles = StyleSheet.create({
   hero: { alignItems: 'center', marginBottom: spacing.xl },
   flag: { fontSize: 40, marginBottom: spacing.xs },
   logo: {
-    fontSize: 42,
+    fontSize: 46,
     fontWeight: '900',
-    letterSpacing: 1,
+    letterSpacing: 3,
     textAlign: 'center',
-    fontFamily: Platform.OS === 'web' ? 'Orbitron, sans-serif' : undefined,
+    fontFamily: font.display,
   },
   logoApex: { color: colors.text },
   logoLap: { color: colors.primary },
@@ -236,9 +236,9 @@ const styles = StyleSheet.create({
     padding: 4,
     marginBottom: spacing.lg,
   },
-  switchBtn: { flex: 1, paddingVertical: spacing.sm, borderRadius: radius.sm, alignItems: 'center' },
-  switchBtnActive: { backgroundColor: colors.primary },
-  switchText: { color: colors.textDim, fontWeight: '700', fontSize: 14 },
+  switchBtn: { flex: 1, paddingVertical: spacing.sm + 2, borderRadius: radius.sm, alignItems: 'center' },
+  switchBtnActive: { backgroundColor: colors.primary, ...glow(colors.primary, 12, 0.4) },
+  switchText: { color: colors.textDim, fontWeight: '800', fontSize: 14, letterSpacing: 0.3 },
   switchTextActive: { color: colors.text },
   input: {
     backgroundColor: colors.surface,
@@ -247,8 +247,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     color: colors.text,
     paddingHorizontal: spacing.md,
-    height: 50,
-    fontSize: 16,
+    height: 54,
+    fontSize: 17,
     marginBottom: spacing.sm,
   },
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: spacing.lg },

@@ -5,8 +5,9 @@ import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, spacing, radius, font } from '../theme';
+import { colors, spacing, radius, font, PODIUM } from '../theme';
 import { Card, EmptyState, ScreenHeader } from '../components/ui';
+import { useIsWideWeb } from '../responsive';
 import { useApp } from '../context/AppContext';
 import { subscribeChallenges, getChallengeBets } from '../firebase/db';
 import {
@@ -25,6 +26,7 @@ export default function StandingsScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { league, userId } = useApp();
+  const wide = useIsWideWeb();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [betsByChallenge, setBetsByChallenge] = useState<Record<string, Bet[]>>(
     {}
@@ -84,8 +86,14 @@ export default function StandingsScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <ScreenHeader title="Liga" subtitle={league?.name ?? ''} />
 
-        <Text style={styles.sectionTitle}>🏆 Clasificación por puntos</Text>
-        <Card>
+        {table.length > 0 ? (
+          <Podium rows={table.slice(0, 3)} userId={userId} />
+        ) : null}
+
+        <View style={wide ? styles.cols : undefined}>
+          <View style={wide ? styles.colMain : undefined}>
+            <Text style={styles.sectionTitle}>🏆 Clasificación por puntos</Text>
+            <Card>
           <Text style={styles.legend}>
             +{POINTS.win} por pique ganado · +{POINTS.correctBet} por acertar la
             apuesta
@@ -136,9 +144,11 @@ export default function StandingsScreen() {
               })}
             </>
           )}
-        </Card>
+            </Card>
+          </View>
 
-        <Text style={styles.sectionTitle}>🎰 Piques abiertos ({open.length})</Text>
+          <View style={wide ? styles.colSide : undefined}>
+            <Text style={styles.sectionTitle}>🎰 Piques abiertos ({open.length})</Text>
         {open.length === 0 ? (
           <Text style={styles.hint}>
             Ninguno. Ve a la Ruleta y convoca uno para apostar.
@@ -174,13 +184,15 @@ export default function StandingsScreen() {
           </>
         ) : null}
 
-        {challenges.length === 0 ? (
-          <EmptyState
-            icon="🏆"
-            title="Sin piques todavía"
-            subtitle="Convoca uno en la Ruleta, apostad por el ganador y repartid puntos."
-          />
-        ) : null}
+            {challenges.length === 0 ? (
+              <EmptyState
+                icon="🏆"
+                title="Sin piques todavía"
+                subtitle="Convoca uno en la Ruleta, apostad por el ganador y repartid puntos."
+              />
+            ) : null}
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -228,8 +240,84 @@ function ChallengeRow({
   );
 }
 
+// Podio: top-3 de la clasificación en tarjetas grandes (oro/plata/bronce).
+function Podium({
+  rows,
+  userId,
+}: {
+  rows: { userId: string; driverName: string; points: number; wins: number; correctBets: number }[];
+  userId: string | null;
+}) {
+  return (
+    <View style={styles.podium}>
+      {rows.map((r, i) => (
+        <View
+          key={r.userId}
+          style={[
+            styles.podCard,
+            { borderTopColor: PODIUM[i] },
+            r.userId === userId && styles.podMine,
+          ]}
+          {...({ dataSet: { anim: 'rise' } } as any)}
+        >
+          <Text style={styles.podMedal}>{MEDAL[i]}</Text>
+          <Text style={[styles.podName, { color: PODIUM[i] }]} numberOfLines={1}>
+            {r.driverName}
+            {r.userId === userId ? ' · tú' : ''}
+          </Text>
+          <Text style={styles.podPts}>
+            {r.points}
+            <Text style={styles.podPtsUnit}> pts</Text>
+          </Text>
+          <Text style={styles.podSub}>
+            🏆 {r.wins} · 🎯 {r.correctBets}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bgScreen },
+  cols: { flexDirection: 'row', gap: spacing.xl, alignItems: 'flex-start' },
+  colMain: { flex: 1.3 },
+  colSide: { flex: 1 },
+  podium: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  podCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderTopWidth: 4,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+  },
+  podMine: { backgroundColor: 'rgba(255,30,20,0.08)' },
+  podMedal: { fontSize: 30 },
+  podName: {
+    fontSize: 14,
+    fontWeight: '900',
+    fontFamily: font.display,
+    marginTop: spacing.xs,
+    maxWidth: '100%',
+  },
+  podPts: {
+    color: colors.accent,
+    fontSize: 30,
+    fontWeight: '900',
+    fontFamily: font.display,
+    fontVariant: ['tabular-nums'],
+    marginTop: 2,
+  },
+  podPtsUnit: { color: colors.textDim, fontSize: 12, fontWeight: '800' },
+  podSub: { color: colors.textFaint, fontSize: 12, fontWeight: '700', marginTop: 2 },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   sectionTitle: {
     color: colors.text,

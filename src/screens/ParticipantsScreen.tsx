@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, radius } from '../theme';
+import { colors, spacing, radius, font } from '../theme';
 import { Card, EmptyState, ScreenHeader } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import { getLeagueMembers } from '../firebase/db';
@@ -142,28 +142,44 @@ const styles = StyleSheet.create({
   codeBox: {
     marginTop: spacing.lg,
     backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.md,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.accent,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  codeLabel: { color: colors.textFaint, fontSize: 12 },
-  code: { color: colors.accent, fontSize: 24, fontWeight: '900', letterSpacing: 6 },
-  codeCopy: { color: colors.primary, fontWeight: '700' },
-  sectionTitle: {
-    color: colors.textDim,
-    fontSize: 12,
+  codeLabel: {
+    color: colors.textFaint,
+    fontSize: 11,
     fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  code: {
+    color: colors.accent,
+    fontSize: 30,
+    fontWeight: '900',
+    fontFamily: font.display,
+    letterSpacing: 8,
+    marginTop: 2,
+  },
+  codeCopy: { color: colors.primary, fontWeight: '900', fontSize: 14 },
+  sectionTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '900',
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginTop: spacing.xl,
     marginBottom: spacing.sm,
   },
-  hint: { color: colors.textFaint, fontSize: 14 },
-  error: { color: colors.primary, fontSize: 14 },
+  hint: { color: colors.textFaint, fontSize: 15 },
+  error: { color: colors.primary, fontSize: 15 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -172,13 +188,15 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   rowLast: { borderBottomWidth: 0 },
-  name: { color: colors.text, fontSize: 15, fontWeight: '700' },
-  meta: { color: colors.textFaint, fontSize: 12, marginTop: 3 },
+  name: { color: colors.text, fontSize: 17, fontWeight: '800' },
+  meta: { color: colors.textFaint, fontSize: 13, marginTop: 3 },
   best: {
     color: colors.accent,
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '900',
+    fontFamily: font.display,
     fontVariant: ['tabular-nums'],
+    letterSpacing: 0.5,
     marginLeft: spacing.md,
   },
 });
