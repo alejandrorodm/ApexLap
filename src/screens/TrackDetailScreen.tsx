@@ -156,27 +156,52 @@ export default function TrackDetailScreen() {
       {showingCarList ? (
         <FlatList
           key={`cars-${cols}`}
-          data={carRecords}
+          // El podio (top-3) va en la cabecera; la lista son P4 en adelante,
+          // así el resto SIEMPRE queda visualmente debajo del podio.
+          data={carRecords.slice(3)}
           keyExtractor={(r) => r.car}
           numColumns={cols}
           columnWrapperStyle={cols > 1 ? styles.gridRow : undefined}
-          ListHeaderComponent={header}
+          ListHeaderComponent={
+            <>
+              {header}
+              {carRecords.length > 0 ? (
+                <View style={cols > 1 ? styles.podiumRow : undefined}>
+                  {carRecords.slice(0, 3).map((item, i) => (
+                    <CarSummaryRow
+                      key={item.car}
+                      record={item}
+                      index={i}
+                      grid={cols > 1}
+                      isMine={item.lap.userId === userId}
+                      onPress={() => setSelectedCar(item.car)}
+                    />
+                  ))}
+                </View>
+              ) : null}
+              {carRecords.length > 3 ? (
+                <Text style={styles.restLabel}>Resto</Text>
+              ) : null}
+            </>
+          }
           contentContainerStyle={styles.listContent}
           renderItem={({ item, index }) => (
             <CarSummaryRow
               record={item}
-              index={index}
+              index={index + 3}
               grid={cols > 1}
               isMine={item.lap.userId === userId}
               onPress={() => setSelectedCar(item.car)}
             />
           )}
           ListEmptyComponent={
-            <EmptyState
-              icon="🏁"
-              title="Sin vueltas aquí todavía"
-              subtitle="Cuando alguien registre una vuelta en este trazado, aparecerá agrupada por coche."
-            />
+            carRecords.length === 0 ? (
+              <EmptyState
+                icon="🏁"
+                title="Sin vueltas aquí todavía"
+                subtitle="Cuando alguien registre una vuelta en este trazado, aparecerá agrupada por coche."
+              />
+            ) : null
           }
         />
       ) : (
@@ -439,6 +464,16 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   gridRow: { gap: spacing.md, alignItems: 'stretch' },
+  podiumRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'stretch' },
+  restLabel: {
+    color: colors.textDim,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+  },
   // Tarjeta de la vista "Por coche"
   carCard: {
     backgroundColor: colors.surface,
