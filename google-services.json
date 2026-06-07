@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "17800222085-imau43okfj78bmh2diebhqkof3avse3n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.apexlap.app",
+            "certificate_hash": "e39cff803d83b1d69066c5d76e6f07076f0a70be"
+          }
+        },
+        {
           "client_id": "17800222085-ne7jjtl65cbotfne6bcikr4jjkhdds75.apps.googleusercontent.com",
           "client_type": 3
         }
