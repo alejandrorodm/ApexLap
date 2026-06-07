@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "ApexLap",
-    "slug": "laptimersaver",
+    "slug": "apexlap",
     "owner": "alexinex",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -40,7 +40,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "9d4a6a2e-653c-4a17-9f73-c77ab9cb018d"
+        "projectId": "c748db2d-2fdc-4861-ae82-96280ea999ed"
       }
     }
   }
