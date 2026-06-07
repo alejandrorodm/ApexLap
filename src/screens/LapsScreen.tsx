@@ -321,14 +321,19 @@ function LapRow({
     <Pressable
       onLongPress={onLongPress}
       delayLongPress={350}
-      style={[styles.row, isMine && styles.rowMine]}
+      style={[
+        styles.row,
+        showRank && index < 3 && styles.rowPodium,
+        showRank && index === 3 && styles.rowAfterPodium,
+        isMine && styles.rowMine,
+      ]}
       {...({ dataSet: { anim: 'rise' } } as any)}
     >
       <View style={styles.rankBox}>
         {medal ? (
           <Text style={styles.medal}>{medal}</Text>
         ) : showRank ? (
-          <Text style={styles.rankNum}>{index + 1}</Text>
+          <Text style={styles.rankNum}>P{index + 1}</Text>
         ) : (
           <Text style={styles.dot}>•</Text>
         )}
@@ -495,13 +500,21 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: colors.primary,
   },
-  rankBox: { width: 38, alignItems: 'center' },
-  medal: { fontSize: 24 },
+  // Podio (top-3) en los rankings por tiempo: destacado y separado del resto.
+  rowPodium: {
+    backgroundColor: colors.surfaceAlt,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.gold,
+  },
+  rowAfterPodium: { marginTop: spacing.xl },
+  rankBox: { width: 50, alignItems: 'center' },
+  medal: { fontSize: 32 },
   rankNum: {
     color: colors.textDim,
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '900',
     fontFamily: font.display,
+    letterSpacing: 0.5,
   },
   dot: { color: colors.textFaint, fontSize: 18 },
   rowTop: {
