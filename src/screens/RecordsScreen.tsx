@@ -51,6 +51,8 @@ export default function RecordsScreen() {
     useApp();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const now = Date.now();
+  // El anfitrión de la liga puede gestionar (editar/borrar) cualquier pique.
+  const isHost = !!league && league.createdBy === userId;
 
   const carGroups = useMemo(
     () => withCustom(BASE_CAR_GROUPS, customCars),
@@ -258,16 +260,21 @@ export default function RecordsScreen() {
                           </Text>
                         </Pressable>
 
-                        {mine && !closed ? (
+                        {mine || isHost ? (
                           <View style={styles.ownerRow}>
-                            <Pressable onPress={() => openEdit(c)} hitSlop={8}>
-                              <Text style={styles.ownerBtn}>✏️ Editar</Text>
-                            </Pressable>
+                            {!closed ? (
+                              <Pressable onPress={() => openEdit(c)} hitSlop={8}>
+                                <Text style={styles.ownerBtn}>✏️ Editar</Text>
+                              </Pressable>
+                            ) : null}
                             <Pressable onPress={() => removeChallenge(c)} hitSlop={8}>
                               <Text style={[styles.ownerBtn, styles.ownerBtnDanger]}>
                                 🗑 Borrar
                               </Text>
                             </Pressable>
+                            {isHost && !mine ? (
+                              <Text style={styles.ownerTag}>admin</Text>
+                            ) : null}
                           </View>
                         ) : null}
                       </View>
@@ -453,6 +460,14 @@ const styles = StyleSheet.create({
   },
   ownerBtn: { color: colors.textDim, fontSize: 13, fontWeight: '700' },
   ownerBtnDanger: { color: '#ef4444' },
+  ownerTag: {
+    marginLeft: 'auto',
+    color: colors.accent,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
   record: {
     flexDirection: 'row',
     alignItems: 'center',

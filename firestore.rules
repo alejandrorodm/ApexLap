@@ -63,12 +63,16 @@ service cloud.firestore {
       }
 
       // Piques (challenges) dentro de una liga.
+      // Editar/borrar: el creador del pique O el anfitrión de la liga (para que
+      // el admin pueda quitar piques erróneos).
       match /challenges/{challengeId} {
         allow read: if signedIn();
         allow create: if signedIn()
           && request.resource.data.createdBy == request.auth.uid;
-        allow update, delete: if signedIn()
-          && resource.data.createdBy == request.auth.uid;
+        allow update, delete: if signedIn() && (
+          resource.data.createdBy == request.auth.uid
+          || get(/databases/$(database)/documents/leagues/$(leagueId)).data.createdBy == request.auth.uid
+        );
 
         // Apuestas: cada piloto gestiona la suya (id del doc = su uid);
         // todos las pueden leer. Solo se permite apostar en piques abiertos.
