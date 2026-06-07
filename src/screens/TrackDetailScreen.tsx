@@ -237,13 +237,14 @@ function CarSummaryRow({
         styles.carCard,
         grid && styles.carCardGrid,
         podium && styles.carCardPodium,
+        index === 3 && !grid && styles.carCardAfterPodium,
         isMine && styles.rowMine,
       ]}
       {...({ dataSet: { anim: 'rise' } } as any)}
     >
       <View style={styles.carHeader}>
         <View style={styles.carNameWrap}>
-          <Text style={[styles.carRank, podium && styles.carRankPodium]}>
+          <Text style={[styles.carRank, podium && styles.carRankMedal]}>
             {medal ?? `P${index + 1}`}
           </Text>
           <Text style={styles.carName} numberOfLines={1}>
@@ -423,8 +424,10 @@ const styles = StyleSheet.create({
   carSubTitle: {
     flex: 1,
     color: colors.text,
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 22,
+    fontWeight: '900',
+    fontFamily: font.display,
+    letterSpacing: 0.5,
   },
   carSubCount: {
     color: colors.textDim,
@@ -449,7 +452,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   carCardGrid: { flex: 1 },
-  carCardPodium: { borderLeftColor: colors.accent },
+  carCardPodium: {
+    backgroundColor: colors.surfaceAlt,
+    borderLeftColor: colors.gold,
+  },
+  // Separación clara entre el podio (top-3) y el resto de coches (P4 en adelante).
+  carCardAfterPodium: { marginTop: spacing.xl },
   carHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -464,13 +472,15 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   carRank: {
-    color: colors.textFaint,
-    fontSize: 13,
+    color: colors.textDim,
+    fontSize: 19,
     fontWeight: '900',
     fontFamily: font.display,
-    minWidth: 26,
+    letterSpacing: 0.5,
+    minWidth: 38,
+    textAlign: 'center',
   },
-  carRankPodium: { color: colors.accent },
+  carRankMedal: { fontSize: 28, minWidth: 38 },
   carName: {
     flex: 1,
     color: colors.text,
