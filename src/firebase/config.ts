@@ -20,13 +20,12 @@ import * as fbAuth from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const firebaseConfig = {
-  apiKey: 'AIzaSyD262ll4I_E9lfN7DU82c7AjFpV_S6B-cI',
-  authDomain: 'laptimersaver.firebaseapp.com',
-  projectId: 'laptimersaver',
-  storageBucket: 'laptimersaver.firebasestorage.app',
-  messagingSenderId: '1058766757504',
-  appId: '1:1058766757504:web:647b63148da63690479065',
-  measurementId: 'G-FVMY9T9VWP',
+  apiKey: 'AIzaSyB-AKkJn0ZQ0jRn332Fx82g2X5KDwlV82k',
+  authDomain: 'apexlap.firebaseapp.com',
+  projectId: 'apexlap',
+  storageBucket: 'apexlap.firebasestorage.app',
+  messagingSenderId: '17800222085',
+  appId: '1:17800222085:web:0a511280c3529b1e92a0ec',
 };
 
 /** true cuando el usuario ya ha sustituido los placeholders por valores reales. */

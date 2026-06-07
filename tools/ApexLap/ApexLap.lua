@@ -7,8 +7,8 @@
 -- abrirla cada vez (solo para escribir email/contraseña la primera vez).
 
 -- ── Configuración fija (valores PÚBLICOS de cliente de Firebase) ─────────────
-local API_KEY = 'AIzaSyD262ll4I_E9lfN7DU82c7AjFpV_S6B-cI'
-local PROJECT = 'laptimersaver'
+local API_KEY = 'AIzaSyB-AKkJn0ZQ0jRn332Fx82g2X5KDwlV82k'
+local PROJECT = 'apexlap'
 local IDENTITY = 'https://identitytoolkit.googleapis.com/v1'
 local SECURETOKEN = 'https://securetoken.googleapis.com/v1'
 local FIRESTORE = 'https://firestore.googleapis.com/v1'

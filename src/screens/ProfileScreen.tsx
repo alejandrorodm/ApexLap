@@ -71,7 +71,7 @@ export default function ProfileScreen() {
   async function shareCode() {
     if (!league) return;
     // Enlace que abre la web y rellena el código automáticamente (?join=CODE).
-    const joinUrl = `https://laptimersaver.web.app/?join=${league.code}`;
+    const joinUrl = `https://apexlap.web.app/?join=${league.code}`;
     const message = `¡Únete a mi liga "${league.name}" en ApexLap! 🏁\nÁbrela aquí: ${joinUrl}\n(o mete el código ${league.code})`;
     // En web no hay diálogo nativo fiable: copiamos el enlace al portapapeles.
     if (Platform.OS === 'web') {
