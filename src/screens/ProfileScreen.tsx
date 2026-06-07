@@ -24,6 +24,10 @@ import { driverStats } from '../utils/leaderboard';
 import { formatTime } from '../utils/time';
 import { confirmAction, notify } from '../utils/alerts';
 
+// APK de Android (artefacto de EAS Build). Si reconstruyes la app, actualiza
+// esta URL con la del nuevo build (o muévela a un alojamiento propio).
+const APK_URL = 'https://expo.dev/artifacts/eas/eVzeVDT3LeFeawffVgTA5G.apk';
+
 export default function ProfileScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -76,6 +80,11 @@ export default function ProfileScreen() {
         ? window.location.origin
         : 'https://apexlap.web.app';
     Linking.openURL(`${base}/ApexLap-mod.zip`).catch(() => {});
+  }
+
+  // Descarga de la app Android (APK alojado por EAS Build).
+  function downloadApk() {
+    Linking.openURL(APK_URL).catch(() => {});
   }
 
   async function shareCode() {
@@ -256,6 +265,21 @@ export default function ProfileScreen() {
             title="⬇ Descargar plugin (.zip)"
             variant="secondary"
             onPress={downloadMod}
+            style={{ marginTop: spacing.md }}
+          />
+        </Card>
+
+        {/* App de Android */}
+        <Card style={{ marginTop: spacing.lg }}>
+          <SectionTitle>App para Android</SectionTitle>
+          <Text style={styles.hint}>
+            Instala ApexLap en el móvil. Descarga el APK y, en Android, permite
+            “instalar de fuentes desconocidas” al abrirlo.
+          </Text>
+          <Button
+            title="⬇ Descargar app (.apk)"
+            variant="secondary"
+            onPress={downloadApk}
             style={{ marginTop: spacing.md }}
           />
         </Card>
