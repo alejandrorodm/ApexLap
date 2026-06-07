@@ -7,8 +7,7 @@ import { Platform, View, Text, StyleSheet } from 'react-native';
 import { colors, spacing } from '../theme';
 import { useIsWideWeb } from '../responsive';
 
-const COLUMN_NARROW = 560; // móvil / ventana estrecha
-const COLUMN_WIDE = 1100; // portátil / escritorio: columna centrada y amplia
+const COLUMN_NARROW = 560; // móvil / ventana estrecha (en ancho: pantalla completa)
 
 const GLOBAL_CSS = `
 :root { color-scheme: dark; }
@@ -39,6 +38,20 @@ body {
 /* Fundido de entrada del marco. */
 @keyframes apexFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 [data-apexframe] { animation: apexFadeIn .35s ease both; }
+/* Entrada de tarjetas/filas: suben y aparecen. */
+@keyframes apexRise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+[data-anim="rise"] { animation: apexRise .34s cubic-bezier(.2,.7,.3,1) both; }
+/* Pulso de "en directo" para piques abiertos / elementos calientes. */
+@keyframes apexPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,30,20,0.0); }
+  50% { box-shadow: 0 0 16px 1px rgba(255,30,20,0.40); }
+}
+[data-anim="pulse"] { animation: apexPulse 1.8s ease-in-out infinite; }
+/* Punto "live" parpadeante. */
+@keyframes apexBlink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+[data-anim="blink"] { animation: apexBlink 1.3s ease-in-out infinite; }
+/* Brillo que recorre el branding. */
+@keyframes apexSheen { 0% { background-position: -120% 0; } 100% { background-position: 220% 0; } }
 `;
 
 const FONTS_HREF =
@@ -88,7 +101,12 @@ export default function WebFrame({ children }: { children: React.ReactNode }) {
   return (
     <View style={styles.page}>
       <View
-        style={[styles.column, { maxWidth: wide ? COLUMN_WIDE : COLUMN_NARROW }]}
+        style={[
+          styles.column,
+          // En portátil/escritorio: a PANTALLA COMPLETA (sin límite de ancho).
+          // En ventana estrecha/móvil: columna centrada tipo app.
+          { maxWidth: wide ? undefined : COLUMN_NARROW },
+        ]}
         {...({ dataSet: { apexframe: '' } } as any)}
       >
         {/* Línea de acento superior (rojo→amarillo) tipo banda de meta. */}

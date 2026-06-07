@@ -35,6 +35,8 @@ function Tabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        // Fondo opaco de cada escena: evita que se vean solapadas al cambiar.
+        sceneStyle: { backgroundColor: colors.bg },
         tabBarPosition: isWide ? 'top' : 'bottom',
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textFaint,

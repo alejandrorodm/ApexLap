@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius, font } from '../theme';
-import { useIsWideWeb } from '../responsive';
+import { useGridColumns } from '../responsive';
 import { Chip, EmptyState, ScreenHeader } from '../components/ui';
 import { PickerModal } from '../components/PickerModal';
 import { useApp } from '../context/AppContext';
@@ -47,9 +47,9 @@ export default function LapsScreen() {
   const [showPending, setShowPending] = useState(false);
   const [picker, setPicker] = useState<null | 'car' | 'track'>(null);
   const now = Date.now();
-  const wide = useIsWideWeb();
-  // En pantalla ancha, la vista por circuito se muestra en rejilla de 2 columnas.
-  const gridCols = wide && mode === 'byTrack' && !showPending ? 2 : 1;
+  const cols = useGridColumns();
+  // La vista por circuito se muestra en rejilla (más columnas cuanto más ancho).
+  const gridCols = mode === 'byTrack' && !showPending ? cols : 1;
 
   const isHost = !!league && league.createdBy === userId;
   const pendingCount = useMemo(
@@ -322,6 +322,7 @@ function LapRow({
       onLongPress={onLongPress}
       delayLongPress={350}
       style={[styles.row, isMine && styles.rowMine]}
+      {...({ dataSet: { anim: 'rise' } } as any)}
     >
       <View style={styles.rankBox}>
         {medal ? (
@@ -422,6 +423,7 @@ function TrackRecordRow({
         grid && styles.trackCardGrid,
         isMine && styles.trackCardMine,
       ]}
+      {...({ dataSet: { anim: 'rise' } } as any)}
     >
       <View style={styles.trackHeader}>
         <Text style={styles.trackName} numberOfLines={1}>

@@ -4,10 +4,11 @@ import { Platform } from 'react-native';
 export const colors = {
   bgDeep: '#06070A', // fondo de la "página" web, a los lados del marco
   bg: '#0B0D12',
-  // Fondo de las pantallas: transparente en web para que el degradado inmersivo
-  // del marco (WebFrame) ocupe toda la pantalla; sólido en nativo.
-  bgScreen: (Platform.select({ web: 'transparent', default: '#0B0D12' }) ??
-    '#0B0D12') as string,
+  // Fondo de las pantallas. OPACO (no transparente): si fuera transparente, al
+  // cambiar de pantalla se verían solapadas durante la transición. El "fondo a
+  // pantalla completa" se logra con el marco a pantalla completa (WebFrame), no
+  // con transparencia.
+  bgScreen: '#0B0D12',
   surface: '#14161E',
   surfaceAlt: '#1C2030',
   surfaceHi: '#262B3D', // superficie elevada (hover / destacados)

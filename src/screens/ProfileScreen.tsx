@@ -15,7 +15,7 @@ import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, spacing, radius } from '../theme';
+import { colors, spacing, radius, font } from '../theme';
 import { Button, Card, SectionTitle, Label, ScreenHeader, Field } from '../components/ui';
 import { RootStackParamList } from '../navigation/types';
 import { useApp } from '../context/AppContext';
@@ -316,7 +316,13 @@ const styles = StyleSheet.create({
   },
   rowBtns: { flexDirection: 'row', gap: spacing.sm },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  driverName: { color: colors.text, fontSize: 22, fontWeight: '900' },
+  driverName: {
+    color: colors.text,
+    fontSize: 24,
+    fontWeight: '900',
+    fontFamily: font.display,
+    letterSpacing: 0.5,
+  },
   edit: { color: colors.primary, fontWeight: '700' },
   myStats: {
     flexDirection: 'row',
@@ -327,9 +333,10 @@ const styles = StyleSheet.create({
   },
   stat: { flex: 1, alignItems: 'center' },
   statValue: {
-    color: colors.text,
-    fontSize: 20,
+    color: colors.accent,
+    fontSize: 24,
     fontWeight: '900',
+    fontFamily: font.display,
     fontVariant: ['tabular-nums'],
   },
   statLabel: { color: colors.textFaint, fontSize: 12, marginTop: 2 },

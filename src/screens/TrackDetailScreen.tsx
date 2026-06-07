@@ -22,7 +22,7 @@ import {
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius, font } from '../theme';
-import { useIsWideWeb } from '../responsive';
+import { useGridColumns } from '../responsive';
 import { Chip, EmptyState } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import { lapsForTrack, bestPerCarOnTrack, CarRecord } from '../utils/leaderboard';
@@ -44,7 +44,7 @@ export default function TrackDetailScreen() {
   const now = Date.now();
   const [view, setView] = useState<DetailView>('cars');
   const [selectedCar, setSelectedCar] = useState<string | null>(null);
-  const wide = useIsWideWeb();
+  const cols = useGridColumns();
 
   const trackLaps = useMemo(() => lapsForTrack(laps, track), [laps, track]);
 
@@ -155,18 +155,18 @@ export default function TrackDetailScreen() {
 
       {showingCarList ? (
         <FlatList
-          key={`cars-${wide ? 2 : 1}`}
+          key={`cars-${cols}`}
           data={carRecords}
           keyExtractor={(r) => r.car}
-          numColumns={wide ? 2 : 1}
-          columnWrapperStyle={wide ? styles.gridRow : undefined}
+          numColumns={cols}
+          columnWrapperStyle={cols > 1 ? styles.gridRow : undefined}
           ListHeaderComponent={header}
           contentContainerStyle={styles.listContent}
           renderItem={({ item, index }) => (
             <CarSummaryRow
               record={item}
               index={index}
-              grid={wide}
+              grid={cols > 1}
               isMine={item.lap.userId === userId}
               onPress={() => setSelectedCar(item.car)}
             />
@@ -239,6 +239,7 @@ function CarSummaryRow({
         podium && styles.carCardPodium,
         isMine && styles.rowMine,
       ]}
+      {...({ dataSet: { anim: 'rise' } } as any)}
     >
       <View style={styles.carHeader}>
         <View style={styles.carNameWrap}>
@@ -285,6 +286,7 @@ function LapRow({
       onLongPress={onLongPress}
       delayLongPress={350}
       style={[styles.row, isMine && styles.rowMine]}
+      {...({ dataSet: { anim: 'rise' } } as any)}
     >
       <View style={styles.rankBox}>
         {medal ? (

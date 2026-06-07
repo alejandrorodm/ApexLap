@@ -5,7 +5,7 @@ import { View, Text, SectionList, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, spacing, radius } from '../theme';
+import { colors, spacing, radius, font } from '../theme';
 import { EmptyState, Button, Chip, Label, ScreenHeader } from '../components/ui';
 import { PickerModal, PickerGroup, PickerItem } from '../components/PickerModal';
 import { useApp } from '../context/AppContext';
@@ -221,7 +221,11 @@ export default function RecordsScreen() {
                     const mine = c.createdBy === userId;
                     const closed = c.status === 'closed';
                     return (
-                      <View key={c.id} style={styles.challenge}>
+                      <View
+                        key={c.id}
+                        style={[styles.challenge, closed && styles.challengeClosed]}
+                        {...({ dataSet: { anim: 'rise' } } as any)}
+                      >
                         <Pressable
                           style={styles.challengeMain}
                           onPress={() =>
@@ -231,9 +235,17 @@ export default function RecordsScreen() {
                           }
                         >
                           <View style={{ flex: 1 }}>
-                            <Text style={styles.chTitle}>
-                              {COND_ICON[c.conditions]} {c.car}
-                            </Text>
+                            <View style={styles.chTitleRow}>
+                              {!closed ? (
+                                <View
+                                  style={styles.liveDot}
+                                  {...({ dataSet: { anim: 'blink' } } as any)}
+                                />
+                              ) : null}
+                              <Text style={styles.chTitle} numberOfLines={1}>
+                                {COND_ICON[c.conditions]} {c.car}
+                              </Text>
+                            </View>
                             <Text style={styles.chTrack}>{c.track}</Text>
                             <Text style={styles.chMeta}>
                               {closed && c.winnerName
@@ -270,10 +282,10 @@ export default function RecordsScreen() {
           const rec = records[index];
           if (!rec) return null;
           return (
-            <View style={styles.record}>
+            <View style={styles.record} {...({ dataSet: { anim: 'rise' } } as any)}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.recTrack}>{rec.track}</Text>
-                <Text style={styles.recCar}>{rec.car}</Text>
+                <Text style={styles.recCar}>🚗 {rec.car}</Text>
+                <Text style={styles.recTrack}>📍 {rec.track}</Text>
                 <Text style={styles.recHolder}>
                   👑 {rec.lap.driverName} · {rec.count}{' '}
                   {rec.count === 1 ? 'vuelta' : 'vueltas'}
@@ -347,9 +359,9 @@ const styles = StyleSheet.create({
   },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   sectionTitle: {
-    color: colors.textDim,
-    fontSize: 12,
-    fontWeight: '800',
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '900',
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginTop: spacing.lg,
@@ -409,17 +421,28 @@ const styles = StyleSheet.create({
   selectChevron: { color: colors.textDim, fontSize: 14 },
   challenge: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.accent,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+    borderColor: colors.border,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.accent,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
   },
+  challengeClosed: { borderLeftColor: colors.border },
   challengeMain: { flexDirection: 'row', alignItems: 'center' },
-  chTitle: { color: colors.text, fontSize: 16, fontWeight: '800' },
-  chTrack: { color: colors.textDim, fontSize: 14, marginTop: 2 },
+  chTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  liveDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+  },
+  chTitle: { color: colors.text, fontSize: 18, fontWeight: '900', flex: 1 },
+  chTrack: { color: colors.textDim, fontSize: 14, marginTop: 3, fontWeight: '600' },
   chMeta: { color: colors.textFaint, fontSize: 12, marginTop: 4 },
-  chCta: { color: colors.accent, fontWeight: '800', fontSize: 13, textAlign: 'right' },
+  chCta: { color: colors.accent, fontWeight: '900', fontSize: 13, textAlign: 'right' },
   ownerRow: {
     flexDirection: 'row',
     gap: spacing.lg,
@@ -434,19 +457,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.gold,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
   },
-  recTrack: { color: colors.text, fontSize: 15, fontWeight: '700' },
-  recCar: { color: colors.textDim, fontSize: 13, marginTop: 2 },
-  recHolder: { color: colors.gold, fontSize: 12, marginTop: 4, fontWeight: '600' },
+  recCar: { color: colors.text, fontSize: 17, fontWeight: '900' },
+  recTrack: { color: colors.textDim, fontSize: 14, marginTop: 2, fontWeight: '600' },
+  recHolder: { color: colors.gold, fontSize: 12, marginTop: 4, fontWeight: '700' },
   recTime: {
-    color: colors.text,
-    fontSize: 18,
+    color: colors.accent,
+    fontSize: 22,
     fontWeight: '900',
+    fontFamily: font.display,
     fontVariant: ['tabular-nums'],
+    letterSpacing: 0.5,
   },
 });

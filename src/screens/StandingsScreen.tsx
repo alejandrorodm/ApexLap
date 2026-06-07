@@ -200,6 +200,7 @@ function ChallengeRow({
     <Pressable
       style={[styles.chRow, closed && styles.chRowClosed]}
       onPress={onPress}
+      {...({ dataSet: { anim: 'rise' } } as any)}
     >
       <View style={{ flex: 1 }}>
         <Text style={styles.chTitle}>

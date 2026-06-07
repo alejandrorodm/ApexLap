@@ -108,12 +108,17 @@ export function Card({
       <Pressable
         onPress={onPress}
         style={({ pressed }) => [styles.card, { opacity: pressed ? 0.9 : 1 }, style]}
+        {...({ dataSet: { anim: 'rise' } } as any)}
       >
         {children}
       </Pressable>
     );
   }
-  return <View style={[styles.card, style]}>{children}</View>;
+  return (
+    <View style={[styles.card, style]} {...({ dataSet: { anim: 'rise' } } as any)}>
+      {children}
+    </View>
+  );
 }
 
 export function Chip({

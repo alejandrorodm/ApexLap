@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, spacing, radius } from '../theme';
+import { colors, spacing, radius, font } from '../theme';
 import { Button, Card, Chip, SectionTitle, ScreenHeader } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import { ALL_CARS } from '../data/cars';
@@ -263,11 +263,20 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   reel: { paddingVertical: spacing.md, alignItems: 'center' },
-  reelLabel: { color: colors.textDim, fontSize: 13, fontWeight: '700', marginBottom: spacing.xs },
+  reelLabel: {
+    color: colors.textDim,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: spacing.xs,
+  },
   reelValue: {
     color: colors.text,
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: '900',
+    fontFamily: font.display,
+    letterSpacing: 0.5,
     textAlign: 'center',
   },
   reelValueSpin: { color: colors.textDim, opacity: 0.7 },
