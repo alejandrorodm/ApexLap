@@ -207,7 +207,7 @@ function friendlyAuthError(e: any): string {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: colors.bgScreen },
   content: { padding: spacing.lg, paddingTop: spacing.xxl, flexGrow: 1, justifyContent: 'center' },
   form: { width: '100%', maxWidth: 460, alignSelf: 'center' },
   hero: { alignItems: 'center', marginBottom: spacing.xl },

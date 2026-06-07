@@ -334,7 +334,7 @@ export default function ChallengeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: colors.bgScreen },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   back: { color: colors.primary, fontWeight: '700', fontSize: 15 },

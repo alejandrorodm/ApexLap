@@ -92,6 +92,35 @@ export function lapsForTrack(laps: Lap[], track: string): Lap[] {
   return byTime(laps.filter((l) => isCounted(l) && l.track === track));
 }
 
+export interface CarRecord {
+  car: string;
+  lap: Lap; // mejor vuelta de ese coche en el circuito
+  count: number; // nº de vueltas registradas con ese coche aquí
+}
+
+/**
+ * Mejor vuelta por coche dentro de un circuito concreto, ordenado de más
+ * rápido a más lento. Sirve para la vista por defecto del detalle de circuito:
+ * de un vistazo, en qué tiempo ronda cada coche en esa pista. Comparar coches
+ * distintos no es del todo justo, pero ayuda a hacerse una idea.
+ */
+export function bestPerCarOnTrack(laps: Lap[], track: string): CarRecord[] {
+  const map = new Map<string, CarRecord>();
+  for (const l of laps) {
+    if (!isCounted(l) || l.track !== track) continue;
+    const cur = map.get(l.car);
+    if (!cur) {
+      map.set(l.car, { car: l.car, lap: l, count: 1 });
+    } else {
+      cur.count += 1;
+      if (l.timeMs < cur.lap.timeMs) cur.lap = l;
+    }
+  }
+  return [...map.values()].sort(
+    (a, b) => a.lap.timeMs - b.lap.timeMs || a.car.localeCompare(b.car)
+  );
+}
+
 /** Récord (vuelta más rápida) por combinación coche+circuito. */
 export function recordsByCombo(laps: Lap[]): Record[] {
   const map = new Map<string, Record>();

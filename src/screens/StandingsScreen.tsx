@@ -5,7 +5,7 @@ import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, spacing, radius } from '../theme';
+import { colors, spacing, radius, font } from '../theme';
 import { Card, EmptyState, ScreenHeader } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import { subscribeChallenges, getChallengeBets } from '../firebase/db';
@@ -103,20 +103,37 @@ export default function StandingsScreen() {
                 <Text style={[styles.hCell, styles.numCol]}>🎯</Text>
                 <Text style={[styles.hCell, styles.ptsCol]}>Pts</Text>
               </View>
-              {table.map((r, i) => (
-                <View key={r.userId} style={styles.row}>
-                  <Text style={[styles.posCol, styles.pos]}>
-                    {MEDAL[i] ?? i + 1}
-                  </Text>
-                  <Text style={[styles.name, { flex: 1 }]} numberOfLines={1}>
-                    {r.driverName}
-                    {r.userId === userId ? ' · tú' : ''}
-                  </Text>
-                  <Text style={[styles.numCol, styles.cell]}>{r.wins}</Text>
-                  <Text style={[styles.numCol, styles.cell]}>{r.correctBets}</Text>
-                  <Text style={[styles.ptsCol, styles.pts]}>{r.points}</Text>
-                </View>
-              ))}
+              {table.map((r, i) => {
+                const mine = r.userId === userId;
+                return (
+                  <View
+                    key={r.userId}
+                    style={[
+                      styles.row,
+                      i < 3 && styles.rowTop,
+                      mine && styles.rowMine,
+                    ]}
+                  >
+                    <Text
+                      style={[styles.posCol, styles.pos, i < 3 && styles.posMedal]}
+                    >
+                      {MEDAL[i] ?? `P${i + 1}`}
+                    </Text>
+                    <Text
+                      style={[styles.name, { flex: 1 }, mine && styles.nameMine]}
+                      numberOfLines={1}
+                    >
+                      {r.driverName}
+                      {mine ? ' · tú' : ''}
+                    </Text>
+                    <Text style={[styles.numCol, styles.cell]}>{r.wins}</Text>
+                    <Text style={[styles.numCol, styles.cell]}>
+                      {r.correctBets}
+                    </Text>
+                    <Text style={[styles.ptsCol, styles.pts]}>{r.points}</Text>
+                  </View>
+                );
+              })}
             </>
           )}
         </Card>
@@ -203,12 +220,12 @@ function ChallengeRow({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: colors.bgScreen },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   sectionTitle: {
-    color: colors.textDim,
-    fontSize: 12,
-    fontWeight: '800',
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '900',
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginTop: spacing.xl,
@@ -227,20 +244,36 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.sm,
+    marginHorizontal: -spacing.sm,
+    borderRadius: radius.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  posCol: { width: 30 },
+  rowTop: { backgroundColor: 'rgba(255,214,10,0.05)' },
+  rowMine: {
+    backgroundColor: 'rgba(255,30,20,0.08)',
+    borderBottomColor: colors.primaryDim,
+  },
+  posCol: { width: 36 },
   numCol: { width: 34, textAlign: 'center' },
-  ptsCol: { width: 44, textAlign: 'right' },
-  pos: { color: colors.textDim, fontWeight: '800', fontSize: 14 },
-  name: { color: colors.text, fontSize: 14, fontWeight: '600' },
-  cell: { color: colors.textDim, fontSize: 14 },
+  ptsCol: { width: 50, textAlign: 'right' },
+  pos: {
+    color: colors.textDim,
+    fontWeight: '900',
+    fontSize: 14,
+    fontFamily: font.display,
+  },
+  posMedal: { fontSize: 18 },
+  name: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  nameMine: { color: colors.primary, fontWeight: '900' },
+  cell: { color: colors.textDim, fontSize: 14, fontWeight: '600' },
   pts: {
     color: colors.accent,
-    fontSize: 16,
+    fontSize: 19,
     fontWeight: '900',
+    fontFamily: font.display,
     fontVariant: ['tabular-nums'],
   },
   chRow: {

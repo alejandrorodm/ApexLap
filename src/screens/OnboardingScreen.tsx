@@ -181,7 +181,7 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: colors.bgScreen },
   content: { padding: spacing.lg },
   form: { width: '100%', maxWidth: 520, alignSelf: 'center' },
   brand: { marginBottom: spacing.xl },

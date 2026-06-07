@@ -215,7 +215,7 @@ function SelectField({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: colors.bgScreen },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   rowChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   select: {

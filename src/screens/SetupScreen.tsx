@@ -46,7 +46,7 @@ export default function SetupScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: colors.bgScreen },
   content: { padding: spacing.lg },
   logo: { color: colors.primary, fontSize: 16, fontWeight: '800', marginBottom: spacing.xl },
   h1: { color: colors.text, fontSize: 28, fontWeight: '900' },

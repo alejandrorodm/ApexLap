@@ -301,7 +301,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: colors.bgScreen },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   input: {
     backgroundColor: colors.surfaceAlt,

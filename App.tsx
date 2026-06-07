@@ -17,7 +17,9 @@ const navTheme = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
-    background: colors.bg,
+    // Transparente en web: deja ver el fondo inmersivo del marco en toda la
+    // pantalla. En nativo cae a un color sólido.
+    background: colors.bgScreen,
     card: colors.surface,
     primary: colors.primary,
     text: colors.text,
@@ -78,7 +80,7 @@ export default function App() {
 const styles = StyleSheet.create({
   center: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.bgScreen,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,

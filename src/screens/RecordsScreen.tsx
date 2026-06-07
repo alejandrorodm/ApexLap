@@ -339,7 +339,7 @@ function SelectField({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: colors.bgScreen },
   header: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,

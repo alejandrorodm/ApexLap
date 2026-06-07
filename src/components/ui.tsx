@@ -12,7 +12,7 @@ import {
   TextStyle,
   StyleProp,
 } from 'react-native';
-import { colors, radius, spacing, readableTextOn } from '../theme';
+import { colors, radius, spacing, readableTextOn, font, glow } from '../theme';
 
 // Input de texto que resalta el borde en rojo al enfocarlo. Reenvía todas las
 // props de TextInput y respeta el `style` que le pases (el foco va por encima).
@@ -71,21 +71,24 @@ export function Button({
       : 'transparent';
   const fg = variant === 'ghost' ? colors.textDim : colors.text;
   const isDisabled = disabled || loading;
+  const isLoud = variant === 'primary' || variant === 'danger';
   return (
     <Pressable
       onPress={onPress}
       disabled={isDisabled}
       style={({ pressed }) => [
         styles.btn,
-        { backgroundColor: bg, opacity: isDisabled ? 0.5 : pressed ? 0.85 : 1 },
+        { backgroundColor: bg, opacity: isDisabled ? 0.5 : pressed ? 0.9 : 1 },
         variant === 'ghost' && styles.btnGhost,
+        variant === 'primary' && styles.btnPrimary,
+        isLoud && !isDisabled && glow(bg, 14, 0.45),
         style,
       ]}
     >
       {loading ? (
         <ActivityIndicator color={fg} />
       ) : (
-        <Text style={[styles.btnText, { color: fg }]}>{title}</Text>
+        <Text style={[styles.btnText, { color: fg }]}>{title.toUpperCase()}</Text>
       )}
     </Pressable>
   );
@@ -134,6 +137,7 @@ export function Chip({
           backgroundColor: active ? bg : colors.surfaceAlt,
           borderColor: active ? bg : colors.border,
         },
+        active && glow(bg, 10, 0.5),
       ]}
     >
       <Text
@@ -169,7 +173,9 @@ export function ScreenHeader({
     <View style={styles.headerRow}>
       <View style={styles.headerStripe} />
       <View style={styles.headerTexts}>
-        <Text style={styles.headerTitle}>{title}</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {title.toUpperCase()}
+        </Text>
         {subtitle ? (
           <Text
             style={[styles.headerSubtitle, subtitleColor ? { color: subtitleColor } : null]}
@@ -208,14 +214,15 @@ export function EmptyState({
 
 const styles = StyleSheet.create({
   btn: {
-    height: 50,
+    height: 52,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
   },
-  btnGhost: { borderWidth: 1, borderColor: colors.border },
-  btnText: { fontSize: 16, fontWeight: '700' },
+  btnGhost: { borderWidth: 1, borderColor: colors.borderHi },
+  btnPrimary: {},
+  btnText: { fontSize: 15, fontWeight: '900', letterSpacing: 1.2 },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -224,36 +231,45 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 9,
     borderRadius: radius.pill,
     borderWidth: 1,
   },
-  chipText: { fontSize: 13, fontWeight: '600' },
+  chipText: { fontSize: 13, fontWeight: '800', letterSpacing: 0.3 },
   section: {
     color: colors.textDim,
     fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1,
+    fontWeight: '800',
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
     marginBottom: spacing.sm,
   },
   headerRow: { flexDirection: 'row', alignItems: 'stretch', gap: spacing.md },
   headerStripe: {
-    width: 4,
-    borderRadius: 2,
+    width: 5,
+    borderRadius: 3,
     backgroundColor: colors.primary,
-    marginVertical: 3,
+    marginVertical: 2,
+    ...glow(colors.primary, 8, 0.5),
   },
   stripes: { flexDirection: 'row', gap: 5, alignSelf: 'center' },
   stripe: { height: 4, borderRadius: 2 },
   headerTexts: { flex: 1, justifyContent: 'center' },
-  headerTitle: { color: colors.text, fontSize: 28, fontWeight: '900' },
+  headerTitle: {
+    color: colors.text,
+    fontSize: 30,
+    fontWeight: '900',
+    fontFamily: font.display,
+    letterSpacing: 1.5,
+  },
   headerSubtitle: {
     color: colors.primary,
-    fontSize: 14,
-    fontWeight: '700',
-    marginTop: 1,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginTop: 2,
+    textTransform: 'uppercase',
   },
   label: {
     color: colors.textDim,
@@ -261,9 +277,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: spacing.xs,
   },
-  empty: { alignItems: 'center', paddingVertical: spacing.xxl * 1.5 },
-  emptyIcon: { fontSize: 48, marginBottom: spacing.md },
-  emptyTitle: { color: colors.text, fontSize: 17, fontWeight: '700' },
+  empty: { alignItems: 'center', paddingVertical: spacing.xxl * 1.6 },
+  emptyIcon: { fontSize: 60, marginBottom: spacing.md },
+  emptyTitle: { color: colors.text, fontSize: 19, fontWeight: '800' },
   emptySub: {
     color: colors.textFaint,
     fontSize: 14,

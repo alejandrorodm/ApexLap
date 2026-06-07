@@ -1,6 +1,10 @@
-// "Detalle de circuito": leaderboard de un trazado concreto. Se llega tocando
-// una tarjeta de "Tiempos · Por circuito". Aquí sí tiene sentido comparar
-// tiempos (todos son del mismo trazado) y aquí es donde nace el pique.
+// "Detalle de circuito": se llega tocando una tarjeta de "Tiempos · Por circuito".
+//
+// Vista por defecto ("Por coche"): una fila por coche con su mejor vuelta en el
+// trazado (p.ej. "Porsche 911 · 7:32 · Alejandro R."), para ver de un vistazo en
+// qué tiempo ronda cada coche. Al tocar un coche se abre su clasificación: todas
+// las vueltas registradas con ese coche en esta pista. El toggle "Todas" muestra
+// la clasificación bruta de todo el trazado (mezclando coches).
 import React, { useMemo, useState } from 'react';
 import {
   View,
@@ -9,7 +13,6 @@ import {
   FlatList,
   Pressable,
   Alert,
-  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -18,18 +21,19 @@ import {
   RouteProp,
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, spacing, radius } from '../theme';
+import { colors, spacing, radius, font } from '../theme';
+import { useIsWideWeb } from '../responsive';
 import { Chip, EmptyState } from '../components/ui';
 import { useApp } from '../context/AppContext';
-import { lapsForTrack } from '../utils/leaderboard';
+import { lapsForTrack, bestPerCarOnTrack, CarRecord } from '../utils/leaderboard';
 import { formatTime, formatDelta, timeAgo } from '../utils/time';
 import { deleteLap } from '../firebase/db';
-import { getTrackImage } from '../data/tracks';
-import { Image } from 'react-native';
 import { Lap } from '../types';
 import { RootStackParamList } from '../navigation/types';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
+
+type DetailView = 'cars' | 'all';
 
 export default function TrackDetailScreen() {
   const navigation =
@@ -38,36 +42,35 @@ export default function TrackDetailScreen() {
   const { track } = route.params;
   const { laps, league, userId } = useApp();
   const now = Date.now();
-  const [carFilter, setCarFilter] = useState<string | null>(null);
+  const [view, setView] = useState<DetailView>('cars');
+  const [selectedCar, setSelectedCar] = useState<string | null>(null);
+  const wide = useIsWideWeb();
 
   const trackLaps = useMemo(() => lapsForTrack(laps, track), [laps, track]);
-  const trackImage = useMemo(() => getTrackImage(track), [track]);
 
-  // Coches con vueltas en este trazado, ordenados por nº de registros (más
-  // populares primero). Sirven como filtro: 1:23 con Ferrari y 1:50 con Mazda
-  // no se comparan, dentro del mismo coche sí.
-  const carsHere = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const l of trackLaps) counts.set(l.car, (counts.get(l.car) ?? 0) + 1);
-    return [...counts.entries()]
-      .sort(
-        (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
-      )
-      .map(([car, count]) => ({ car, count }));
-  }, [trackLaps]);
-
-  const displayed = useMemo(
-    () => (carFilter ? trackLaps.filter((l) => l.car === carFilter) : trackLaps),
-    [trackLaps, carFilter]
+  // Mejor vuelta por coche en este trazado, de más rápido a más lento.
+  const carRecords = useMemo(
+    () => bestPerCarOnTrack(laps, track),
+    [laps, track]
   );
-  const leaderMs = displayed[0]?.timeMs ?? null;
 
-  // Cuántos pilotos distintos han firmado vueltas (con el filtro aplicado).
+  // Vueltas del coche seleccionado (ya vienen ordenadas por tiempo).
+  const carLaps = useMemo(
+    () => (selectedCar ? trackLaps.filter((l) => l.car === selectedCar) : []),
+    [trackLaps, selectedCar]
+  );
+
+  // Cuántos pilotos distintos han firmado vueltas en el trazado.
   const driversCount = useMemo(() => {
     const set = new Set<string>();
-    for (const l of displayed) set.add(l.userId);
+    for (const l of trackLaps) set.add(l.userId);
     return set.size;
-  }, [displayed]);
+  }, [trackLaps]);
+
+  function selectView(next: DetailView) {
+    setView(next);
+    setSelectedCar(null);
+  }
 
   function confirmDelete(lap: Lap) {
     if (lap.userId !== userId || !league) return;
@@ -80,6 +83,48 @@ export default function TrackDetailScreen() {
       },
     ]);
   }
+
+  // Datos de la lista según la sub-vista activa.
+  const showingCarList = view === 'cars' && !selectedCar;
+  const lapList = view === 'all' ? trackLaps : carLaps;
+  const leaderMs = lapList[0]?.timeMs ?? null;
+
+  const header = (
+    <>
+      {/* Toggle de sub-vista: por coche (default) vs clasificación completa. */}
+      <View style={styles.viewToggle}>
+        <Chip
+          label="🚗 Por coche"
+          active={view === 'cars'}
+          onPress={() => selectView('cars')}
+          color={colors.accent}
+        />
+        <Chip
+          label="📋 Todas las vueltas"
+          active={view === 'all'}
+          onPress={() => selectView('all')}
+          color={colors.blue}
+        />
+      </View>
+
+      {/* Cabecera del coche seleccionado: vuelta atrás a la lista de coches. */}
+      {view === 'cars' && selectedCar ? (
+        <Pressable
+          style={styles.carSubHeader}
+          onPress={() => setSelectedCar(null)}
+          hitSlop={6}
+        >
+          <Text style={styles.carSubBack}>‹ Coches</Text>
+          <Text style={styles.carSubTitle} numberOfLines={1}>
+            🚗 {selectedCar}
+          </Text>
+          <Text style={styles.carSubCount}>
+            {carLaps.length} {carLaps.length === 1 ? 'vuelta' : 'vueltas'}
+          </Text>
+        </Pressable>
+      ) : null}
+    </>
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -108,81 +153,114 @@ export default function TrackDetailScreen() {
         </View>
       </View>
 
-      {/* Silueta del trazado: ayuda a reconocer el circuito de un vistazo.
-          Si todavía no hay PNG (asset o URL en src/data/tracks.ts), se pinta
-          un placeholder blanco vacío para reservar el hueco. */}
-      <View style={styles.imageBox}>
-        {trackImage ? (
-          <Image
-            source={typeof trackImage === 'string' ? { uri: trackImage } : trackImage}
-            style={styles.image}
-            resizeMode="contain"
-          />
-        ) : (
-          <View style={styles.imagePlaceholder}>
-            <Text style={styles.imagePlaceholderIcon}>🏁</Text>
-            <Text style={styles.imagePlaceholderText}>Silueta del circuito</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Filtros por coche: cada chip filtra el leaderboard a un coche concreto
-          (donde sí tiene sentido comparar tiempos entre pilotos). */}
-      {carsHere.length > 1 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.carFilterRow}
-        >
-          <Chip
-            label={`Todos (${trackLaps.length})`}
-            active={carFilter == null}
-            onPress={() => setCarFilter(null)}
-            color={colors.accent}
-          />
-          {carsHere.map(({ car, count }) => (
-            <Chip
-              key={car}
-              label={`🚗 ${car} · ${count}`}
-              active={carFilter === car}
-              onPress={() => setCarFilter(carFilter === car ? null : car)}
-              color={colors.accent}
+      {showingCarList ? (
+        <FlatList
+          key={`cars-${wide ? 2 : 1}`}
+          data={carRecords}
+          keyExtractor={(r) => r.car}
+          numColumns={wide ? 2 : 1}
+          columnWrapperStyle={wide ? styles.gridRow : undefined}
+          ListHeaderComponent={header}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item, index }) => (
+            <CarSummaryRow
+              record={item}
+              index={index}
+              grid={wide}
+              isMine={item.lap.userId === userId}
+              onPress={() => setSelectedCar(item.car)}
             />
-          ))}
-        </ScrollView>
-      ) : null}
-
-      <FlatList
-        data={displayed}
-        keyExtractor={(l) => l.id}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item, index }) => (
-          <LapRow
-            lap={item}
-            index={index}
-            leaderMs={leaderMs}
-            isMine={item.userId === userId}
-            now={now}
-            onLongPress={() => confirmDelete(item)}
-          />
-        )}
-        ListEmptyComponent={
-          carFilter ? (
-            <EmptyState
-              icon="🚗"
-              title={`Nadie ha rodado aquí con ${carFilter}`}
-              subtitle="Quita el filtro para ver todos los coches del trazado."
-            />
-          ) : (
+          )}
+          ListEmptyComponent={
             <EmptyState
               icon="🏁"
               title="Sin vueltas aquí todavía"
-              subtitle="Cuando alguien registre una vuelta en este trazado, aparecerá en esta clasificación."
+              subtitle="Cuando alguien registre una vuelta en este trazado, aparecerá agrupada por coche."
             />
-          )
-        }
-      />
+          }
+        />
+      ) : (
+        <FlatList
+          data={lapList}
+          keyExtractor={(l) => l.id}
+          ListHeaderComponent={header}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item, index }) => (
+            <LapRow
+              lap={item}
+              index={index}
+              leaderMs={leaderMs}
+              isMine={item.userId === userId}
+              now={now}
+              onLongPress={() => confirmDelete(item)}
+            />
+          )}
+          ListEmptyComponent={
+            <EmptyState
+              icon="🚗"
+              title={
+                selectedCar
+                  ? `Nadie ha rodado aquí con ${selectedCar}`
+                  : 'Sin vueltas aquí todavía'
+              }
+              subtitle="Registra una vuelta para empezar la clasificación."
+            />
+          }
+        />
+      )}
     </SafeAreaView>
+  );
+}
+
+// Fila de la vista "Por coche": un coche con su mejor vuelta en el trazado.
+// Pulsable: abre la clasificación de ese coche en esta pista.
+function CarSummaryRow({
+  record,
+  index,
+  isMine,
+  grid,
+  onPress,
+}: {
+  record: CarRecord;
+  index: number;
+  isMine: boolean;
+  grid?: boolean;
+  onPress: () => void;
+}) {
+  const { car, lap, count } = record;
+  const medal = index < 3 ? MEDALS[index] : null;
+  const podium = index < 3;
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.carCard,
+        grid && styles.carCardGrid,
+        podium && styles.carCardPodium,
+        isMine && styles.rowMine,
+      ]}
+    >
+      <View style={styles.carHeader}>
+        <View style={styles.carNameWrap}>
+          <Text style={[styles.carRank, podium && styles.carRankPodium]}>
+            {medal ?? `P${index + 1}`}
+          </Text>
+          <Text style={styles.carName} numberOfLines={1}>
+            🚗 {car}
+          </Text>
+        </View>
+        <Text style={styles.carTime}>{formatTime(lap.timeMs)}</Text>
+      </View>
+      <View style={styles.carFoot}>
+        <Text style={styles.carDriver} numberOfLines={1}>
+          👑 {lap.driverName || 'Anónimo'}
+          {isMine ? ' · tú' : ''}
+        </Text>
+        <Text style={styles.carCount}>
+          {count} {count === 1 ? 'vuelta' : 'vueltas'} ›
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -268,7 +346,7 @@ function Badge({ text, color }: { text: string; color: string }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: colors.bgScreen },
   header: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
@@ -284,9 +362,10 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 26,
+    fontSize: 25,
     fontWeight: '900',
-    letterSpacing: -0.5,
+    fontFamily: font.display,
+    letterSpacing: 0.5,
   },
   subtitle: {
     color: colors.textDim,
@@ -314,44 +393,108 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.4,
   },
-  imageBox: {
-    marginHorizontal: spacing.lg,
+  viewToggle: {
+    flexDirection: 'row',
+    gap: spacing.sm,
     marginTop: spacing.md,
-    borderRadius: radius.md,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: '#FFFFFF',
-    height: 140,
+    marginBottom: spacing.sm,
+  },
+  carSubHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  image: {
-    width: '100%',
-    height: '100%',
+  carSubBack: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '800',
   },
-  imagePlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.md,
+  carSubTitle: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '800',
   },
-  imagePlaceholderIcon: { fontSize: 34, opacity: 0.7, marginBottom: 4 },
-  imagePlaceholderText: {
-    color: '#6B7180',
+  carSubCount: {
+    color: colors.textDim,
     fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  carFilterRow: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    gap: spacing.sm,
-    alignItems: 'center',
   },
   listContent: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxl,
+  },
+  gridRow: { gap: spacing.md, alignItems: 'stretch' },
+  // Tarjeta de la vista "Por coche"
+  carCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.border,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  carCardGrid: { flex: 1 },
+  carCardPodium: { borderLeftColor: colors.accent },
+  carHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+  carNameWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: spacing.sm,
+    gap: spacing.sm,
+  },
+  carRank: {
+    color: colors.textFaint,
+    fontSize: 13,
+    fontWeight: '900',
+    fontFamily: font.display,
+    minWidth: 26,
+  },
+  carRankPodium: { color: colors.accent },
+  carName: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 19,
+    fontWeight: '900',
+  },
+  carTime: {
+    color: colors.accent,
+    fontSize: 28,
+    fontWeight: '900',
+    fontFamily: font.display,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 0.5,
+  },
+  carFoot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  carDriver: {
+    flex: 1,
+    color: colors.gold,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  carCount: {
+    color: colors.textDim,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
   row: {
     flexDirection: 'row',
@@ -368,9 +511,14 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: colors.primary,
   },
-  rankBox: { width: 36, alignItems: 'center' },
-  medal: { fontSize: 22 },
-  rankNum: { color: colors.textDim, fontSize: 16, fontWeight: '800' },
+  rankBox: { width: 38, alignItems: 'center' },
+  medal: { fontSize: 24 },
+  rankNum: {
+    color: colors.textDim,
+    fontSize: 18,
+    fontWeight: '900',
+    fontFamily: font.display,
+  },
   rowTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -385,9 +533,11 @@ const styles = StyleSheet.create({
   },
   time: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 21,
     fontWeight: '900',
+    fontFamily: font.display,
     fontVariant: ['tabular-nums'],
+    letterSpacing: 0.5,
   },
   meta: { color: colors.textDim, fontSize: 13, flex: 1, marginRight: spacing.sm },
   delta: {

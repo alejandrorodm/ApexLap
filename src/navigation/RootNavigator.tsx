@@ -73,7 +73,7 @@ export default function RootNavigator() {
         headerStyle: { backgroundColor: colors.bg },
         headerTintColor: colors.text,
         headerTitleStyle: { fontWeight: '800' },
-        contentStyle: { backgroundColor: colors.bg },
+        contentStyle: { backgroundColor: colors.bgScreen },
       }}
     >
       <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />

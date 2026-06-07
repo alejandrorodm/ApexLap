@@ -1,42 +1,48 @@
 // Marco SOLO para web: encaja la app en una columna centrada (aspecto de app
-// móvil) sobre un fondo con degradado, añade una cabecera con el branding y
-// aplica estilos globales (fuente, scrollbar oscura, hover/cursor, fundido).
+// móvil) sobre un fondo inmersivo de carrera, añade una cabecera con el branding
+// y aplica estilos globales (fuente, scrollbar oscura, hover/cursor, fundido).
 // En nativo (iOS/Android) devuelve los hijos tal cual: no cambia nada.
 import React, { useEffect } from 'react';
 import { Platform, View, Text, StyleSheet } from 'react-native';
 import { colors, spacing } from '../theme';
 import { useIsWideWeb } from '../responsive';
 
-const COLUMN_NARROW = 480; // móvil / ventana estrecha (en ancho: pantalla completa)
+const COLUMN_NARROW = 560; // móvil / ventana estrecha
+const COLUMN_WIDE = 1100; // portátil / escritorio: columna centrada y amplia
 
 const GLOBAL_CSS = `
 :root { color-scheme: dark; }
 html, body, #root { height: 100%; }
 body {
   margin: 0;
-  background: radial-gradient(1100px 620px at 50% -8%, #15171F 0%, ${colors.bgDeep} 62%) fixed;
+  background:
+    radial-gradient(820px 460px at 50% -6%, rgba(255,30,20,0.14), transparent 60%),
+    repeating-linear-gradient(115deg, rgba(255,255,255,0.016) 0 2px, transparent 2px 28px),
+    radial-gradient(1200px 760px at 50% 0%, #14161E 0%, ${colors.bgDeep} 60%),
+    ${colors.bgDeep};
+  background-attachment: fixed;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: ${colors.border}; border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
-::-webkit-scrollbar-thumb:hover { background: #3a3f4d; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: ${colors.borderHi}; background-clip: padding-box; }
 ::-webkit-scrollbar-track { background: transparent; }
 /* Botones y pulsables: cursor, transición y feedback al pasar/pulsar. */
 [role="button"] {
   cursor: pointer;
-  transition: transform .12s ease, filter .12s ease, opacity .12s ease, background-color .12s ease, border-color .12s ease;
+  transition: transform .12s ease, filter .12s ease, opacity .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease;
 }
-[role="button"]:hover { filter: brightness(1.12); }
-[role="button"]:active { transform: translateY(1px) scale(0.997); }
+[role="button"]:hover { filter: brightness(1.11); transform: translateY(-1px); }
+[role="button"]:active { transform: translateY(1px) scale(0.997); filter: brightness(1.02); }
 /* Fundido de entrada del marco. */
 @keyframes apexFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 [data-apexframe] { animation: apexFadeIn .35s ease both; }
 `;
 
 const FONTS_HREF =
-  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@700;800;900&display=swap';
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@600;700;800;900&display=swap';
 
 let injected = false;
 function injectWebStyles() {
@@ -59,6 +65,16 @@ function injectWebStyles() {
   document.head.appendChild(style);
 }
 
+function Stripes() {
+  return (
+    <View style={styles.stripes}>
+      <View style={[styles.stripe, { width: 26, backgroundColor: colors.primary }]} />
+      <View style={[styles.stripe, { width: 16, backgroundColor: colors.accent }]} />
+      <View style={[styles.stripe, { width: 9, backgroundColor: colors.text }]} />
+    </View>
+  );
+}
+
 export default function WebFrame({ children }: { children: React.ReactNode }) {
   const isWeb = Platform.OS === 'web';
   const wide = useIsWideWeb();
@@ -72,19 +88,25 @@ export default function WebFrame({ children }: { children: React.ReactNode }) {
   return (
     <View style={styles.page}>
       <View
-        style={[
-          styles.column,
-          // En ancho ocupa TODA la pantalla; en estrecho mantiene el ancho móvil.
-          { maxWidth: wide ? undefined : COLUMN_NARROW },
-        ]}
+        style={[styles.column, { maxWidth: wide ? COLUMN_WIDE : COLUMN_NARROW }]}
         {...({ dataSet: { apexframe: '' } } as any)}
       >
+        {/* Línea de acento superior (rojo→amarillo) tipo banda de meta. */}
+        <View style={styles.accentLine}>
+          <View style={[styles.accentSeg, { flex: 3, backgroundColor: colors.primary }]} />
+          <View style={[styles.accentSeg, { flex: 1, backgroundColor: colors.accent }]} />
+        </View>
+
         <View style={styles.brandBar}>
+          <Stripes />
           <Text style={styles.brand}>
             <Text style={styles.flag}>🏁 </Text>
-            <Text style={styles.brandApex}>Apex</Text>
-            <Text style={styles.brandLap}>Lap</Text>
+            <Text style={styles.brandApex}>APEX</Text>
+            <Text style={styles.brandLap}>LAP</Text>
           </Text>
+          <View style={styles.brandRight}>
+            <Text style={styles.tagline}>LEAGUE · RACING</Text>
+          </View>
         </View>
         <View style={styles.body}>{children}</View>
       </View>
@@ -96,38 +118,45 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: colors.bgDeep,
+    backgroundColor: 'transparent', // deja ver el fondo inmersivo del body
   },
   column: {
     flex: 1,
     width: '100%',
-    backgroundColor: colors.bg,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: colors.border,
-    // En react-native-web estas props se traducen a box-shadow.
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 40,
-    shadowOffset: { width: 0, height: 0 },
+    // Transparente: el degradado inmersivo del body ocupa toda la pantalla y se
+    // ve de forma continua detrás del contenido (no como una "caja" centrada).
+    backgroundColor: 'transparent',
   },
+  accentLine: { height: 3, flexDirection: 'row' },
+  accentSeg: { height: 3 },
   body: { flex: 1 },
   brandBar: {
-    height: 48,
+    height: 58,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    backgroundColor: colors.bg,
+    backgroundColor: 'transparent',
   },
   brand: {
     fontFamily: 'Orbitron, sans-serif',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '900',
-    letterSpacing: 2,
+    letterSpacing: 3,
   },
   flag: { fontSize: 16 },
   brandApex: { color: colors.text },
   brandLap: { color: colors.primary },
+  brandRight: { minWidth: 70, alignItems: 'flex-end' },
+  tagline: {
+    color: colors.textFaint,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 2,
+    fontFamily: 'Orbitron, sans-serif',
+  },
+  stripes: { flexDirection: 'row', gap: 4, minWidth: 70, alignItems: 'center' },
+  stripe: { height: 5, borderRadius: 2 },
 });

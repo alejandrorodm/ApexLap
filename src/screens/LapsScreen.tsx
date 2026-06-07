@@ -11,7 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, spacing, radius } from '../theme';
+import { colors, spacing, radius, font } from '../theme';
+import { useIsWideWeb } from '../responsive';
 import { Chip, EmptyState, ScreenHeader } from '../components/ui';
 import { PickerModal } from '../components/PickerModal';
 import { useApp } from '../context/AppContext';
@@ -46,6 +47,9 @@ export default function LapsScreen() {
   const [showPending, setShowPending] = useState(false);
   const [picker, setPicker] = useState<null | 'car' | 'track'>(null);
   const now = Date.now();
+  const wide = useIsWideWeb();
+  // En pantalla ancha, la vista por circuito se muestra en rejilla de 2 columnas.
+  const gridCols = wide && mode === 'byTrack' && !showPending ? 2 : 1;
 
   const isHost = !!league && league.createdBy === userId;
   const pendingCount = useMemo(
@@ -202,7 +206,11 @@ export default function LapsScreen() {
       </View>
 
       <FlatList
+        // La key fuerza remount al cambiar el nº de columnas (RN lo exige).
+        key={`grid-${gridCols}`}
         data={list as any[]}
+        numColumns={gridCols}
+        columnWrapperStyle={gridCols > 1 ? styles.gridRow : undefined}
         keyExtractor={(item) =>
           // En modo byTrack cada item es un TrackRecord; en el resto, un Lap.
           mode === 'byTrack' && !showPending
@@ -214,6 +222,7 @@ export default function LapsScreen() {
           mode === 'byTrack' && !showPending ? (
             <TrackRecordRow
               record={item as TrackRecord}
+              grid={gridCols > 1}
               isMine={(item as TrackRecord).lap.userId === userId}
               onPress={() =>
                 navigation.navigate('Track', {
@@ -392,11 +401,13 @@ function LapRow({
 function TrackRecordRow({
   record,
   isMine,
+  grid,
   onPress,
   onLongPress,
 }: {
   record: TrackRecord;
   isMine: boolean;
+  grid?: boolean;
   onPress: () => void;
   onLongPress: () => void;
 }) {
@@ -406,14 +417,23 @@ function TrackRecordRow({
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={350}
-      style={[styles.trackCard, isMine && styles.rowMine]}
+      style={[
+        styles.trackCard,
+        grid && styles.trackCardGrid,
+        isMine && styles.trackCardMine,
+      ]}
     >
       <View style={styles.trackHeader}>
         <Text style={styles.trackName} numberOfLines={1}>
           📍 {lap.track}
         </Text>
-        <Text style={styles.trackTime}>{formatTime(lap.timeMs)}</Text>
+        <Text style={styles.trackCount}>
+          {count} {count === 1 ? 'vuelta' : 'vueltas'} ›
+        </Text>
       </View>
+
+      <Text style={styles.trackTime}>{formatTime(lap.timeMs)}</Text>
+
       <View style={styles.trackFoot}>
         <Text style={styles.trackCar} numberOfLines={1}>
           🚗 {lap.car}
@@ -423,22 +443,18 @@ function TrackRecordRow({
           {isMine ? ' · tú' : ''}
         </Text>
       </View>
-      <View style={styles.trackMetaRow}>
-        <View style={styles.badges}>
-          {lap.assists ? (
-            <Badge text="ayudas" color={colors.textFaint} />
-          ) : (
-            <Badge text="sin ayudas" color={colors.green} />
-          )}
-          {lap.conditions === 'wet' ? (
-            <Badge text="mojado" color={colors.blue} />
-          ) : lap.conditions === 'mixed' ? (
-            <Badge text="mixto" color={colors.blue} />
-          ) : null}
-        </View>
-        <Text style={styles.trackCount}>
-          {count} {count === 1 ? 'vuelta' : 'vueltas'} ›
-        </Text>
+
+      <View style={styles.badges}>
+        {lap.assists ? (
+          <Badge text="ayudas" color={colors.textFaint} />
+        ) : (
+          <Badge text="sin ayudas" color={colors.green} />
+        )}
+        {lap.conditions === 'wet' ? (
+          <Badge text="mojado" color={colors.blue} />
+        ) : lap.conditions === 'mixed' ? (
+          <Badge text="mixto" color={colors.blue} />
+        ) : null}
       </View>
     </Pressable>
   );
@@ -453,7 +469,7 @@ function Badge({ text, color }: { text: string; color: string }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: colors.bgScreen },
   header: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
@@ -477,9 +493,14 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: colors.primary,
   },
-  rankBox: { width: 34, alignItems: 'center' },
-  medal: { fontSize: 22 },
-  rankNum: { color: colors.textDim, fontSize: 16, fontWeight: '800' },
+  rankBox: { width: 38, alignItems: 'center' },
+  medal: { fontSize: 24 },
+  rankNum: {
+    color: colors.textDim,
+    fontSize: 18,
+    fontWeight: '900',
+    fontFamily: font.display,
+  },
   dot: { color: colors.textFaint, fontSize: 18 },
   rowTop: {
     flexDirection: 'row',
@@ -489,9 +510,11 @@ const styles = StyleSheet.create({
   driver: { color: colors.text, fontSize: 15, fontWeight: '700', flex: 1, marginRight: spacing.sm },
   time: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 21,
     fontWeight: '900',
+    fontFamily: font.display,
     fontVariant: ['tabular-nums'],
+    letterSpacing: 0.5,
   },
   meta: { color: colors.textDim, fontSize: 13, flex: 1, marginRight: spacing.sm },
   delta: { color: colors.primary, fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
@@ -540,33 +563,46 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   fabText: { color: colors.text, fontSize: 32, fontWeight: '300', marginTop: -2 },
+  // Rejilla de circuitos en pantalla ancha
+  gridRow: { gap: spacing.md, alignItems: 'stretch' },
   // Tarjeta del modo "Por circuito"
   trackCard: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.accent,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  trackCardGrid: { flex: 1 },
+  trackCardMine: {
+    borderColor: colors.primaryDim,
+    borderLeftColor: colors.primary,
   },
   trackHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.xs,
+    gap: spacing.sm,
   },
   trackName: {
     flex: 1,
-    marginRight: spacing.sm,
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 19,
+    fontWeight: '900',
+    letterSpacing: 0.3,
   },
   trackTime: {
     color: colors.accent,
-    fontSize: 22,
+    fontSize: 38,
     fontWeight: '900',
+    fontFamily: font.display,
     fontVariant: ['tabular-nums'],
+    letterSpacing: 0.5,
+    marginVertical: 4,
   },
   trackFoot: {
     flexDirection: 'row',
@@ -576,24 +612,17 @@ const styles = StyleSheet.create({
   },
   trackCar: {
     flex: 1,
-    color: colors.textDim,
-    fontSize: 14,
-    fontWeight: '600',
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '800',
   },
   trackDriver: {
     color: colors.gold,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  trackMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.xs,
-    gap: spacing.sm,
+    fontSize: 14,
+    fontWeight: '800',
   },
   trackCount: {
-    color: colors.accent,
+    color: colors.textDim,
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.4,

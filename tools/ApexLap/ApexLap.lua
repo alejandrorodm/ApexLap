@@ -41,7 +41,13 @@ local S = {
   -- true en cuanto se ha intentado el auto-login de esta sesión (con éxito o no),
   -- para no reintentar en bucle ni re-entrar si el usuario cerró sesión a mano.
   autoLoginTried = false,
+  -- Piques ABIERTOS de la liga (cache). Si subes una vuelta cuyo coche+pista
+  -- coincide con uno, se asocia a él (cuenta para ese pique). Se refresca tras
+  -- el login y cada pocos segundos en script.update.
+  challenges = {},
 }
+
+local challengeTimer = 999 -- fuerza un primer fetch en cuanto haya sesión
 
 -- claves exactas ya subidas (anti-duplicado de la MISMA vuelta)
 local seen = {}
@@ -206,6 +212,52 @@ local function trackDisplayName(trackId, trackCfg)
 end
 
 -- ── Firebase: login, refresco, perfil, subida ────────────────────────────────
+
+-- Lee los piques ABIERTOS de la liga y los cachea en S.challenges. Un pique sin
+-- campo `status` se trata como abierto (compatibilidad con piques antiguos).
+local function fetchChallenges()
+  if not S.leagueId or not S.token then return end
+  local url = FIRESTORE .. '/projects/' .. PROJECT
+    .. '/databases/(default)/documents/leagues/' .. S.leagueId
+    .. '/challenges?pageSize=100'
+  web.request('GET', url, { ['Authorization'] = 'Bearer ' .. S.token }, '',
+    function(err, res)
+      if err or (res and res.status >= 400) then
+        log('challenges error: ' .. tostring(err or (res and res.body)))
+        return
+      end
+      local d = JSON.parse(res.body)
+      local list = {}
+      for _, docu in ipairs((d and d.documents) or {}) do
+        local f = docu.fields or {}
+        local status = f.status and f.status.stringValue or 'open'
+        if status ~= 'closed' then
+          list[#list + 1] = {
+            id = tostring(docu.name):match('([^/]+)$'),
+            car = f.car and f.car.stringValue or '',
+            track = f.track and f.track.stringValue or '',
+            createdAt = tonumber(f.createdAt and f.createdAt.integerValue or '0') or 0,
+          }
+        end
+      end
+      S.challenges = list
+      log('piques activos: ' .. tostring(#list))
+    end)
+end
+
+-- ID del pique abierto que casa con este coche+pista (el más reciente si hay
+-- varios). Match tolerante con normName, igual que el catálogo. nil si ninguno.
+local function findOpenChallenge(car, track)
+  local cn, tn = normName(car), normName(track)
+  local bestId, bestAt = nil, -1
+  for _, c in ipairs(S.challenges or {}) do
+    if normName(c.car) == cn and normName(c.track) == tn and c.createdAt > bestAt then
+      bestId, bestAt = c.id, c.createdAt
+    end
+  end
+  return bestId
+end
+
 local function fetchProfile()
   local url = FIRESTORE .. '/projects/' .. PROJECT
     .. '/databases/(default)/documents/profiles/' .. S.uid
@@ -227,6 +279,8 @@ local function fetchProfile()
       S.status = 'Listo ✓ Pilotando como ' .. (S.driverName or '?')
         .. '. Da vueltas limpias y se subirán solas.'
       log('perfil OK, liga ' .. S.leagueId)
+      challengeTimer = 0
+      fetchChallenges() -- carga inicial de piques abiertos
     end)
 end
 
@@ -337,6 +391,12 @@ local function uploadLap(lap, isRetry)
     status = { stringValue = 'verified' },
     createdAt = { integerValue = tostring(nowMs()) },
   }
+  -- ¿Hay un pique abierto con este coche+pista? Si lo hay, la vuelta cuenta para él.
+  local cid = findOpenChallenge(lap.car, lap.track)
+  if cid then
+    fields.challengeId = { stringValue = cid }
+    log('vuelta asociada al pique ' .. cid)
+  end
   local url = FIRESTORE .. '/projects/' .. PROJECT
     .. '/databases/(default)/documents/leagues/' .. S.leagueId .. '/laps'
   web.request('POST', url,
@@ -354,8 +414,12 @@ local function uploadLap(lap, isRetry)
         return
       end
       remember(lap.key)
-      bestByCombo[lap.combo] = lap.timeMs -- nuevo PB de ese combo
-      saveBest()
+      -- Mantén como PB local solo el más rápido: una vuelta de pique puede ser
+      -- más lenta que tu mejor histórico y no debe pisarlo.
+      if not bestByCombo[lap.combo] or lap.timeMs < bestByCombo[lap.combo] then
+        bestByCombo[lap.combo] = lap.timeMs
+        saveBest()
+      end
       S.uploadedCount = S.uploadedCount + 1
       S.status = 'Subida ✓ ' .. fmt(lap.timeMs) .. ' — ' .. lap.car .. ' @ ' .. lap.track
       log('subida: ' .. lap.key)
@@ -409,9 +473,12 @@ local function detectLaps()
   if seen[key] then return end -- misma vuelta exacta ya tratada
 
   -- MENOS ESCRITURAS: en modo "solo mejores", descarta si no mejora tu PB.
+  -- EXCEPCIÓN: si hay un pique abierto con este coche+pista, la subimos igual
+  -- aunque no sea tu mejor, para que cuente en ese pique.
   if cfg.onlyBest then
     local best = bestByCombo[combo]
-    if best and t >= best then
+    if best and t >= best
+       and not findOpenChallenge(prettify(carId), trackDisplayName(trackId, trackCfg)) then
       S.status = 'Vuelta ' .. fmt(t) .. ' — no mejora tu PB (' .. fmt(best) .. ').'
       log('descartada (no PB): ' .. key)
       return
@@ -462,7 +529,10 @@ local function scanExistingBest()
   if seen[key] then return end
   if cfg.onlyBest then
     local best = bestByCombo[combo]
-    if best and t >= best then return end -- ya tenemos ese tiempo (o mejor)
+    if best and t >= best
+       and not findOpenChallenge(prettify(carId), trackDisplayName(trackId, trackCfg)) then
+      return -- ya tenemos ese tiempo (o mejor) y no hay pique que lo reclame
+    end
   end
 
   local conditions = 'dry'
@@ -495,6 +565,14 @@ function script.update(dt)
   end
 
   if not S.loggedIn or not S.leagueId then return end
+
+  -- Refresca la lista de piques abiertos cada ~20 s (por si se crea/cierra uno
+  -- mientras juegas), para asociar bien las vueltas nuevas.
+  challengeTimer = challengeTimer + (dt or 0)
+  if challengeTimer >= 20 then
+    challengeTimer = 0
+    pcall(fetchChallenges)
+  end
 
   local okS = pcall(scanExistingBest)
   if not okS then log('scanExistingBest error') end

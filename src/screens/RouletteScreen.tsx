@@ -253,7 +253,7 @@ function Reel({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: colors.bgScreen },
   content: { padding: spacing.lg },
   headerWrap: { marginBottom: spacing.lg },
   reels: {
