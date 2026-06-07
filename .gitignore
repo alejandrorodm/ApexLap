@@ -33,6 +33,12 @@ yarn-error.*
 # local env files
 .env*.local
 
+# SECRETOS: claves de cuenta de servicio, tokens, etc. NUNCA subir.
+.secrets/
+*serviceaccount*.json
+*-adminsdk-*.json
+google-services*.local.json
+
 # typescript
 *.tsbuildinfo
 
