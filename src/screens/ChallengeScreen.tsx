@@ -16,7 +16,7 @@ import {
   RouteProp,
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, spacing, radius } from '../theme';
+import { colors, spacing, radius, font } from '../theme';
 import { Button, Card } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import {
@@ -179,8 +179,14 @@ export default function ChallengeScreen() {
                 isClosed ? styles.badgeClosed : styles.badgeOpen,
               ]}
             >
+              {!isClosed ? (
+                <View
+                  style={styles.badgeDot}
+                  {...({ dataSet: { anim: 'blink' } } as any)}
+                />
+              ) : null}
               <Text style={styles.badgeText}>
-                {isClosed ? 'Cerrado' : 'Abierto'}
+                {isClosed ? 'CERRADO' : 'EN JUEGO'}
               </Text>
             </View>
           </View>
@@ -306,10 +312,17 @@ export default function ChallengeScreen() {
           ) : (
             ranking.map((l, i) => (
               <View key={l.id} style={styles.lapRow}>
-                <Text style={styles.lapPos}>
-                  {i === 0 ? '🏆' : i + 1}
+                <Text style={[styles.lapPos, i === 0 && styles.lapPosWin]}>
+                  {i === 0 ? '🏆' : `P${i + 1}`}
                 </Text>
-                <Text style={[styles.lapName, { flex: 1 }]} numberOfLines={1}>
+                <Text
+                  style={[
+                    styles.lapName,
+                    { flex: 1 },
+                    i === 0 && styles.lapNameWin,
+                  ]}
+                  numberOfLines={1}
+                >
                   {l.driverName}
                   {l.userId === userId ? ' · tú' : ''}
                 </Text>
@@ -337,42 +350,59 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bgScreen },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  back: { color: colors.primary, fontWeight: '700', fontSize: 15 },
-  headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  car: { color: colors.text, fontSize: 20, fontWeight: '900', flex: 1 },
-  track: { color: colors.textDim, fontSize: 15, marginTop: 2 },
-  meta: { color: colors.textFaint, fontSize: 12, marginTop: 6 },
+  back: { color: colors.primary, fontWeight: '800', fontSize: 15 },
+  headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  car: {
+    color: colors.text,
+    fontSize: 24,
+    fontWeight: '900',
+    fontFamily: font.display,
+    letterSpacing: 0.5,
+    flex: 1,
+  },
+  track: { color: colors.textDim, fontSize: 16, marginTop: 4, fontWeight: '600' },
+  meta: { color: colors.textFaint, fontSize: 13, marginTop: 6 },
   badge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
     borderRadius: radius.pill,
     borderWidth: 1,
   },
   badgeOpen: { borderColor: colors.green, backgroundColor: '#0f2417' },
   badgeClosed: { borderColor: colors.textFaint, backgroundColor: colors.surfaceAlt },
-  badgeText: { color: colors.text, fontSize: 11, fontWeight: '800' },
+  badgeDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.green },
+  badgeText: { color: colors.text, fontSize: 11, fontWeight: '900', letterSpacing: 0.6 },
   winnerBox: {
     marginTop: spacing.md,
     padding: spacing.md,
     borderRadius: radius.md,
     backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
+    borderLeftWidth: 4,
     borderColor: colors.gold,
   },
-  winnerText: { color: colors.gold, fontSize: 16, fontWeight: '900' },
+  winnerText: {
+    color: colors.gold,
+    fontSize: 18,
+    fontWeight: '900',
+    fontFamily: font.display,
+  },
   winnerPts: { color: colors.textDim, fontSize: 12, marginTop: 4 },
   sectionTitle: {
-    color: colors.textDim,
-    fontSize: 12,
-    fontWeight: '800',
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '900',
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginTop: spacing.xl,
     marginBottom: spacing.sm,
   },
-  hint: { color: colors.textFaint, fontSize: 14, lineHeight: 20 },
-  myBet: { color: colors.text, fontSize: 15, marginTop: spacing.sm },
-  myBetName: { color: colors.accent, fontWeight: '800' },
+  hint: { color: colors.textFaint, fontSize: 15, lineHeight: 21 },
+  myBet: { color: colors.text, fontSize: 16, marginTop: spacing.sm },
+  myBetName: { color: colors.accent, fontWeight: '900' },
   picker: { marginTop: spacing.sm, gap: spacing.xs },
   option: {
     flexDirection: 'row',
@@ -403,17 +433,28 @@ const styles = StyleSheet.create({
   lapRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
     gap: spacing.sm,
   },
-  lapPos: { color: colors.textDim, fontWeight: '800', width: 26, textAlign: 'center' },
-  lapName: { color: colors.text, fontSize: 14 },
-  lapTime: {
-    color: colors.text,
-    fontSize: 16,
+  lapPos: {
+    color: colors.textDim,
     fontWeight: '900',
+    fontSize: 15,
+    fontFamily: font.display,
+    width: 34,
+    textAlign: 'center',
+  },
+  lapPosWin: { fontSize: 20 },
+  lapName: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  lapNameWin: { color: colors.gold, fontWeight: '900' },
+  lapTime: {
+    color: colors.accent,
+    fontSize: 21,
+    fontWeight: '900',
+    fontFamily: font.display,
     fontVariant: ['tabular-nums'],
+    letterSpacing: 0.5,
   },
 });

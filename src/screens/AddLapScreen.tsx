@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, spacing, radius } from '../theme';
+import { colors, spacing, radius, font } from '../theme';
 import { Button, Card, Label, Chip } from '../components/ui';
 import { PickerModal, PickerGroup, PickerItem } from '../components/PickerModal';
 import { useApp } from '../context/AppContext';
@@ -126,8 +126,17 @@ export default function AddLapScreen({ navigation, route }: Props) {
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {params.challengeId ? (
-            <View style={styles.challengeBanner}>
-              <Text style={styles.challengeText}>🎰 Registrando vuelta de un pique</Text>
+            <View
+              style={styles.challengeBanner}
+              {...({ dataSet: { anim: 'rise' } } as any)}
+            >
+              <View
+                style={styles.bannerDot}
+                {...({ dataSet: { anim: 'blink' } } as any)}
+              />
+              <Text style={styles.challengeText}>
+                🎰 Registrando vuelta de un pique
+              </Text>
             </View>
           ) : null}
 
@@ -154,7 +163,7 @@ export default function AddLapScreen({ navigation, route }: Props) {
             keyboardType="numbers-and-punctuation"
             style={[styles.input, styles.timeInput]}
           />
-          <Text style={styles.hint}>
+          <Text style={[styles.hint, parsedMs != null && styles.hintOk]}>
             {parsedMs != null
               ? `✓ ${formatTime(parsedMs)}`
               : 'Formato: m:ss.mmm  (también valen "102.356" o ms sueltos)'}
@@ -254,14 +263,21 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bgScreen },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   challengeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.accent,
-    padding: spacing.md,
+    borderColor: colors.border,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.accent,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
     marginBottom: spacing.lg,
   },
-  challengeText: { color: colors.accent, fontWeight: '700', textAlign: 'center' },
+  bannerDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.primary },
+  challengeText: { color: colors.accent, fontWeight: '900', fontSize: 15 },
   input: {
     backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
@@ -269,32 +285,43 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     color: colors.text,
     paddingHorizontal: spacing.md,
-    height: 50,
-    fontSize: 16,
+    height: 54,
+    fontSize: 17,
     marginBottom: spacing.xs,
   },
   timeInput: {
-    fontSize: 24,
+    height: 76,
+    fontSize: 40,
     fontWeight: '900',
+    fontFamily: font.display,
     fontVariant: ['tabular-nums'],
+    letterSpacing: 1,
+    color: colors.accent,
     textAlign: 'center',
   },
-  notes: { height: 80, paddingTop: spacing.md, textAlignVertical: 'top' },
+  notes: { height: 88, paddingTop: spacing.md, fontSize: 16, textAlignVertical: 'top' },
   hint: { color: colors.textFaint, fontSize: 13, marginBottom: spacing.lg },
+  hintOk: {
+    color: colors.green,
+    fontSize: 16,
+    fontWeight: '900',
+    fontFamily: font.display,
+    letterSpacing: 0.5,
+  },
   select: {
     backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
-    height: 50,
+    height: 54,
     paddingHorizontal: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.lg,
   },
-  selectText: { color: colors.text, fontSize: 16, flex: 1 },
-  selectPlaceholder: { color: colors.textFaint },
+  selectText: { color: colors.text, fontSize: 17, fontWeight: '600', flex: 1 },
+  selectPlaceholder: { color: colors.textFaint, fontWeight: '400' },
   chevron: { color: colors.textDim, fontSize: 16 },
   rowChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
 });
