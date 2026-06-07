@@ -23,6 +23,9 @@ local cfg = ac.storage{
 }
 local uploadedStore = ac.storage{ keys = '' } -- claves exactas ya subidas (';')
 local bestStore = ac.storage{ best = '' }      -- mejor tiempo por combo
+-- Entradas de catálogo (coche/circuito) ya creadas en Firestore, para no
+-- repetir POSTs. Formato: "cars\tnombre" / "tracks\tnombre", separadas por '\n'.
+local catalogStore = ac.storage{ catalog = '' }
 
 -- ── Estado en memoria ────────────────────────────────────────────────────────
 local S = {
@@ -59,6 +62,72 @@ end
 local lastLapCount = -1
 local lapInvalidated = false
 local lastScanCombo = nil -- último combo escaneado al iniciar / cambiar de coche-pista
+
+-- ── Catálogo vanilla (para no marcar como MOD lo que ya viene con el juego) ──
+-- Las claves están NORMALIZADAS (lower, sin separador "·") para tolerar la
+-- diferencia entre lo que escribe el mod ("Silverstone · Gp") y el nombre
+-- vanilla ("Silverstone · GP"). Si añades coches/circuitos al catálogo base
+-- (src/data/*.ts), recuerda actualizar también estas listas.
+local function normName(s)
+  s = (s or ''):lower()
+  s = s:gsub('%s*·%s*', ' ')
+  s = s:gsub('%s+', ' ')
+  s = s:gsub('^%s+', ''):gsub('%s+$', '')
+  return s
+end
+
+local VANILLA_CARS_NORM = {}
+do
+  local list = {
+    'Abarth 500 EsseEsse', 'Abarth 500 EsseEsse Step 1',
+    'Alfa Romeo Giulietta QV', 'Alfa Romeo MiTo QV', 'Audi R8 V10 plus',
+    'BMW 1M', 'BMW 1M Stage 3', 'BMW M3 E92', 'BMW Z4',
+    'Ferrari 458 Italia', 'Ferrari F40', 'KTM X-Bow R',
+    'Lotus Elise SC', 'Lotus Evora S', 'Lotus Exige S', 'Lotus Exige S Roadster',
+    'McLaren MP4-12C', 'Mercedes-Benz SLS AMG', 'Shelby Cobra 427 S/C', 'Toyota GT86',
+    'Ferrari LaFerrari', 'Ferrari 599XX EVO', 'McLaren P1', 'Pagani Huayra', 'Pagani Zonda R',
+    'BMW M3 GT2', 'BMW Z4 GT3', 'Ferrari 458 Italia GT2', 'Lotus Evora GTC', 'Lotus Evora GTE',
+    'McLaren MP4-12C GT3', 'Mercedes-Benz SLS AMG GT3',
+    'Lotus 2-Eleven', 'Lotus 2-Eleven GT4', 'Lotus Evora GX', 'Lotus Evora GT4',
+    'Lotus Exige 240R', 'Lotus Exige Scura', 'Lotus Exige V6 Cup',
+    'BMW M3 E30', 'BMW M3 E30 Group A', 'BMW M3 E30 Drift',
+    'Classic Team Lotus Type 49', 'Lotus 98T',
+    'Lotus Exos 125', 'Lotus Exos 125 S1', 'Tatuus FA01 (Formula Abarth)',
+  }
+  for _, n in ipairs(list) do VANILLA_CARS_NORM[normName(n)] = true end
+end
+
+local VANILLA_TRACKS_NORM = {}
+do
+  local list = {
+    'Monza · GP', 'Monza · Junior', 'Monza · 1966 (sin chicanes)',
+    'Spa-Francorchamps · GP', 'Nürburgring · GP', 'Nürburgring · Sprint',
+    'Silverstone · GP', 'Silverstone · International', 'Silverstone · National', 'Silverstone · 1967',
+    'Brands Hatch · GP', 'Brands Hatch · Indy',
+    'Barcelona-Catalunya · GP', 'Barcelona-Catalunya · Moto',
+    'Red Bull Ring · GP', 'Red Bull Ring · National',
+    'Imola · GP', 'Mugello · GP',
+    'Vallelunga · GP', 'Vallelunga · Club', 'Vallelunga · Sin chicane',
+    'Magione · Full', 'Zandvoort · GP', 'Laguna Seca · Full',
+    'Highlands · Long', 'Highlands · Short', 'Highlands · Drift',
+    'Black Cat County · Long', 'Black Cat County · Short',
+    'Trento-Bondone · Hillclimb', 'Drift · Track', 'Fiorano · Full',
+  }
+  for _, n in ipairs(list) do VANILLA_TRACKS_NORM[normName(n)] = true end
+end
+
+-- Entradas de catálogo ya creadas en Firestore por este PC, en memoria.
+local catalogSeen = {}
+for line in (catalogStore.catalog or ''):gmatch('[^\n]+') do
+  catalogSeen[line] = true
+end
+local function rememberCatalog(kind, name)
+  local k = kind .. '\t' .. name
+  if catalogSeen[k] then return end
+  catalogSeen[k] = true
+  catalogStore.catalog = (catalogStore.catalog == '' and k)
+    or (catalogStore.catalog .. '\n' .. k)
+end
 
 -- ── Utilidades ───────────────────────────────────────────────────────────────
 local function log(msg)
@@ -103,6 +172,37 @@ local function fmt(ms)
   local s = math.floor((ms % 60000) / 1000)
   local mil = ms % 1000
   return string.format('%d:%02d.%03d', m, s, mil)
+end
+
+-- Resuelve el ID interno de pista y su layout. CSP moderno expone funciones
+-- globales (`ac.getTrackID`/`ac.getTrackLayout`); en versiones antiguas se
+-- leían como campos de `sim`. Si no hay ID, devolvemos nil para descartar la
+-- subida en vez de meter un nombre basura ("Circuito").
+local function resolveTrack(sim)
+  local trackId, trackCfg
+  if ac.getTrackID then
+    local ok, v = pcall(ac.getTrackID)
+    if ok then trackId = v end
+  end
+  if not trackId or trackId == '' then
+    trackId = safeGet(sim, 'trackId') or safeGet(sim, 'track')
+  end
+  if ac.getTrackLayout then
+    local ok, v = pcall(ac.getTrackLayout)
+    if ok then trackCfg = v end
+  end
+  if not trackCfg then trackCfg = safeGet(sim, 'trackConfig') end
+  if trackId == '' then trackId = nil end
+  if trackCfg == '' then trackCfg = nil end
+  return trackId, trackCfg
+end
+
+-- Convierte (trackId, trackCfg) en el nombre para mostrar/guardar, con " · ".
+local function trackDisplayName(trackId, trackCfg)
+  if trackCfg and trackCfg ~= '' then
+    return prettify(trackId) .. ' · ' .. prettify(trackCfg)
+  end
+  return prettify(trackId)
 end
 
 -- ── Firebase: login, refresco, perfil, subida ────────────────────────────────
@@ -178,6 +278,48 @@ local function refreshToken(after)
     end)
 end
 
+-- Garantiza que `name` (coche o circuito) está en el catálogo de la liga.
+-- - Si es un nombre vanilla, no crea nada (la app ya lo lista).
+-- - Si ya lo hemos creado desde este PC, tampoco.
+-- - El resto: POST a leagues/{id}/{kind} con kind:'mod'. Si falla por 401,
+--   refresca el token y reintenta una vez (igual que uploadLap).
+local function ensureCatalogEntry(kind, name, isRetry)
+  if not name or name == '' then return end
+  if not S.uid or not S.leagueId or not S.token then return end
+  local vanilla = (kind == 'cars') and VANILLA_CARS_NORM or VANILLA_TRACKS_NORM
+  if vanilla[normName(name)] then return end
+  local key = kind .. '\t' .. name
+  if catalogSeen[key] then return end
+
+  local fields = {
+    name = { stringValue = name },
+    kind = { stringValue = 'mod' },
+    createdBy = { stringValue = S.uid },
+    createdAt = { integerValue = tostring(nowMs()) },
+  }
+  if S.driverName and S.driverName ~= '' then
+    fields.createdByName = { stringValue = S.driverName }
+  end
+  local url = FIRESTORE .. '/projects/' .. PROJECT
+    .. '/databases/(default)/documents/leagues/' .. S.leagueId .. '/' .. kind
+  web.request('POST', url,
+    { ['Authorization'] = 'Bearer ' .. S.token, ['Content-Type'] = 'application/json' },
+    JSON.stringify{ fields = fields },
+    function(err, res)
+      if res and res.status == 401 and not isRetry then
+        refreshToken(function() ensureCatalogEntry(kind, name, true) end)
+        return
+      end
+      if err or (res and res.status >= 400) then
+        log('catalog error (' .. kind .. ' ' .. name .. '): '
+          .. tostring(err or (res and res.body)))
+        return
+      end
+      rememberCatalog(kind, name)
+      log('catalog +' .. kind .. ' ' .. name)
+    end)
+end
+
 local function uploadLap(lap, isRetry)
   local fields = {
     userId = { stringValue = S.uid },
@@ -217,6 +359,10 @@ local function uploadLap(lap, isRetry)
       S.uploadedCount = S.uploadedCount + 1
       S.status = 'Subida ✓ ' .. fmt(lap.timeMs) .. ' — ' .. lap.car .. ' @ ' .. lap.track
       log('subida: ' .. lap.key)
+      -- Mete el coche/circuito en el catálogo de la liga (etiqueta MOD) si no
+      -- son vanilla. Idempotente: se cachea en disco para no repetir POSTs.
+      ensureCatalogEntry('cars', lap.car, false)
+      ensureCatalogEntry('tracks', lap.track, false)
     end)
 end
 
@@ -249,9 +395,14 @@ local function detectLaps()
   end
 
   local carId = ac.getCarID(0)
-  local trackId = safeGet(sim, 'trackId') or safeGet(sim, 'track') or 'circuito'
-  local trackCfg = safeGet(sim, 'trackConfig') or ''
-  local trackFull = (#trackCfg > 0) and (trackId .. ' ' .. trackCfg) or trackId
+  local trackId, trackCfg = resolveTrack(sim)
+  if not trackId then
+    -- Sin ID de pista preferimos abortar antes que subir "Circuito" como nombre.
+    -- Pasa típicamente si la API de CSP cambia o la sesión todavía no ha cargado.
+    log('vuelta descartada: sin ID de pista (ac.getTrackID no disponible)')
+    return
+  end
+  local trackFull = trackCfg and (trackId .. ' ' .. trackCfg) or trackId
   local combo = trackFull .. '|' .. tostring(carId)
   local key = combo .. '|' .. tostring(t)
 
@@ -277,7 +428,7 @@ local function detectLaps()
   uploadLap({
     timeMs = t,
     car = prettify(carId),
-    track = prettify(trackFull),
+    track = trackDisplayName(trackId, trackCfg),
     conditions = conditions,
     key = key,
     combo = combo,
@@ -294,9 +445,9 @@ local function scanExistingBest()
   if not car then return end
   local carId = ac.getCarID(0)
   if not carId then return end
-  local trackId = safeGet(sim, 'trackId') or safeGet(sim, 'track') or 'circuito'
-  local trackCfg = safeGet(sim, 'trackConfig') or ''
-  local trackFull = (#trackCfg > 0) and (trackId .. ' ' .. trackCfg) or trackId
+  local trackId, trackCfg = resolveTrack(sim)
+  if not trackId then return end -- sin ID claro, esperar al siguiente tick
+  local trackFull = trackCfg and (trackId .. ' ' .. trackCfg) or trackId
   local combo = trackFull .. '|' .. tostring(carId)
   if combo == lastScanCombo then return end -- ya escaneado este combo
   lastScanCombo = combo
@@ -324,7 +475,7 @@ local function scanExistingBest()
   uploadLap({
     timeMs = t,
     car = prettify(carId),
-    track = prettify(trackFull),
+    track = trackDisplayName(trackId, trackCfg),
     conditions = conditions,
     key = key,
     combo = combo,

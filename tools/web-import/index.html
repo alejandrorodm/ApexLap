@@ -289,6 +289,50 @@ const MAX_LAP_MS = 3_600_000;
 // Mismos prefijos que el subidor Python para limpiar ids internos de AC.
 const PREFIXES = ['ks_', 'rss_', 'tatuusfa1_', 'abarth500_', 'abarth500s_'];
 
+// Catálogo vanilla — debe seguir a src/data/cars.ts y src/data/tracks.ts.
+// Se guardan NORMALIZADOS (lower, sin separador "·") para detectar que un
+// nombre subido es ya vanilla aunque el formato no coincida exactamente
+// (p.ej. "Silverstone · Gp" vs "Silverstone · GP").
+function normName(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/\s*·\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const VANILLA_CARS_NORM = new Set([
+  'Abarth 500 EsseEsse', 'Abarth 500 EsseEsse Step 1',
+  'Alfa Romeo Giulietta QV', 'Alfa Romeo MiTo QV', 'Audi R8 V10 plus',
+  'BMW 1M', 'BMW 1M Stage 3', 'BMW M3 E92', 'BMW Z4',
+  'Ferrari 458 Italia', 'Ferrari F40', 'KTM X-Bow R',
+  'Lotus Elise SC', 'Lotus Evora S', 'Lotus Exige S', 'Lotus Exige S Roadster',
+  'McLaren MP4-12C', 'Mercedes-Benz SLS AMG', 'Shelby Cobra 427 S/C', 'Toyota GT86',
+  'Ferrari LaFerrari', 'Ferrari 599XX EVO', 'McLaren P1', 'Pagani Huayra', 'Pagani Zonda R',
+  'BMW M3 GT2', 'BMW Z4 GT3', 'Ferrari 458 Italia GT2', 'Lotus Evora GTC', 'Lotus Evora GTE',
+  'McLaren MP4-12C GT3', 'Mercedes-Benz SLS AMG GT3',
+  'Lotus 2-Eleven', 'Lotus 2-Eleven GT4', 'Lotus Evora GX', 'Lotus Evora GT4',
+  'Lotus Exige 240R', 'Lotus Exige Scura', 'Lotus Exige V6 Cup',
+  'BMW M3 E30', 'BMW M3 E30 Group A', 'BMW M3 E30 Drift',
+  'Classic Team Lotus Type 49', 'Lotus 98T',
+  'Lotus Exos 125', 'Lotus Exos 125 S1', 'Tatuus FA01 (Formula Abarth)',
+].map(normName));
+
+const VANILLA_TRACKS_NORM = new Set([
+  'Monza · GP', 'Monza · Junior', 'Monza · 1966 (sin chicanes)',
+  'Spa-Francorchamps · GP', 'Nürburgring · GP', 'Nürburgring · Sprint',
+  'Silverstone · GP', 'Silverstone · International', 'Silverstone · National', 'Silverstone · 1967',
+  'Brands Hatch · GP', 'Brands Hatch · Indy',
+  'Barcelona-Catalunya · GP', 'Barcelona-Catalunya · Moto',
+  'Red Bull Ring · GP', 'Red Bull Ring · National',
+  'Imola · GP', 'Mugello · GP',
+  'Vallelunga · GP', 'Vallelunga · Club', 'Vallelunga · Sin chicane',
+  'Magione · Full', 'Zandvoort · GP', 'Laguna Seca · Full',
+  'Highlands · Long', 'Highlands · Short', 'Highlands · Drift',
+  'Black Cat County · Long', 'Black Cat County · Short',
+  'Trento-Bondone · Hillclimb', 'Drift · Track', 'Fiorano · Full',
+].map(normName));
+
 // ─── Estado ──────────────────────────────────────────────────────────────────
 const S = {
   idToken: null,
@@ -458,6 +502,53 @@ function buildPreview(agg, existingKeys) {
   return rows;
 }
 
+// ─── Catálogo de coches/circuitos personalizados ─────────────────────────────
+// Cuando subimos vueltas con un coche o circuito que NO es vanilla, también las
+// metemos en leagues/{id}/cars|tracks con kind:'mod', para que aparezcan en el
+// selector del móvil. Idempotente: se filtra contra vanilla y contra lo que ya
+// había en la liga.
+async function fetchExistingCatalog(kind) {
+  const url = `${FIRESTORE}/${FS_BASE}/leagues/${S.leagueId}:runQuery`;
+  const body = { structuredQuery: { from: [{ collectionId: kind }] } };
+  const rows = await postJson(url, body, { Authorization: `Bearer ${S.idToken}` });
+  const set = new Set();
+  for (const row of rows || []) {
+    if (!row.document) continue;
+    const name = row.document.fields?.name?.stringValue;
+    if (name) set.add(normName(name));
+  }
+  return set;
+}
+
+async function ensureCatalogEntries(kind, names, existingNorm) {
+  const vanilla = kind === 'cars' ? VANILLA_CARS_NORM : VANILLA_TRACKS_NORM;
+  const writes = [];
+  for (const name of names) {
+    const n = normName(name);
+    if (!n || vanilla.has(n) || existingNorm.has(n)) continue;
+    existingNorm.add(n);
+    writes.push({
+      update: {
+        name: `${FS_BASE}/leagues/${S.leagueId}/${kind}/${genDocId()}`,
+        fields: {
+          name: { stringValue: name },
+          kind: { stringValue: 'mod' },
+          createdBy: { stringValue: S.uid },
+          createdByName: { stringValue: S.driverName || 'Piloto' },
+          createdAt: { integerValue: String(Date.now()) },
+        },
+      },
+    });
+  }
+  if (!writes.length) return 0;
+  await postJson(
+    `${FIRESTORE}/${FS_BASE}:commit`,
+    { writes },
+    { Authorization: `Bearer ${S.idToken}` },
+  );
+  return writes.length;
+}
+
 // ─── Subida ──────────────────────────────────────────────────────────────────
 const ID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 function genDocId() {
@@ -544,6 +635,7 @@ async function handleLogin() {
 function handleLogout() {
   S.idToken = null; S.uid = null; S.leagueId = null; S.driverName = null;
   S.filesAggregated = null; S.existingKeys = null; S.preview = null;
+  S.catalogCars = null; S.catalogTracks = null;
   hide('step-files'); hide('step-filter'); hide('step-preview');
   $('btn-login').disabled = false;
   $('files').value = '';
@@ -653,6 +745,22 @@ async function handleUpload() {
     const count = news.length;
     // Marca las claves como existentes para que el preview se actualice.
     for (const r of news) S.existingKeys.add(`${r.track}|${r.car}|${r.timeMs}`);
+
+    // Tras subir las vueltas, garantiza que sus coches/circuitos no-vanilla
+    // están en el catálogo de la liga (etiqueta MOD), para que aparezcan en el
+    // selector. Se hace best-effort: si falla, no rompe la subida.
+    try {
+      if (!S.catalogCars) S.catalogCars = await fetchExistingCatalog('cars');
+      if (!S.catalogTracks) S.catalogTracks = await fetchExistingCatalog('tracks');
+      const carNames = [...new Set(news.map(r => r.car))];
+      const trackNames = [...new Set(news.map(r => r.track))];
+      await ensureCatalogEntries('cars', carNames, S.catalogCars);
+      await ensureCatalogEntries('tracks', trackNames, S.catalogTracks);
+    } catch (e) {
+      // El catálogo es secundario: solo lo logueamos.
+      console.warn('No pude actualizar el catálogo:', e);
+    }
+
     setStatus($('upload-status'), `Subidas ${count} vueltas ✓`, 'ok');
     await refreshPreview();
     showSuccessModal(count);
