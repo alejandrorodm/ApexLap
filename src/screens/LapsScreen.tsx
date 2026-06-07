@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
   },
   trackTime: {
     color: colors.accent,
-    fontSize: 38,
+    fontSize: 30,
     fontWeight: '900',
     fontFamily: font.display,
     fontVariant: ['tabular-nums'],

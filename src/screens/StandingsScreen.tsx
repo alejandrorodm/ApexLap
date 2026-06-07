@@ -203,9 +203,17 @@ function ChallengeRow({
       {...({ dataSet: { anim: 'rise' } } as any)}
     >
       <View style={{ flex: 1 }}>
-        <Text style={styles.chTitle}>
-          {COND_ICON[c.conditions]} {c.car}
-        </Text>
+        <View style={styles.chTitleRow}>
+          {!closed ? (
+            <View
+              style={styles.liveDot}
+              {...({ dataSet: { anim: 'blink' } } as any)}
+            />
+          ) : null}
+          <Text style={styles.chTitle} numberOfLines={1}>
+            {COND_ICON[c.conditions]} {c.car}
+          </Text>
+        </View>
         <Text style={styles.chTrack} numberOfLines={1}>
           {c.track}
         </Text>
@@ -232,47 +240,52 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     marginBottom: spacing.sm,
   },
-  legend: { color: colors.textFaint, fontSize: 12, marginBottom: spacing.sm },
+  legend: { color: colors.textFaint, fontSize: 13, marginBottom: spacing.md },
   hint: { color: colors.textFaint, fontSize: 14, lineHeight: 20 },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingBottom: spacing.xs,
+    paddingBottom: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  hCell: { color: colors.textFaint, fontSize: 11, fontWeight: '800' },
+  hCell: {
+    color: colors.textFaint,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
     marginHorizontal: -spacing.sm,
     borderRadius: radius.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  rowTop: { backgroundColor: 'rgba(255,214,10,0.05)' },
+  rowTop: { backgroundColor: 'rgba(255,214,10,0.06)' },
   rowMine: {
-    backgroundColor: 'rgba(255,30,20,0.08)',
+    backgroundColor: 'rgba(255,30,20,0.10)',
     borderBottomColor: colors.primaryDim,
   },
-  posCol: { width: 36 },
-  numCol: { width: 34, textAlign: 'center' },
-  ptsCol: { width: 50, textAlign: 'right' },
+  posCol: { width: 44 },
+  numCol: { width: 40, textAlign: 'center' },
+  ptsCol: { width: 60, textAlign: 'right' },
   pos: {
     color: colors.textDim,
     fontWeight: '900',
-    fontSize: 14,
+    fontSize: 17,
     fontFamily: font.display,
   },
-  posMedal: { fontSize: 18 },
-  name: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  posMedal: { fontSize: 24 },
+  name: { color: colors.text, fontSize: 18, fontWeight: '800' },
   nameMine: { color: colors.primary, fontWeight: '900' },
-  cell: { color: colors.textDim, fontSize: 14, fontWeight: '600' },
+  cell: { color: colors.textDim, fontSize: 16, fontWeight: '700' },
   pts: {
     color: colors.accent,
-    fontSize: 19,
+    fontSize: 25,
     fontWeight: '900',
     fontFamily: font.display,
     fontVariant: ['tabular-nums'],
@@ -281,15 +294,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.accent,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+    borderColor: colors.border,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.accent,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
   },
-  chRowClosed: { borderColor: colors.border },
-  chTitle: { color: colors.text, fontSize: 15, fontWeight: '800' },
-  chTrack: { color: colors.textDim, fontSize: 13, marginTop: 2 },
+  chRowClosed: { borderLeftColor: colors.border },
+  chTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  liveDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+  },
+  chTitle: { color: colors.text, fontSize: 17, fontWeight: '900', flex: 1 },
+  chTrack: { color: colors.textDim, fontSize: 14, marginTop: 2, fontWeight: '600' },
   chMeta: { color: colors.textFaint, fontSize: 12, marginTop: 4 },
-  chCta: { color: colors.accent, fontWeight: '800', fontSize: 13 },
+  chCta: { color: colors.accent, fontWeight: '900', fontSize: 14 },
 });

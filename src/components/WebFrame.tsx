@@ -50,8 +50,15 @@ body {
 /* Punto "live" parpadeante. */
 @keyframes apexBlink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
 [data-anim="blink"] { animation: apexBlink 1.3s ease-in-out infinite; }
-/* Brillo que recorre el branding. */
-@keyframes apexSheen { 0% { background-position: -120% 0; } 100% { background-position: 220% 0; } }
+/* Glow pulsante del logo. */
+@keyframes apexBrandGlow { 0%, 100% { text-shadow: 0 0 0 transparent; } 50% { text-shadow: 0 0 16px rgba(255,30,20,.55); } }
+[data-brandglow] { animation: apexBrandGlow 3.4s ease-in-out infinite; }
+/* Realce al pasar el ratón por tarjetas/filas en web. */
+[data-anim="rise"]:hover { box-shadow: 0 8px 26px rgba(0,0,0,.45); }
+/* Accesibilidad: respeta a quien prefiere menos movimiento. */
+@media (prefers-reduced-motion: reduce) {
+  *, [data-anim], [data-apexframe], [data-brandglow] { animation: none !important; transition: none !important; }
+}
 `;
 
 const FONTS_HREF =
@@ -117,7 +124,7 @@ export default function WebFrame({ children }: { children: React.ReactNode }) {
 
         <View style={styles.brandBar}>
           <Stripes />
-          <Text style={styles.brand}>
+          <Text style={styles.brand} {...({ dataSet: { brandglow: '' } } as any)}>
             <Text style={styles.flag}>🏁 </Text>
             <Text style={styles.brandApex}>APEX</Text>
             <Text style={styles.brandLap}>LAP</Text>
