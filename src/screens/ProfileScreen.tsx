@@ -10,6 +10,7 @@ import {
   Alert,
   Pressable,
   Platform,
+  Linking,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -67,6 +68,15 @@ export default function ProfileScreen() {
 
   const stats = useMemo(() => driverStats(laps), [laps]);
   const myStats = stats.find((s) => s.userId === userId);
+
+  // Descarga del mod de Assetto Corsa (zip servido por la propia web).
+  function downloadMod() {
+    const base =
+      Platform.OS === 'web' && typeof window !== 'undefined'
+        ? window.location.origin
+        : 'https://apexlap.web.app';
+    Linking.openURL(`${base}/ApexLap-mod.zip`).catch(() => {});
+  }
 
   async function shareCode() {
     if (!league) return;
@@ -230,6 +240,24 @@ export default function ProfileScreen() {
               </View>
             ))
           )}
+        </Card>
+
+        {/* Mod de Assetto Corsa */}
+        <Card style={{ marginTop: spacing.lg }}>
+          <SectionTitle>Mod de Assetto Corsa</SectionTitle>
+          <Text style={styles.hint}>
+            Sube tus vueltas LIMPIAS solas mientras juegas. Descomprime la carpeta{' '}
+            <Text style={{ color: colors.text, fontWeight: '800' }}>ApexLap</Text> en{' '}
+            <Text style={{ color: colors.text }}>…/assettocorsa/apps/lua/</Text> y
+            actívala en la barra lateral de CSP. La primera vez, entra con tu email
+            y contraseña.
+          </Text>
+          <Button
+            title="⬇ Descargar plugin (.zip)"
+            variant="secondary"
+            onPress={downloadMod}
+            style={{ marginTop: spacing.md }}
+          />
         </Card>
 
         {/* Cuenta */}

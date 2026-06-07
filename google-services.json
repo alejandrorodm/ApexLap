@@ -1,41 +1,33 @@
 {
   "project_info": {
-    "project_number": "1058766757504",
-    "project_id": "laptimersaver",
-    "storage_bucket": "laptimersaver.firebasestorage.app"
+    "project_number": "17800222085",
+    "project_id": "apexlap",
+    "storage_bucket": "apexlap.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1058766757504:android:69f545580b102862479065",
+        "mobilesdk_app_id": "1:17800222085:android:489a01fef4c0cab492a0ec",
         "android_client_info": {
-          "package_name": "com.laptimersaver.app"
+          "package_name": "com.apexlap.app"
         }
       },
       "oauth_client": [
         {
-          "client_id": "1058766757504-673jdctcomd4b8mg7ho7abeoa77uomhn.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.laptimersaver.app",
-            "certificate_hash": "980851dc3792b8e67d2b940beec1f70133888b91"
-          }
-        },
-        {
-          "client_id": "1058766757504-bbh7f0pjut6rfbhp049iftfkdebngi3v.apps.googleusercontent.com",
+          "client_id": "17800222085-ne7jjtl65cbotfne6bcikr4jjkhdds75.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyAMEW5uBH5NGXpsyAwysALFKXl391VR_QI"
+          "current_key": "AIzaSyBxTjkpE1PEu0oUGOQapEjmBrF6lCPJdUk"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "1058766757504-bbh7f0pjut6rfbhp049iftfkdebngi3v.apps.googleusercontent.com",
+              "client_id": "17800222085-ne7jjtl65cbotfne6bcikr4jjkhdds75.apps.googleusercontent.com",
               "client_type": 3
             }
           ]
