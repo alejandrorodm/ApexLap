@@ -34,10 +34,11 @@ import { subscribeChallenges } from '../firebase/db';
 import { Challenge } from '../types';
 import { confirmAction, notify } from '../utils/alerts';
 
-// APK de Android alojado en NUESTRO hosting (URL estable). El fichero se sube a
-// `dist/ApexLap.apk` en el deploy (ver script `copy:apk`), así no hay que tocar
-// esta URL en cada build: basta con reemplazar `release/ApexLap.apk` y desplegar.
-const APK_URL = 'https://apexlap.web.app/ApexLap.apk';
+// APK de Android (artefacto de EAS Build, alojado por Expo; descargable sin
+// login). Firebase Hosting (plan Spark) PROHÍBE servir .apk, así que apuntamos
+// al artefacto de EAS. Al recompilar, actualiza esta URL con la del nuevo build
+// (o, para una URL fija, habilita Firebase Storage y súbelo allí).
+const APK_URL = 'https://expo.dev/artifacts/eas/q3HANVGfPU8X9pAUmCNJVC.apk';
 
 export default function ProfileScreen() {
   const navigation =
