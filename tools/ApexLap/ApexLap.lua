@@ -53,6 +53,7 @@ local S = {
 }
 
 local challengeTimer = 999 -- fuerza un primer fetch en cuanto haya sesión
+local recordTimer = 999 -- récord de la liga del combo actual (battle the ghost)
 
 -- claves exactas ya subidas (anti-duplicado de la MISMA vuelta)
 local seen = {}
@@ -372,6 +373,68 @@ local function fetchChallenges()
     end)
 end
 
+-- Récord de la liga (vuelta verificada más rápida) para el coche+pista ACTUAL.
+-- GET de las vueltas + filtro en cliente (sin índices). Best-effort: si falla,
+-- simplemente no se muestra el "ghost". Alimenta el delta en vivo y el aviso de
+-- récord arrebatado.
+local function fetchRecord()
+  if not S.leagueId or not S.token then return end
+  local sim = ac.getSim()
+  local carId = ac.getCarID(0)
+  local trackId, trackCfg = resolveTrack(sim)
+  if not carId or not trackId then return end
+  local carName = prettify(carId)
+  local trackName = trackDisplayName(trackId, trackCfg)
+  local cn, tn = normName(carName), normName(trackName)
+  local url = FIRESTORE .. '/projects/' .. PROJECT
+    .. '/databases/(default)/documents/leagues/' .. S.leagueId .. '/laps?pageSize=300'
+  web.request('GET', url, { ['Authorization'] = 'Bearer ' .. S.token }, '',
+    function(err, res)
+      if err or (res and res.status >= 400) then return end
+      local ok, d = pcall(JSON.parse, res.body)
+      if not ok then return end
+      local bestMs, bestBy, bestUid
+      for _, docu in ipairs((d and d.documents) or {}) do
+        local f = docu.fields or {}
+        local st = f.status and f.status.stringValue or nil
+        if st == nil or st == 'verified' then
+          local c = f.car and f.car.stringValue or ''
+          local t = f.track and f.track.stringValue or ''
+          if normName(c) == cn and normName(t) == tn then
+            local ms = tonumber(f.timeMs and f.timeMs.integerValue or '0') or 0
+            if ms > 0 and (not bestMs or ms < bestMs) then
+              bestMs = ms
+              bestBy = f.driverName and f.driverName.stringValue or '?'
+              bestUid = f.userId and f.userId.stringValue or nil
+            end
+          end
+        end
+      end
+      S.recordMs = bestMs
+      S.recordBy = bestBy
+      S.recordUid = bestUid
+    end)
+end
+
+-- Aviso push a un piloto concreto (vía su perfil → pushToken). Best-effort.
+local function pushToUser(uid, title, body)
+  if not uid or uid == S.uid then return end
+  local purl = FIRESTORE .. '/projects/' .. PROJECT
+    .. '/databases/(default)/documents/profiles/' .. uid
+  web.request('GET', purl, { ['Authorization'] = 'Bearer ' .. S.token }, '',
+    function(err, res)
+      if err or (res and res.status >= 400) then return end
+      local ok, d = pcall(JSON.parse, res.body)
+      if not ok then return end
+      local tok = d and d.fields and d.fields.pushToken and d.fields.pushToken.stringValue
+      if not tok or tok:sub(1, 17) ~= 'ExponentPushToken' then return end
+      web.request('POST', 'https://exp.host/--/api/v2/push/send',
+        { ['Content-Type'] = 'application/json' },
+        JSON.stringify{ to = tok, title = title, body = body, sound = 'default' },
+        function() end)
+    end)
+end
+
 -- ID del pique abierto que casa con este coche+pista (el más reciente si hay
 -- varios). Match tolerante con normName, igual que el catálogo. nil si ninguno.
 local function findOpenChallenge(car, track)
@@ -548,6 +611,19 @@ local function uploadLap(lap, isRetry)
         return
       end
       remember(lap.key)
+      -- Récord arrebatado: si esta vuelta bate el récord de la liga del combo y
+      -- lo tenía OTRO piloto, avísale por push y actualiza el récord local.
+      if S.recordMs and lap.timeMs < S.recordMs and S.recordUid and S.recordUid ~= S.uid then
+        pcall(pushToUser, S.recordUid,
+          '👑 Te han quitado el récord',
+          (S.driverName or 'Alguien') .. ' bajó a ' .. fmt(lap.timeMs)
+            .. ' · ' .. lap.car .. ' · ' .. lap.track)
+      end
+      if not S.recordMs or lap.timeMs < S.recordMs then
+        S.recordMs = lap.timeMs
+        S.recordBy = S.driverName
+        S.recordUid = S.uid
+      end
       -- Guarda el doc ID para poder parchear sectores más adelante (Opción A).
       local okp, d = pcall(JSON.parse, res.body)
       local docId = okp and d and d.name and tostring(d.name):match('([^/]+)$') or nil
@@ -642,6 +718,9 @@ local function detectLaps()
   -- condiciones reales (seco/mixto/mojado) y ayudas (declaradas + autodetección).
   local conditions = drivingConditions(sim)
   local assists = detectAssists(car, S.assists)
+
+  -- Tu mejor de la sesión (para el delta vs récord de la liga).
+  if not S.sessionBestMs or t < S.sessionBestMs then S.sessionBestMs = t end
 
   seen[key] = true -- marca ya para no duplicar mientras sube
   log('vuelta limpia ' .. fmt(t) .. ' (' .. tostring(carId)
@@ -950,6 +1029,13 @@ function script.update(dt)
     pcall(fetchChallenges)
   end
 
+  -- Récord de la liga del coche+pista actual (battle the ghost), cada ~25 s.
+  recordTimer = recordTimer + (dt or 0)
+  if recordTimer >= 25 then
+    recordTimer = 0
+    pcall(fetchRecord)
+  end
+
   local okS = pcall(scanExistingBest)
   if not okS then log('scanExistingBest error') end
   local ok, e = pcall(detectLaps)
@@ -1066,6 +1152,20 @@ local function renderMain(dt)
   ui.sameLine()
   ui.textColored('subidas esta sesión', DIM)
   gap(4)
+
+  -- Battle the ghost: récord de la liga para el coche+pista actual + tu delta.
+  if S.recordMs then
+    labeled('👑 RÉCORD LIGA', fmt(S.recordMs) .. '  ' .. (S.recordBy or ''), YEL)
+    if S.sessionBestMs then
+      local d = S.sessionBestMs - S.recordMs
+      if d <= 0 then
+        labeled('TU DELTA', '¡lo tienes tú! ' .. fmt(S.sessionBestMs), GREEN)
+      else
+        labeled('TU DELTA', string.format('+%.3f s (tu mejor %s)', d / 1000, fmt(S.sessionBestMs)), DIM)
+      end
+    end
+    gap(6)
+  end
 
   -- Sectores (Opción A): contador + toggle de lectura desde Content Manager.
   if S.sectorsCount > 0 then
