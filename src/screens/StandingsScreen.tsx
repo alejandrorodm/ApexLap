@@ -15,6 +15,7 @@ import {
   ChallengeResult,
   POINTS,
 } from '../utils/leaderboard';
+import { aggregateDrivers, motesByDriver } from '../utils/achievements';
 import { formatTime, timeAgo } from '../utils/time';
 import { Challenge, Bet } from '../types';
 import { RootStackParamList } from '../navigation/types';
@@ -25,7 +26,7 @@ const MEDAL = ['🥇', '🥈', '🥉'];
 export default function StandingsScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { league, userId } = useApp();
+  const { league, userId, laps } = useApp();
   const wide = useIsWideWeb();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [betsByChallenge, setBetsByChallenge] = useState<Record<string, Bet[]>>(
@@ -81,6 +82,12 @@ export default function StandingsScreen() {
     return standings(results);
   }, [closed, betsByChallenge]);
 
+  // Mote de cada piloto (comparativo en la liga) para mostrarlo junto al nombre.
+  const motes = useMemo(
+    () => motesByDriver(aggregateDrivers(laps, challenges)),
+    [laps, challenges]
+  );
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -131,6 +138,7 @@ export default function StandingsScreen() {
                       style={[styles.name, { flex: 1 }, mine && styles.nameMine]}
                       numberOfLines={1}
                     >
+                      {motes.get(r.userId) ? `${motes.get(r.userId)!.icon} ` : ''}
                       {r.driverName}
                       {mine ? ' · tú' : ''}
                     </Text>

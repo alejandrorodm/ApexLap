@@ -1,5 +1,5 @@
 // "Perfil": datos del piloto, código de liga para compartir y clasificación de pilotos.
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,16 @@ import { Button, Card, SectionTitle, Label, ScreenHeader, Field } from '../compo
 import { RootStackParamList } from '../navigation/types';
 import { useApp } from '../context/AppContext';
 import { driverStats } from '../utils/leaderboard';
+import {
+  aggregateDrivers,
+  badgesFor,
+  motesByDriver,
+  Badge,
+  Mote,
+} from '../utils/achievements';
 import { formatTime } from '../utils/time';
+import { subscribeChallenges } from '../firebase/db';
+import { Challenge } from '../types';
 import { confirmAction, notify } from '../utils/alerts';
 
 // APK de Android alojado en NUESTRO hosting (URL estable). El fichero se sube a
@@ -73,6 +82,23 @@ export default function ProfileScreen() {
 
   const stats = useMemo(() => driverStats(laps), [laps]);
   const myStats = stats.find((s) => s.userId === userId);
+
+  // Logros y motes: necesitan los piques (cerrados) además de las vueltas.
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  useEffect(() => {
+    if (!league) return;
+    return subscribeChallenges(league.id, setChallenges, () => {});
+  }, [league?.id]);
+
+  const { myBadges, myMote } = useMemo(() => {
+    const aggs = aggregateDrivers(laps, challenges);
+    const mine = aggs.find((a) => a.userId === userId);
+    return {
+      myBadges: mine ? badgesFor(mine) : [],
+      myMote: userId ? motesByDriver(aggs).get(userId) ?? null : null,
+    };
+  }, [laps, challenges, userId]);
+  const unlockedCount = myBadges.filter((b) => b.unlocked).length;
 
   // Descarga del mod de Assetto Corsa (zip servido por la propia web).
   function downloadMod() {
@@ -213,6 +239,19 @@ export default function ProfileScreen() {
             onPress={() => navigation.navigate('Progress')}
             style={{ marginTop: spacing.md }}
           />
+        </Card>
+
+        {/* Logros y mote */}
+        <Card style={{ marginTop: spacing.lg }}>
+          <SectionTitle>
+            Logros ({unlockedCount}/{myBadges.length})
+          </SectionTitle>
+          <MoteBanner mote={myMote} />
+          <View style={styles.badgeGrid}>
+            {myBadges.map((b) => (
+              <BadgeView key={b.id} badge={b} />
+            ))}
+          </View>
         </Card>
 
         {/* Liga */}
@@ -359,6 +398,42 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function MoteBanner({ mote }: { mote: Mote | null }) {
+  return (
+    <View style={[styles.mote, mote && styles.moteActive]}>
+      <Text style={styles.moteIcon}>{mote ? mote.icon : '🏎️'}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.moteLabel}>TU MOTE</Text>
+        <Text style={[styles.moteTitle, mote && { color: colors.accent }]}>
+          {mote ? mote.title : 'Piloto'}
+        </Text>
+      </View>
+      {!mote ? (
+        <Text style={styles.moteHint}>Lidera una categoría para ganarlo</Text>
+      ) : null}
+    </View>
+  );
+}
+
+function BadgeView({ badge }: { badge: Badge }) {
+  return (
+    <View style={[styles.badge, !badge.unlocked && styles.badgeLocked]}>
+      <Text style={[styles.badgeIcon, !badge.unlocked && styles.badgeIconLocked]}>
+        {badge.icon}
+      </Text>
+      <Text style={styles.badgeName} numberOfLines={1}>
+        {badge.name}
+      </Text>
+      <Text style={styles.badgeDesc} numberOfLines={2}>
+        {badge.desc}
+      </Text>
+      <Text style={[styles.badgeProgress, badge.unlocked && styles.badgeDone]}>
+        {badge.unlocked ? '✓ Logrado' : `${Math.min(badge.value, badge.target)}/${badge.target}`}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bgScreen },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
@@ -399,6 +474,73 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   statLabel: { color: colors.textFaint, fontSize: 12, marginTop: 2 },
+  // Mote
+  mote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  moteActive: { borderColor: colors.accent },
+  moteIcon: { fontSize: 34 },
+  moteLabel: {
+    color: colors.textFaint,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+  },
+  moteTitle: {
+    color: colors.textDim,
+    fontSize: 20,
+    fontWeight: '900',
+    fontFamily: font.display,
+    marginTop: 1,
+  },
+  moteHint: { color: colors.textFaint, fontSize: 11, maxWidth: 96, textAlign: 'right' },
+  // Insignias
+  badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  badge: {
+    width: '31%',
+    minWidth: 96,
+    flexGrow: 1,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accentDim,
+    padding: spacing.sm,
+    alignItems: 'center',
+  },
+  badgeLocked: { borderColor: colors.border, opacity: 0.55 },
+  badgeIcon: { fontSize: 26 },
+  badgeIconLocked: { opacity: 0.5 },
+  badgeName: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '900',
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  badgeDesc: {
+    color: colors.textFaint,
+    fontSize: 10,
+    textAlign: 'center',
+    marginTop: 1,
+    lineHeight: 13,
+  },
+  badgeProgress: {
+    color: colors.textDim,
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 4,
+    fontVariant: ['tabular-nums'],
+  },
+  badgeDone: { color: colors.green },
   leagueName: { color: colors.text, fontSize: 20, fontWeight: '800', marginBottom: spacing.md },
   codeBox: {
     backgroundColor: colors.surfaceAlt,
