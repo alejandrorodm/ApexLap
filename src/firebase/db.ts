@@ -31,6 +31,7 @@ import {
   NewCatalogEntry,
   Goal,
   NewGoal,
+  Comment,
 } from '../types';
 
 // ── Perfiles ───────────────────────────────────────────────────────────────
@@ -412,4 +413,44 @@ export async function addGoal(userId: string, goal: NewGoal): Promise<string> {
 
 export async function deleteGoal(userId: string, goalId: string): Promise<void> {
   await deleteDoc(doc(getDb(), 'profiles', userId, 'goals', goalId));
+}
+
+// ── Comentarios de un pique ──────────────────────────────────────────────────
+
+export function subscribeComments(
+  leagueId: string,
+  challengeId: string,
+  onData: (comments: Comment[]) => void,
+  onError: (e: unknown) => void
+): () => void {
+  return onSnapshot(
+    query(
+      collection(getDb(), 'leagues', leagueId, 'challenges', challengeId, 'comments'),
+      orderBy('createdAt', 'asc'),
+      limit(200)
+    ),
+    (snap) => onData(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Comment, 'id'>) }))),
+    onError
+  );
+}
+
+export async function addComment(
+  leagueId: string,
+  challengeId: string,
+  comment: Pick<Comment, 'userId' | 'userName' | 'text'>
+): Promise<void> {
+  await addDoc(
+    collection(getDb(), 'leagues', leagueId, 'challenges', challengeId, 'comments'),
+    { ...comment, createdAt: Date.now() }
+  );
+}
+
+export async function deleteComment(
+  leagueId: string,
+  challengeId: string,
+  commentId: string
+): Promise<void> {
+  await deleteDoc(
+    doc(getDb(), 'leagues', leagueId, 'challenges', challengeId, 'comments', commentId)
+  );
 }

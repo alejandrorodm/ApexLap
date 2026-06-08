@@ -89,6 +89,16 @@ export interface Goal {
 
 export type NewGoal = Omit<Goal, 'id' | 'createdAt'>;
 
+// Comentario en un pique (la pulla del grupo). Vive en
+// leagues/{id}/challenges/{cid}/comments/{id}.
+export interface Comment {
+  id: string;
+  userId: string;
+  userName: string;
+  text: string;
+  createdAt: number;
+}
+
 // ── Catálogo de coches/circuitos personalizados ──────────────────────────────
 // Cada liga guarda los coches y circuitos que sus miembros añaden a mano (mods,
 // DLC…), con una etiqueta de origen y, para los mods, la URL de descarga.

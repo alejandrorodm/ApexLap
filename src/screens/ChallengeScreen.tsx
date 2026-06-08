@@ -17,7 +17,7 @@ import {
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius, font } from '../theme';
-import { Button, Card } from '../components/ui';
+import { Button, Card, Field } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import {
   subscribeChallenge,
@@ -25,6 +25,9 @@ import {
   getLeagueMembers,
   placeBet,
   closeChallenge,
+  subscribeComments,
+  addComment,
+  deleteComment,
 } from '../firebase/db';
 import { bestPerDriver, lapsForChallenge, POINTS } from '../utils/leaderboard';
 import { formatTime, timeAgo } from '../utils/time';
@@ -32,7 +35,7 @@ import { shareCard } from '../utils/share';
 import { win } from '../utils/feedback';
 import Confetti from '../components/Confetti';
 import { confirmAction, notify } from '../utils/alerts';
-import { Challenge, Bet, Profile } from '../types';
+import { Challenge, Bet, Profile, Comment } from '../types';
 import { RootStackParamList } from '../navigation/types';
 
 const COND_ICON: Record<string, string> = { dry: '☀', wet: '🌧', mixed: '🌦' };
@@ -55,8 +58,12 @@ export default function ChallengeScreen() {
   const [pickingBet, setPickingBet] = useState(false);
   const [betBusy, setBetBusy] = useState(false);
   const [closeBusy, setCloseBusy] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [commentBusy, setCommentBusy] = useState(false);
 
   const now = Date.now();
+  const isHost = league?.createdBy === userId;
 
   useEffect(() => {
     if (!league) return;
@@ -72,6 +79,34 @@ export default function ChallengeScreen() {
     if (!league) return;
     getLeagueMembers(league.id).then(setMembers).catch(() => {});
   }, [league?.id]);
+
+  useEffect(() => {
+    if (!league) return;
+    return subscribeComments(league.id, challengeId, setComments, () => {});
+  }, [league?.id, challengeId]);
+
+  async function sendComment() {
+    const text = commentText.trim();
+    if (!text || !league || !userId) return;
+    setCommentBusy(true);
+    try {
+      await addComment(league.id, challengeId, {
+        userId,
+        userName: profile?.driverName ?? 'Anónimo',
+        text: text.slice(0, 280),
+      });
+      setCommentText('');
+    } catch (e: any) {
+      notify('Error', e?.message ?? 'No se pudo enviar el comentario.');
+    } finally {
+      setCommentBusy(false);
+    }
+  }
+
+  function removeComment(c: Comment) {
+    if (!league) return;
+    deleteComment(league.id, challengeId, c.id).catch(() => {});
+  }
 
   const isClosed = challenge?.status === 'closed';
   const isOwner = challenge?.createdBy === userId;
@@ -373,6 +408,59 @@ export default function ChallengeScreen() {
             style={{ marginTop: spacing.lg }}
           />
         ) : null}
+
+        {/* Comentarios (la pulla) */}
+        <Card style={{ marginTop: spacing.lg }}>
+          <Text style={styles.sectionTitle}>
+            💬 Pulla ({comments.length})
+          </Text>
+          {comments.length === 0 ? (
+            <Text style={styles.commentEmpty}>
+              Aún no ha hablado nadie. Estrena la pulla 😏
+            </Text>
+          ) : (
+            comments.map((c) => {
+              const mine = c.userId === userId;
+              return (
+                <View key={c.id} style={styles.comment}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.commentHead}>
+                      <Text style={[styles.commentName, mine && { color: colors.primary }]}>
+                        {c.userName}
+                        {mine ? ' · tú' : ''}
+                      </Text>
+                      <Text style={styles.commentAgo}> · {timeAgo(c.createdAt, now)}</Text>
+                    </Text>
+                    <Text style={styles.commentText}>{c.text}</Text>
+                  </View>
+                  {mine || isHost ? (
+                    <Pressable onPress={() => removeComment(c)} hitSlop={8}>
+                      <Text style={styles.commentDel}>✕</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              );
+            })
+          )}
+          <View style={styles.commentInputRow}>
+            <Field
+              value={commentText}
+              onChangeText={setCommentText}
+              placeholder="Suelta tu pulla…"
+              style={styles.commentInput}
+              maxLength={280}
+              onSubmitEditing={sendComment}
+              returnKeyType="send"
+            />
+            <Button
+              title="Enviar"
+              onPress={sendComment}
+              loading={commentBusy}
+              disabled={!commentText.trim()}
+              style={styles.commentSend}
+            />
+          </View>
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
@@ -448,6 +536,38 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   hint: { color: colors.textFaint, fontSize: 15, lineHeight: 21 },
+  commentEmpty: { color: colors.textFaint, fontSize: 14, marginBottom: spacing.sm },
+  comment: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  commentHead: { marginBottom: 2 },
+  commentName: { color: colors.text, fontSize: 13, fontWeight: '800' },
+  commentAgo: { color: colors.textFaint, fontSize: 11, fontWeight: '600' },
+  commentText: { color: colors.textDim, fontSize: 15, lineHeight: 20 },
+  commentDel: { color: colors.textFaint, fontSize: 16, fontWeight: '900', paddingHorizontal: 4 },
+  commentInputRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    alignItems: 'center',
+  },
+  commentInput: {
+    flex: 1,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    color: colors.text,
+    paddingHorizontal: spacing.md,
+    height: 46,
+    fontSize: 15,
+  },
+  commentSend: { paddingHorizontal: spacing.lg },
   myBet: { color: colors.text, fontSize: 16, marginTop: spacing.sm },
   myBetName: { color: colors.accent, fontWeight: '900' },
   picker: { marginTop: spacing.sm, gap: spacing.xs },
