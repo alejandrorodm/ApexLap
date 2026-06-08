@@ -1,5 +1,6 @@
 // Pantalla de inicio de sesión: crear cuenta / entrar (email+contraseña),
-// "Entrar con Google" (solo web por ahora) y "Entrar como invitado".
+// "Entrar con Google" (web: popup de Firebase; nativo: selector de Google) y
+// "Entrar como invitado".
 import React, { useState } from 'react';
 import {
   View,

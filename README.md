@@ -24,7 +24,9 @@ lo ven todos al instante.
   líder. Filtros por coche, circuito, "sin ayudas" y "mojado". Modo
   **mejor de cada piloto** o **vueltas recientes**.
 - **Récords** 👑: quién tiene la vuelta más rápida en cada combinación
-  coche + circuito, con **detalle por pista**.
+  coche + circuito, con **detalle por pista** y **tarjeta compartible** del récord.
+- **Vuelta teórica** 🧪: en el detalle de un coche, el tiempo ideal alcanzable
+  combinando el mejor S1/S2/S3 registrado, con el dueño de cada sector.
 
 ### Importación automática desde el juego 🎮
 No hace falta meter los tiempos a mano. Hay tres acompañantes en [`tools/`](tools/):
@@ -50,11 +52,13 @@ opcional) para evitar trampas.
 - **Apuestas** 🎲: cada piloto predice quién ganará un pique (incluido él mismo).
 - **Clasificación por puntos** 🏆: suma por **pique ganado** y por **acertar la
   apuesta**; tabla de la liga con podio.
+- **Compartir resultado** 📲: tarjeta del pique ganado lista para mandar al grupo.
 
 ### Cuenta, liga y avisos
 - **Ligas**: crea una y comparte el código; o únete con el de un colega. Lista de
   **participantes**.
-- **Cuenta**: email + contraseña, **Google** (web) o **invitado** (anónimo).
+- **Cuenta**: email + contraseña, **Google** (web y app Android) o **invitado**
+  (anónimo).
 - **Catálogo de la liga**: coches/circuitos personalizados (mods, DLC) que añaden
   los miembros, con etiqueta de origen (MOD/KUNOS/AC) y URL de descarga.
 - **Notificaciones push** 🔔 (Expo, sin servidor propio): aviso a los demás de la
@@ -197,8 +201,6 @@ Cosas que harían la app aún más adictiva (no implementadas todavía):
 - **Logros y motes**: "Rey del mojado", "Sin ayudas", rachas de récords.
 - **Ranking separado por ayudas**: tabla "con ayudas" vs "sin ayudas" o handicap
   configurable.
-- **Share card**: imagen compartible del récord/pique para mandar al grupo.
-- **Google Sign-In en nativo**: hoy solo en web; falta configurar credenciales
-  en EAS para Android/iOS.
+- **Detección de trampas más fina**: validar coherencia de sectores vs vuelta.
 
 ¿Quieres alguna de estas? Dímelo y la añadimos. 🏎️
