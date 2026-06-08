@@ -49,9 +49,12 @@ Notas:
   coche+circuito cargado — así no pierdes una vuelta buena que hicieras *antes*
   de abrir la app. Solo mira el **combo cargado en ese momento**: para que suba
   el mejor de otro coche/circuito, entra a ese combo con la app abierta.
-- A partir de ahí vigila en vivo y sube cada vuelta nueva limpia.
-- Solo sube vueltas **válidas y SIN penalización**: si cortas (el juego invalida
-  la vuelta) o tienes un *penalty* activo, la vuelta se descarta.
+- A partir de ahí vigila en vivo y sube cada vuelta que sea **mejor válida de la
+  sesión**. Validez fiable: AC solo registra `bestLapTimeMs` en vueltas válidas,
+  así que en vivo se sube cuando la vuelta recién cerrada es la mejor de la
+  sesión (las cortadas no actualizan el best → se descartan). El resto de vueltas
+  (válidas pero no la mejor) las recoge el **escaneo de JSON** en el siguiente
+  arranque, con su `cuts` real como filtro.
 - **Menos escrituras (por defecto):** solo sube cuando **mejoras** tu tiempo en
   ese combo coche+circuito — que es lo único que cuenta para récords y
   clasificación. Editable en `ac.storage` (`onlyBest = false`) si quisieras subir
@@ -115,9 +118,10 @@ versión de CSP. Si das una vuelta limpia y **no sube**:
    `Documents\Assetto Corsa\logs\` más reciente.
 2. Busca líneas con **`[ApexLap]`**. Te dirán si detecta la vuelta, si la descarta
    o si hubo error de subida.
-3. Pásame esas líneas y ajusto los puntos marcados como **`VERIFICAR`** en
-   `ApexLap.lua` (campos como `car.lapCount`, `car.previousLapTimeMs`,
-   `car.isLapValid`, `ac.getCarID`, `sim.trackId`).
+3. Pásame esas líneas y ajusto los campos según tu versión. Campos confirmados en
+   pruebas: `car.lapCount`, `car.previousLapTimeMs`, `car.bestLapTimeMs`,
+   `ac.getCarID`, `ac.getTrackID`/`ac.getTrackLayout`. La validez NO se lee de
+   `isLapValid` (daba falsos negativos): se infiere de `bestLapTimeMs`.
 
 Mientras tanto, el **subidor de escritorio** (`../cm-uploader/`) funciona seguro y
 no depende de CSP.

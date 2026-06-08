@@ -117,7 +117,6 @@ local function encodeSectors(sectors)
 end
 
 local lastLapCount = -1
-local lapInvalidated = false
 local lastScanCombo = nil -- último combo escaneado al iniciar / cambiar de coche-pista
 
 -- ── Catálogo vanilla (para no marcar como MOD lo que ya viene con el juego) ──
@@ -496,44 +495,40 @@ local function detectLaps()
   local car = ac.getCar(0) -- jugador local
   if not car then return end
 
-  -- ¿se invalidó la vuelta en curso? (cortes / fuera de pista). En esta versión
-  -- de CSP, `car.isLapValid` no existe y leerlo directo lanza error → safeGet.
-  local valid = safeGet(car, 'isLapValid')
-  if valid == nil then valid = safeGet(car, 'lapValid') end
-  if valid == false then lapInvalidated = true end
-
   local lapCount = safeGet(car, 'lapCount')
   if not lapCount then return end
-  -- Primer tick: fija la referencia y limpia la validez acumulada durante el
-  -- out-lap/boxes (si no, contaminaría la primera vuelta cronometrada).
-  if lastLapCount < 0 then lastLapCount = lapCount; lapInvalidated = false; return end
+  if lastLapCount < 0 then lastLapCount = lapCount; return end
   if lapCount <= lastLapCount then return end
+  lastLapCount = lapCount
 
-  -- acabamos de cerrar una vuelta. El nombre del campo del tiempo de la vuelta
-  -- anterior varía entre versiones de CSP: probamos varios y nos quedamos con el
-  -- primero que dé un valor en milisegundos plausible. DEBUG: logueamos todos.
+  -- Tiempo de la vuelta recién cerrada. El nombre del campo varía entre
+  -- versiones de CSP; probamos varios y nos quedamos con el primero plausible.
   local cand = {
     previousLapTimeMs = safeGet(car, 'previousLapTimeMs'),
     lastLapTimeMs = safeGet(car, 'lastLapTimeMs'),
     lapTimeMs = safeGet(car, 'lapTimeMs'),
-    previousLapTime = safeGet(car, 'previousLapTime'),
     bestLapTimeMs = safeGet(car, 'bestLapTimeMs'),
   }
   local t = nil
-  for _, name in ipairs({ 'previousLapTimeMs', 'lastLapTimeMs', 'lapTimeMs' }) do
+  for _, name in ipairs({ 'previousLapTimeMs', 'lastLapTimeMs' }) do
     local v = cand[name]
     if type(v) == 'number' and v > 5000 and v < 3600000 then t = math.floor(v); break end
   end
-  local wasValid = not lapInvalidated
-  lastLapCount = lapCount
-  lapInvalidated = false
 
-  if not (wasValid and t) then
-    -- DEBUG: por qué se descartó (validez vs tiempo) y qué devolvió cada campo.
+  -- VALIDEZ fiable entre versiones de CSP: `isLapValid` daba falsos negativos
+  -- (descartaba vueltas que AC sí daba por buenas). En su lugar usamos que AC
+  -- solo registra `bestLapTimeMs` en vueltas VÁLIDAS: si la recién cerrada es la
+  -- mejor de la sesión (prev == best), es válida y además PB de la sesión. El
+  -- escaneo de JSON (con `cuts`) es la red de seguridad para el resto de vueltas.
+  local best = cand.bestLapTimeMs
+  local validBest = type(t) == 'number' and type(best) == 'number'
+    and math.abs(t - best) <= 2
+
+  if not (t and validBest) then
     log(string.format(
-      'descartada: wasValid=%s | prevMs=%s lastMs=%s lapMs=%s prev=%s bestMs=%s',
-      tostring(wasValid), tostring(cand.previousLapTimeMs), tostring(cand.lastLapTimeMs),
-      tostring(cand.lapTimeMs), tostring(cand.previousLapTime), tostring(cand.bestLapTimeMs)))
+      'descartada (no es mejor válida de sesión): t=%s bestMs=%s prevMs=%s lastMs=%s lapMs=%s',
+      tostring(t), tostring(cand.bestLapTimeMs), tostring(cand.previousLapTimeMs),
+      tostring(cand.lastLapTimeMs), tostring(cand.lapTimeMs)))
     return
   end
 
