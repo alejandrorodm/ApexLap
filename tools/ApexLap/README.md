@@ -86,8 +86,10 @@ Detalles:
   de un solo jugador (hotlap/práctica) te reconoce aunque el nombre no coincida.
 - Se puede desactivar con el botón **"Leer sectores de CM"** en la ventana, o
   `readSectors = false` en `ac.storage`.
-- Por rendimiento del arranque procesa hasta los **150 ficheros de sesión más
-  recientes**; lo registra en el log si hay más.
+- **Incremental:** cada arranque solo mira las sesiones **más nuevas** que la
+  última vez (marca de agua por fecha de fichero), así nunca re-sube todo el
+  historial. En el **primer** arranque mira solo las sesiones de las **últimas
+  6 h**. Lo registra: `sectores: N sesiones nuevas (de M, …)`.
 - **Requiere lanzar el juego desde Content Manager** (es quien escribe esos JSON).
 
 ### Depuración del emparejamiento

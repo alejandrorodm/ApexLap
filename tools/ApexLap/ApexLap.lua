@@ -92,6 +92,12 @@ local function rememberDoc(key, docId)
     or (docStore.ids .. '\n' .. key .. '\t' .. docId)
 end
 
+-- Marca de agua del escaneo de sectores: lastWriteTime (en s) del fichero de
+-- sesión más reciente ya procesado. En cada arranque solo miramos los JSON MÁS
+-- NUEVOS que esto, así no reprocesamos (ni re-subimos) todo el historial cada
+-- vez: solo las ÚLTIMAS sesiones. 0 = primer arranque (ver SECTORS_FIRST_RUN_S).
+local scanStore = ac.storage{ lastMs = 0 }
+
 -- Claves cuyas vueltas YA tienen sectores en Firestore, para no repetir PATCH.
 local sectorsDoneStore = ac.storage{ done = '' }
 local sectorsDone = {}
@@ -498,17 +504,36 @@ local function detectLaps()
 
   local lapCount = safeGet(car, 'lapCount')
   if not lapCount then return end
-  if lastLapCount < 0 then lastLapCount = lapCount; return end
+  -- Primer tick: fija la referencia y limpia la validez acumulada durante el
+  -- out-lap/boxes (si no, contaminaría la primera vuelta cronometrada).
+  if lastLapCount < 0 then lastLapCount = lapCount; lapInvalidated = false; return end
   if lapCount <= lastLapCount then return end
 
-  -- acabamos de cerrar una vuelta
-  local t = safeGet(car, 'previousLapTimeMs') or safeGet(car, 'lastLapTimeMs')
+  -- acabamos de cerrar una vuelta. El nombre del campo del tiempo de la vuelta
+  -- anterior varía entre versiones de CSP: probamos varios y nos quedamos con el
+  -- primero que dé un valor en milisegundos plausible. DEBUG: logueamos todos.
+  local cand = {
+    previousLapTimeMs = safeGet(car, 'previousLapTimeMs'),
+    lastLapTimeMs = safeGet(car, 'lastLapTimeMs'),
+    lapTimeMs = safeGet(car, 'lapTimeMs'),
+    previousLapTime = safeGet(car, 'previousLapTime'),
+    bestLapTimeMs = safeGet(car, 'bestLapTimeMs'),
+  }
+  local t = nil
+  for _, name in ipairs({ 'previousLapTimeMs', 'lastLapTimeMs', 'lapTimeMs' }) do
+    local v = cand[name]
+    if type(v) == 'number' and v > 5000 and v < 3600000 then t = math.floor(v); break end
+  end
   local wasValid = not lapInvalidated
   lastLapCount = lapCount
   lapInvalidated = false
 
-  if not (wasValid and t and t > 0 and t < 3600000) then
-    log('vuelta descartada (inválida o tiempo no válido)')
+  if not (wasValid and t) then
+    -- DEBUG: por qué se descartó (validez vs tiempo) y qué devolvió cada campo.
+    log(string.format(
+      'descartada: wasValid=%s | prevMs=%s lastMs=%s lapMs=%s prev=%s bestMs=%s',
+      tostring(wasValid), tostring(cand.previousLapTimeMs), tostring(cand.lastLapTimeMs),
+      tostring(cand.lapTimeMs), tostring(cand.previousLapTime), tostring(cand.bestLapTimeMs)))
     return
   end
 
@@ -638,7 +663,8 @@ end
 -- ── Escaneo de los JSON de Content Manager para extraer sectores ─────────────
 local SECTORS_MIN_MS = 15000     -- descarta out/in laps ridículamente cortas
 local SECTORS_MAX_MS = 3600000   -- tope del juego (1 h)
-local SECTORS_MAX_FILES = 150    -- cota para no congelar el primer frame de arranque
+local SECTORS_MAX_FILES = 150    -- cota dura por si acaso (el filtro incremental ya acota)
+local SECTORS_FIRST_RUN_S = 21600 -- 1er arranque: solo sesiones de las últimas 6 h
 
 -- Procesa un fichero de sesión y vuelca el mejor lap por combo (con sectores)
 -- en `agg`. Solo cuenta laps LIMPIAS (cuts==0) del jugador local.
@@ -708,22 +734,33 @@ local function scanSectorsFromCM()
   end)
   if #files == 0 then log('sectores: 0 ficheros en ' .. dir); return end
 
-  -- Procesa primero los más recientes y limita el total (coste de arranque).
+  -- Más recientes primero.
   table.sort(files, function(a, b) return a.mtime > b.mtime end)
   local total = #files
-  local limit = math.min(total, SECTORS_MAX_FILES)
+  local newest = files[1].mtime
+
+  -- INCREMENTAL: solo procesamos los JSON MÁS NUEVOS que la última marca de agua,
+  -- así no reprocesamos todo el historial cada arranque. En el primer arranque
+  -- (sin marca) miramos solo las sesiones de las últimas SECTORS_FIRST_RUN_S.
+  local lastMs = tonumber(scanStore.lastMs) or 0
+  local cutoff = (lastMs > 0) and lastMs or (newest - SECTORS_FIRST_RUN_S)
 
   local myName = ''
   local okn, n = pcall(function() return ac.getDriverName(0) end)
   if okn and n then myName = tostring(n):lower() end
 
   local agg = {}
-  for i = 1, limit do
+  local scanned = 0
+  for i = 1, total do
+    if files[i].mtime <= cutoff then break end -- ordenados desc: el resto es más viejo
+    if scanned >= SECTORS_MAX_FILES then break end
     pcall(parseSessionFile, dir .. '\\' .. files[i].name, myName, agg)
+    scanned = scanned + 1
   end
-  if total > limit then
-    log('sectores: procesados ' .. limit .. '/' .. total .. ' ficheros (cota)')
-  end
+  -- Avanza la marca de agua al fichero más nuevo: la próxima vez, solo lo posterior.
+  scanStore.lastMs = newest
+  log('sectores: ' .. scanned .. ' sesiones nuevas (de ' .. total
+    .. ', desde ' .. (lastMs > 0 and 'última marca' or 'últimas 6 h') .. ')')
 
   local patched, uploaded, dbg = 0, 0, 0
   for combo, best in pairs(agg) do
