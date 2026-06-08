@@ -25,7 +25,12 @@ import { colors, spacing, radius, font } from '../theme';
 import { useGridColumns } from '../responsive';
 import { Chip, EmptyState } from '../components/ui';
 import { useApp } from '../context/AppContext';
-import { lapsForTrack, bestPerCarOnTrack, CarRecord } from '../utils/leaderboard';
+import {
+  lapsForTrack,
+  bestPerCarOnTrack,
+  theoreticalBest,
+  CarRecord,
+} from '../utils/leaderboard';
 import { formatTime, formatDelta, formatSector, timeAgo } from '../utils/time';
 import { deleteLap } from '../firebase/db';
 import { Lap } from '../types';
@@ -58,6 +63,13 @@ export default function TrackDetailScreen() {
   const carLaps = useMemo(
     () => (selectedCar ? trackLaps.filter((l) => l.car === selectedCar) : []),
     [trackLaps, selectedCar]
+  );
+
+  // Vuelta teórica del coche seleccionado: combina los mejores sectores de las
+  // vueltas registradas con ese coche aquí. Solo aporta si mejora a la real.
+  const theo = useMemo(
+    () => (selectedCar ? theoreticalBest(carLaps) : null),
+    [carLaps, selectedCar]
   );
 
   // Cuántos pilotos distintos han firmado vueltas en el trazado.
@@ -208,7 +220,12 @@ export default function TrackDetailScreen() {
         <FlatList
           data={lapList}
           keyExtractor={(l) => l.id}
-          ListHeaderComponent={header}
+          ListHeaderComponent={
+            <>
+              {header}
+              {theo ? <TheoreticalBanner theo={theo} /> : null}
+            </>
+          }
           contentContainerStyle={styles.listContent}
           renderItem={({ item, index }) => (
             <LapRow
@@ -398,6 +415,43 @@ function LapRow({
         ) : null}
       </View>
     </Pressable>
+  );
+}
+
+// Banner de "vuelta teórica": el tiempo ideal alcanzable con este coche aquí,
+// sumando el mejor sector de cada quien. Solo se muestra si supera a la real.
+function TheoreticalBanner({
+  theo,
+}: {
+  theo: import('../utils/leaderboard').TheoreticalBest;
+}) {
+  const gain = theo.realBestMs - theo.timeMs; // cuánto se podría bajar
+  // Si la mejor vuelta real YA es la suma de los mejores sectores (una sola
+  // vuelta, o la más rápida domina todos los sectores), no hay nada que combinar.
+  if (gain <= 0) return null;
+  return (
+    <View style={styles.theoCard}>
+      <View style={styles.theoTop}>
+        <Text style={styles.theoLabel}>🧪 VUELTA TEÓRICA</Text>
+        <Text style={styles.theoTime}>{formatTime(theo.timeMs)}</Text>
+      </View>
+      <Text style={styles.theoSub}>
+        Lo mejor de cada sector · podría bajar{' '}
+        <Text style={styles.theoGain}>{formatDelta(theo.timeMs, theo.realBestMs)}</Text>{' '}
+        de la mejor real
+      </Text>
+      <View style={styles.theoSectors}>
+        {theo.sectors.map((s, i) => (
+          <View key={i} style={styles.theoSector}>
+            <Text style={styles.sectorLabel}>S{i + 1}</Text>
+            <Text style={styles.theoSectorTime}>{formatSector(s)}</Text>
+            <Text style={styles.theoSource} numberOfLines={1}>
+              {theo.sources[i]}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -655,6 +709,66 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontSize: 10, fontWeight: '700' },
   ago: { color: colors.textFaint, fontSize: 11, marginLeft: spacing.xs },
+  // Banner de vuelta teórica
+  theoCard: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.accent,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  theoTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  theoLabel: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  theoTime: {
+    color: colors.accent,
+    fontSize: 24,
+    fontWeight: '900',
+    fontFamily: font.display,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 0.5,
+  },
+  theoSub: {
+    color: colors.textDim,
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  theoGain: {
+    color: colors.green,
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
+  },
+  theoSectors: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  theoSector: { alignItems: 'flex-start' },
+  theoSectorTime: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+  },
+  theoSource: {
+    color: colors.textFaint,
+    fontSize: 10,
+    fontWeight: '700',
+    maxWidth: 90,
+  },
   sectors: {
     flexDirection: 'row',
     flexWrap: 'wrap',

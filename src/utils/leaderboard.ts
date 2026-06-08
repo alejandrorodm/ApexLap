@@ -121,6 +121,55 @@ export function bestPerCarOnTrack(laps: Lap[], track: string): CarRecord[] {
   );
 }
 
+export interface TheoreticalBest {
+  timeMs: number; // suma de los mejores sectores (tiempo ideal alcanzable)
+  sectors: number[]; // mejor tiempo de cada sector
+  sources: string[]; // piloto dueño de cada mejor sector
+  realBestMs: number; // mejor vuelta REAL del conjunto (para el delta)
+  fromLaps: number; // nº de vueltas (con sectores) que han contribuido
+}
+
+/**
+ * Vuelta teórica: combina el MEJOR tiempo de cada sector entre un conjunto de
+ * vueltas para dar el tiempo ideal alcanzable. Pensada para un mismo coche en un
+ * mismo trazado (los sectores no son comparables entre coches/pistas distintas).
+ *
+ * Toma como referencia el nº de sectores de la vuelta más rápida y solo combina
+ * vueltas con ESE nº de sectores (mezclar trazados con distinto nº de sectores
+ * daría tiempos sin sentido). Devuelve null si no hay datos con sectores.
+ */
+export function theoreticalBest(laps: Lap[]): TheoreticalBest | null {
+  const withSectors = laps.filter(
+    (l) => isCounted(l) && l.sectors && l.sectors.length >= 2
+  );
+  if (withSectors.length === 0) return null;
+
+  const sorted = byTime(withSectors);
+  const n = sorted[0].sectors!.length;
+  const eligible = sorted.filter((l) => l.sectors!.length === n);
+
+  const best = new Array<number>(n).fill(Infinity);
+  const sources = new Array<string>(n).fill('');
+  for (const l of eligible) {
+    l.sectors!.forEach((s, i) => {
+      if (s < best[i]) {
+        best[i] = s;
+        sources[i] = l.driverName || 'Anónimo';
+      }
+    });
+  }
+  if (best.some((s) => !Number.isFinite(s))) return null;
+
+  const timeMs = best.reduce((a, b) => a + b, 0);
+  return {
+    timeMs,
+    sectors: best,
+    sources,
+    realBestMs: eligible[0].timeMs,
+    fromLaps: eligible.length,
+  };
+}
+
 /** Récord (vuelta más rápida) por combinación coche+circuito. */
 export function recordsByCombo(laps: Lap[]): Record[] {
   const map = new Map<string, Record>();
