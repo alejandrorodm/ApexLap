@@ -253,12 +253,49 @@ local function resolveTrack(sim)
   return trackId, trackCfg
 end
 
--- Convierte (trackId, trackCfg) en el nombre para mostrar/guardar, con " · ".
-local function trackDisplayName(trackId, trackCfg)
+-- Clave interna de pista para el `combo`. Content Manager identifica el layout
+-- como un único id con guion (p.ej. "ks_silverstone-gp"); CSP en vivo lo separa
+-- en trackId + layout. Normalizamos SIEMPRE al formato con guion para que la
+-- ruta en vivo y el escaneo del JSON de CM generen exactamente la misma combo.
+local function trackKey(trackId, trackCfg)
   if trackCfg and trackCfg ~= '' then
-    return prettify(trackId) .. ' · ' .. prettify(trackCfg)
+    return trackId .. '-' .. trackCfg
   end
-  return prettify(trackId)
+  return trackId
+end
+
+-- Override EXACTO por id combinado completo (clave = `trackKey`). Es lo más
+-- fiable y evita adivinar dónde acaba el nombre y empieza el layout en ids con
+-- guion en el propio nombre (p.ej. "ks_trento-bondone"). Amplíalo con tus
+-- circuitos: el id exacto sale en las líneas "LIVE key=" / "JSON key=" del log.
+local TRACK_LABELS = {
+  ['ks_silverstone-gp'] = 'Silverstone · GP',
+}
+-- Nombre base de AC -> nombre de la app, cuando difieren del prettify (acentos,
+-- nombres compuestos). Solo aplica al patrón normal "base-layout".
+local NAME_ALIAS = {
+  ['spa'] = 'Spa-Francorchamps',
+  ['ks_barcelona'] = 'Barcelona-Catalunya',
+  ['ks_nurburgring'] = 'Nürburgring',
+}
+-- Layouts cuyo casing canónico de la app no sale del prettify (acrónimos).
+local LAYOUT_CASE = { gp = 'GP' }
+
+-- Nombre para mostrar/guardar. Se deriva de la MISMA clave normalizada con guion
+-- (`trackKey`) para que la ruta en vivo y la de CM produzcan el mismo string, y
+-- se alinea con la etiqueta de la app ("Nombre · Layout"): la app agrupa por
+-- este campo y `getTrackImage()` depende del " · ", así que hay que respetarlo.
+local function trackDisplayName(trackId, trackCfg)
+  local k = trackKey(trackId, trackCfg)
+  if TRACK_LABELS[k] then return TRACK_LABELS[k] end
+  -- El layout es el sufijo tras el ÚLTIMO guion (los ids base usan underscores).
+  local base, layout = k:match('^(.*)%-([^%-]+)$')
+  if not base then base, layout = k, nil end
+  local name = NAME_ALIAS[base] or prettify(base)
+  if layout and layout ~= '' then
+    return name .. ' · ' .. (LAYOUT_CASE[layout] or prettify(layout))
+  end
+  return name
 end
 
 -- ── Firebase: login, refresco, perfil, subida ────────────────────────────────
@@ -540,7 +577,7 @@ local function detectLaps()
     log('vuelta descartada: sin ID de pista (ac.getTrackID no disponible)')
     return
   end
-  local trackFull = trackCfg and (trackId .. ' ' .. trackCfg) or trackId
+  local trackFull = trackKey(trackId, trackCfg)
   local combo = trackFull .. '|' .. tostring(carId)
   local key = combo .. '|' .. tostring(t)
 
@@ -591,7 +628,7 @@ local function scanExistingBest()
   if not carId then return end
   local trackId, trackCfg = resolveTrack(sim)
   if not trackId then return end -- sin ID claro, esperar al siguiente tick
-  local trackFull = trackCfg and (trackId .. ' ' .. trackCfg) or trackId
+  local trackFull = trackKey(trackId, trackCfg)
   local combo = trackFull .. '|' .. tostring(carId)
   if combo == lastScanCombo then return end -- ya escaneado este combo
   lastScanCombo = combo
@@ -673,7 +710,7 @@ local function parseSessionFile(path, myNameLower, agg)
   local trackId = data.track or data.trackName or ''
   local trackCfg = data.trackConfig or data.track_config or ''
   if trackId == '' then return end
-  local trackFull = (trackCfg ~= '') and (trackId .. ' ' .. trackCfg) or trackId
+  local trackFull = trackKey(trackId, trackCfg)
   -- En hotlap/práctica suele haber un solo jugador: ese eres tú aunque el
   -- nombre del perfil ApexLap no coincida con el nombre de Assetto Corsa.
   local solo = (#players == 1)
@@ -796,6 +833,44 @@ local function scanSectorsFromCM()
   end
   log('sectores: patched=' .. patched .. ' uploaded=' .. uploaded
     .. ' (de ' .. total .. ' ficheros)')
+end
+
+-- ── Diagnóstico: vuelca TODOS los ids de pista que CM conoce ─────────────────
+-- Recorre TODAS las sesiones de Content Manager (sin filtro incremental ni de
+-- vueltas limpias) y registra cada id de pista distinto con la clave y el nombre
+-- que el mod genera ahora. Sirve para completar TRACK_LABELS / NAME_ALIAS sin
+-- rodar pista por pista: en el log de CSP, copia las líneas "[ApexLap] DUMP".
+local function dumpTrackIds()
+  local base = ac.getFolder(ac.FolderID.AppDataLocal)
+  if not base or base == '' then log('DUMP: sin AppDataLocal'); return end
+  local dir = base .. '\\AcTools Content Manager\\Progress\\Sessions'
+  local files = {}
+  pcall(function()
+    io.scanDir(dir, '*.json', function(name) files[#files + 1] = name end)
+  end)
+  if #files == 0 then log('DUMP: 0 ficheros en ' .. dir); return end
+
+  local seenKey, n = {}, 0
+  for _, name in ipairs(files) do
+    pcall(function()
+      local okl, body = pcall(io.load, dir .. '\\' .. name)
+      if not okl or not body or body == '' then return end
+      local okj, data = pcall(JSON.parse, body)
+      if not okj or type(data) ~= 'table' then return end
+      local trackId = data.track or data.trackName or ''
+      local trackCfg = data.trackConfig or data.track_config or ''
+      if trackId == '' then return end
+      local k = trackKey(trackId, trackCfg)
+      if seenKey[k] then return end
+      seenKey[k] = true
+      n = n + 1
+      log(string.format('DUMP id=%s cfg=%s -> key=%s | label=%s',
+        tostring(trackId), (trackCfg ~= '' and tostring(trackCfg) or '-'),
+        k, trackDisplayName(trackId, trackCfg)))
+    end)
+  end
+  log('DUMP: ' .. n .. ' pistas distintas (de ' .. #files .. ' sesiones)')
+  S.status = 'Volcadas ' .. n .. ' pistas al log de CSP (busca "DUMP").'
 end
 
 -- ── Tick global: corre con la app ACTIVA aunque la ventana esté cerrada ──────
@@ -955,6 +1030,14 @@ local function renderMain(dt)
       or 'Leer sectores de CM: NO', 230) then
     cfg.readSectors = not cfg.readSectors
     if cfg.readSectors then S.sectorsScanned = false end -- re-escanea al activar
+  end
+  gap(8)
+
+  -- Diagnóstico: vuelca al log de CSP todos los ids de pista que CM conoce, para
+  -- completar las tablas de alias del mod sin tener que rodar pista por pista.
+  if ghostButton('Volcar IDs de pista (diagnóstico)', 260) then
+    S.status = 'Volcando ids de pista al log…'
+    pcall(dumpTrackIds)
   end
   gap(8)
 
