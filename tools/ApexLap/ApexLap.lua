@@ -264,18 +264,23 @@ local function trackKey(trackId, trackCfg)
   return trackId
 end
 
--- Override EXACTO por id combinado completo (clave = `trackKey`). Es lo más
--- fiable y evita adivinar dónde acaba el nombre y empieza el layout en ids con
--- guion en el propio nombre (p.ej. "ks_trento-bondone"). Amplíalo con tus
--- circuitos: el id exacto sale en las líneas "LIVE key=" / "JSON key=" del log.
+-- Override EXACTO por id combinado completo (clave = `trackKey`). Imprescindible
+-- para: (a) pistas de un solo trazado cuyo id NO trae layout pero la app sí lo
+-- quiere ("imola" -> "Imola · GP"); (b) ids con guion en el propio NOMBRE, que el
+-- split partiría mal ("trento-bondone" -> "Trento · Bondone"). Ids reales sacados
+-- del diagnóstico "DUMP" del log de CSP; amplíalo con tus circuitos.
 local TRACK_LABELS = {
   ['ks_silverstone-gp'] = 'Silverstone · GP',
+  ['imola']             = 'Imola · GP',
+  ['spa']               = 'Spa-Francorchamps · GP',
+  ['trento-bondone']    = 'Trento-Bondone · Hillclimb',
+  ['ks_laguna_seca']    = 'Laguna Seca · Full',
+  ['drift']             = 'Drift · Track',
 }
 -- Nombre base de AC -> nombre de la app, cuando difieren del prettify (acentos,
 -- nombres compuestos). Solo aplica al patrón normal "base-layout".
 local NAME_ALIAS = {
-  ['spa'] = 'Spa-Francorchamps',
-  ['ks_barcelona'] = 'Barcelona-Catalunya',
+  ['ks_barcelona']   = 'Barcelona-Catalunya',
   ['ks_nurburgring'] = 'Nürburgring',
 }
 -- Layouts cuyo casing canónico de la app no sale del prettify (acrónimos).
@@ -293,6 +298,7 @@ local function trackDisplayName(trackId, trackCfg)
   if not base then base, layout = k, nil end
   local name = NAME_ALIAS[base] or prettify(base)
   if layout and layout ~= '' then
+    layout = layout:gsub('^layout_', '') -- AC nombra muchos configs "layout_gp", etc.
     return name .. ' · ' .. (LAYOUT_CASE[layout] or prettify(layout))
   end
   return name
