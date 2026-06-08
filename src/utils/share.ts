@@ -123,7 +123,7 @@ async function renderCard(c: ShareCard): Promise<Blob> {
 
   const W = 1080;
   const H = 1350;
-  const M = 90; // margen
+  const M = 80; // margen
   const canvas = g.document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -137,54 +137,95 @@ async function renderCard(c: ShareCard): Promise<Blob> {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
-  // Franja roja superior + tarjeta interior con borde dorado
-  ctx.fillStyle = colors.primary;
-  ctx.fillRect(0, 0, W, 16);
-  ctx.strokeStyle = colors.border;
-  ctx.lineWidth = 2;
-  roundRect(ctx, M - 24, 140, W - 2 * (M - 24), H - 280, 28);
-  ctx.stroke();
+  // Bandera de cuadros DIFUMINADA en la cabecera (toque racing de fondo).
+  ctx.save();
+  ctx.filter = 'blur(20px)';
+  ctx.globalAlpha = 0.22;
+  drawChecker(ctx, -60, -60, W + 120, 560, 74, '#141A2B', '#37425C');
+  ctx.restore();
+  // Funde la bandera con el fondo hacia abajo para que no compita con el texto.
+  const fade = ctx.createLinearGradient(0, 230, 0, 560);
+  fade.addColorStop(0, 'rgba(11,13,18,0)');
+  fade.addColorStop(1, '#0B0D12');
+  ctx.fillStyle = fade;
+  ctx.fillRect(0, 230, W, 340);
 
-  // Marca APEX·LAP
+  // Franja superior roja→amarillo (banda de meta).
+  ctx.fillStyle = colors.primary;
+  ctx.fillRect(0, 0, W * 0.72, 12);
+  ctx.fillStyle = colors.accent;
+  ctx.fillRect(W * 0.72, 0, W * 0.28, 12);
+
+  // Marca APEX·LAP + tagline.
   ctx.textBaseline = 'alphabetic';
   ctx.textAlign = 'left';
-  ctx.font = `900 70px ${DISPLAY}`;
+  ctx.font = `900 64px ${DISPLAY}`;
   ctx.fillStyle = colors.text;
-  ctx.fillText('APEX', M, 250);
+  ctx.fillText('APEX', M, 128);
   const apexW = ctx.measureText('APEX').width;
   ctx.fillStyle = colors.primary;
-  ctx.fillText('LAP', M + apexW + 6, 250);
+  ctx.fillText('LAP', M + apexW + 6, 128);
+  ctx.textAlign = 'right';
+  ctx.font = `800 18px ${DISPLAY}`;
+  ctx.fillStyle = colors.textFaint;
+  setSpacing(ctx, '4px');
+  ctx.fillText('LEAGUE · RACING', W - M, 122);
+  setSpacing(ctx, '0px');
+  ctx.textAlign = 'left';
 
-  // Badge (RÉCORD / PIQUE GANADO) — en Orbitron, como los títulos de la app.
-  ctx.font = `800 28px ${DISPLAY}`;
+  // Badge en "pastilla" (RÉCORD / PIQUE GANADO).
+  const badge = c.badge.toUpperCase();
+  ctx.font = `800 26px ${DISPLAY}`;
+  setSpacing(ctx, '3px');
+  const padX = 22;
+  const bw = ctx.measureText(badge).width + padX * 2;
+  const bh = 52;
+  const by = 178;
   ctx.fillStyle = colors.accent;
-  ctx.fillText(c.badge.toUpperCase(), M, 300);
+  roundRect(ctx, M, by, bw, bh, 12);
+  ctx.fill();
+  ctx.fillStyle = colors.bgDeep;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(badge, M + padX, by + bh / 2 + 1);
+  ctx.textBaseline = 'alphabetic';
+  setSpacing(ctx, '0px');
 
-  // Coche y circuito (se encogen si no caben)
-  fitText(ctx, `🚗 ${c.car}`, M, 470, W - 2 * M, 58, colors.text);
-  fitText(ctx, `📍 ${c.track}`, M, 545, W - 2 * M, 40, colors.textDim);
+  // Coche / Circuito con etiqueta (sin emojis).
+  label(ctx, 'COCHE', M, 362);
+  fitText(ctx, c.car, M, 426, W - 2 * M, 66, colors.text);
+  label(ctx, 'CIRCUITO', M, 506);
+  fitText(ctx, c.track, M, 562, W - 2 * M, 44, colors.textDim);
 
-  // Tiempo enorme, centrado
+  // Tiempo HÉROE, centrado y con resplandor.
+  label(ctx, 'TIEMPO', M, 686);
+  ctx.save();
+  ctx.shadowColor = 'rgba(255,214,10,0.45)';
+  ctx.shadowBlur = 36;
   ctx.textAlign = 'center';
   ctx.fillStyle = colors.accent;
-  fitTextCentered(ctx, formatTime(c.timeMs), W / 2, 850, W - 2 * M, 200);
+  fitTextCentered(ctx, formatTime(c.timeMs), W / 2, 840, W - 2 * M, 188);
+  ctx.restore();
+  ctx.textAlign = 'left';
 
-  // Piloto
-  ctx.font = `800 46px ${SANS}`;
-  ctx.fillStyle = colors.gold;
-  ctx.fillText(`👑 ${c.driverName}`, W / 2, 960);
+  // Piloto.
+  label(ctx, 'PILOTO', M, 952);
+  fitText(ctx, c.driverName, M, 1012, W - 2 * M, 50, colors.gold);
 
-  // Nota opcional (condiciones, nº de vueltas…)
+  // Nota opcional (condiciones, nº de vueltas…).
   if (c.note) {
-    ctx.font = `600 32px ${SANS}`;
+    ctx.font = `600 30px ${SANS}`;
     ctx.fillStyle = colors.textDim;
-    ctx.fillText(c.note, W / 2, 1020);
+    ctx.fillText(c.note, M, 1064);
   }
 
-  // Pie con URL — en Orbitron, como el "LEAGUE · RACING" de la cabecera.
-  ctx.font = `700 28px ${DISPLAY}`;
+  // Bandera de cuadros NÍTIDA al pie (2 filas) + URL.
+  drawChecker(ctx, 0, H - 184, W, 52, 26, colors.text, '#0B0D12');
+  ctx.textAlign = 'center';
+  ctx.font = `700 26px ${DISPLAY}`;
   ctx.fillStyle = colors.textFaint;
-  ctx.fillText(APP_URL.replace('https://', ''), W / 2, H - 110);
+  setSpacing(ctx, '2px');
+  ctx.fillText(APP_URL.replace('https://', ''), W / 2, H - 64);
+  setSpacing(ctx, '0px');
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
@@ -192,6 +233,47 @@ async function renderCard(c: ShareCard): Promise<Blob> {
       'image/png'
     );
   });
+}
+
+// Tablero de cuadros (bandera de carrera). Crudo y rápido con fillRect.
+function drawChecker(
+  ctx: any,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  sq: number,
+  ca: string,
+  cb: string
+): void {
+  const cols = Math.ceil(w / sq);
+  const rows = Math.ceil(h / sq);
+  for (let r = 0; r < rows; r++) {
+    for (let col = 0; col < cols; col++) {
+      ctx.fillStyle = (r + col) % 2 === 0 ? ca : cb;
+      ctx.fillRect(x + col * sq, y + r * sq, sq, sq);
+    }
+  }
+}
+
+// Etiqueta pequeña en mayúsculas (Orbitron, espaciada) tipo "COCHE", "TIEMPO".
+function label(ctx: any, text: string, x: number, y: number): void {
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = `800 22px ${DISPLAY}`;
+  ctx.fillStyle = colors.textFaint;
+  setSpacing(ctx, '5px');
+  ctx.fillText(text, x, y);
+  setSpacing(ctx, '0px');
+}
+
+// letterSpacing del canvas (Chrome/Safari/FF recientes); si no existe, se ignora.
+function setSpacing(ctx: any, value: string): void {
+  try {
+    ctx.letterSpacing = value;
+  } catch {
+    /* navegador sin soporte: sin espaciado extra */
+  }
 }
 
 function roundRect(
