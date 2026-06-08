@@ -105,6 +105,8 @@
       background: var(--surf-h); color: var(--dim);
     }
     .badge.new { background: rgba(56, 210, 88, 0.16); color: var(--green); }
+    .badge.sectors { background: rgba(255, 214, 10, 0.16); color: var(--yel); }
+    .sectors-line { font-size: 11px; color: var(--faint); margin-top: 2px; }
     .summary { display: flex; gap: 22px; flex-wrap: wrap; margin-bottom: 14px; }
     .summary .stat { display: flex; flex-direction: column; }
     .summary .num { font-size: 26px; font-weight: 700; line-height: 1; }
@@ -249,6 +251,7 @@
       <div class="summary">
         <div class="stat"><div class="num new" id="num-new">0</div><div class="lbl">PBs nuevos</div></div>
         <div class="stat"><div class="num dup" id="num-dup">0</div><div class="lbl">Ya estaban en la liga</div></div>
+        <div class="stat"><div class="num" id="num-sectors" style="color: var(--yel);">0</div><div class="lbl">Se les añadirán sectores</div></div>
         <div class="stat"><div class="num skip" id="num-skip">0</div><div class="lbl">Vueltas descartadas (cortes/tiempos raros)</div></div>
       </div>
       <div class="scroll" id="preview-groups"></div>
@@ -269,7 +272,8 @@
     <div class="modal" role="dialog" aria-labelledby="success-title" aria-modal="true">
       <div class="checkmark">✓</div>
       <h3 id="success-title">¡Tiempos subidos!</h3>
-      <p>Has añadido <span class="big" id="success-count">0</span> récords nuevos a tu liga. Ya aparecen para tus colegas en la app.</p>
+      <p id="success-new">Has añadido <span class="big" id="success-count">0</span> récords nuevos a tu liga. Ya aparecen para tus colegas en la app.</p>
+      <p id="success-sectors" class="hide">Y se añadieron sectores a <span class="big" id="success-sectors-count">0</span> vueltas que ya estaban.</p>
       <button id="success-ok" class="btn-primary" style="min-width: 140px;">Genial</button>
     </div>
   </div>
@@ -341,8 +345,8 @@ const S = {
   driverName: null,
   detectedPlayers: [],   // nombres encontrados en los ficheros
   filesAggregated: null, // { byCombo: Map<combo, {car, track, timeMs, driverName, fileCount}>, skipped: number }
-  existingKeys: null,    // Set<`${track}|${car}|${timeMs}`> de la liga
-  preview: null,         // [{car, track, timeMs, isNew}]
+  existing: null,        // Map<`${track}|${car}|${timeMs}`, {docId, hasSectors}> de la liga
+  preview: null,         // [{car, track, timeMs, sectors, isNew, needsSectors, docId}]
 };
 
 // ─── Utilidades HTTP ─────────────────────────────────────────────────────────
@@ -400,8 +404,10 @@ async function fetchProfile() {
   S.driverName = f.driverName?.stringValue || null;
 }
 
-// ─── Leer existentes de la liga (para no duplicar) ───────────────────────────
-async function fetchExistingKeys() {
+// ─── Leer existentes de la liga ──────────────────────────────────────────────
+// Devuelve un Map clave→{docId, hasSectors}: nos sirve para (a) no duplicar y
+// (b) detectar vueltas ya registradas SIN sectores, para añadírselos luego.
+async function fetchExisting() {
   const url = `${FIRESTORE}/${FS_BASE}/leagues/${S.leagueId}:runQuery`;
   const body = {
     structuredQuery: {
@@ -416,16 +422,20 @@ async function fetchExistingKeys() {
     },
   };
   const rows = await postJson(url, body, { Authorization: `Bearer ${S.idToken}` });
-  const set = new Set();
+  const map = new Map();
   for (const row of rows || []) {
     if (!row.document) continue;
     const f = row.document.fields || {};
     const car = f.car?.stringValue || '';
     const track = f.track?.stringValue || '';
     const timeMs = parseInt(f.timeMs?.integerValue || '0', 10);
-    if (car && track && timeMs) set.add(`${track}|${car}|${timeMs}`);
+    if (!(car && track && timeMs)) continue;
+    const key = `${track}|${car}|${timeMs}`;
+    const docId = String(row.document.name || '').match(/[^/]+$/)?.[0] || null;
+    const hasSectors = (f.sectors?.arrayValue?.values?.length || 0) > 0;
+    map.set(key, { docId, hasSectors });
   }
-  return set;
+  return map;
 }
 
 // ─── Parseo de ficheros de CM ────────────────────────────────────────────────
@@ -494,13 +504,23 @@ function aggregateFiles(jsonDocs, playerName) {
 }
 
 // ─── Construir preview (con prettify + dedup vs liga) ────────────────────────
-function buildPreview(agg, existingKeys) {
+function buildPreview(agg, existing) {
   const rows = [];
   for (const { carId, trackId, timeMs, sectors } of agg.byCombo.values()) {
     const car = prettify(carId);
     const track = prettify(trackId);
     const key = `${track}|${car}|${timeMs}`;
-    rows.push({ car, track, timeMs, sectors, isNew: !existingKeys.has(key) });
+    const ex = existing.get(key);
+    const hasSectors = !!(sectors && sectors.length);
+    // Ya en la liga pero sin sectores guardados, y nosotros sí los tenemos →
+    // se puede actualizar esa vuelta para añadírselos (sin duplicar).
+    const needsSectors = !!ex && !ex.hasSectors && hasSectors;
+    rows.push({
+      car, track, timeMs, sectors,
+      isNew: !ex,
+      needsSectors,
+      docId: ex?.docId || null,
+    });
   }
   rows.sort((a, b) => {
     if (a.isNew !== b.isNew) return a.isNew ? -1 : 1;
@@ -610,6 +630,34 @@ async function uploadNewLaps(rows, conditions) {
   }
 }
 
+// Añade `sectors` a vueltas YA existentes sin tocar el resto de campos. Usa
+// :commit con updateMask=['sectors'] (solo escribe ese campo) y exists=true
+// (no crea nada si la vuelta hubiera desaparecido). Así no duplica.
+async function patchExistingSectors(rows) {
+  if (!rows.length) return;
+  const CHUNK = 400;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const slice = rows.slice(i, i + CHUNK);
+    const writes = slice.map(r => ({
+      update: {
+        name: `${FS_BASE}/leagues/${S.leagueId}/laps/${r.docId}`,
+        fields: {
+          sectors: {
+            arrayValue: { values: r.sectors.map(s => ({ integerValue: String(s) })) },
+          },
+        },
+      },
+      updateMask: { fieldPaths: ['sectors'] },
+      currentDocument: { exists: true },
+    }));
+    await postJson(
+      `${FIRESTORE}/${FS_BASE}:commit`,
+      { writes },
+      { Authorization: `Bearer ${S.idToken}` },
+    );
+  }
+}
+
 // ─── UI helpers ──────────────────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
 function setStatus(el, msg, kind = '') {
@@ -650,7 +698,7 @@ async function handleLogin() {
 
 function handleLogout() {
   S.idToken = null; S.uid = null; S.leagueId = null; S.driverName = null;
-  S.filesAggregated = null; S.existingKeys = null; S.preview = null;
+  S.filesAggregated = null; S.existing = null; S.preview = null;
   S.catalogCars = null; S.catalogTracks = null;
   hide('step-files'); hide('step-filter'); hide('step-preview');
   $('btn-login').disabled = false;
@@ -716,33 +764,37 @@ async function refreshPreview() {
   const agg = aggregateFiles(S._docs, playerName);
   S.filesAggregated = agg;
 
-  if (!S.existingKeys) {
+  if (!S.existing) {
     setStatus($('upload-status'), 'Comprobando lo que ya hay en tu liga…');
     try {
-      S.existingKeys = await fetchExistingKeys();
+      S.existing = await fetchExisting();
     } catch (e) {
       setStatus($('upload-status'), 'No pude leer tus vueltas existentes: ' + e.message, 'err');
       return;
     }
   }
 
-  const rows = buildPreview(agg, S.existingKeys);
+  const rows = buildPreview(agg, S.existing);
   S.preview = rows;
   const news = rows.filter(r => r.isNew).length;
+  const patches = rows.filter(r => r.needsSectors).length;
   const dups = rows.length - news;
 
   $('num-new').textContent = String(news);
   $('num-dup').textContent = String(dups);
   $('num-skip').textContent = String(agg.skipped);
+  $('num-sectors').textContent = String(patches);
 
   // Agrupar por circuito: un tiempo solo se entiende dentro de su trazado
   // (6 min en Nürburgring vs en otra pista no son comparables).
   renderGroupedPreview(rows);
 
-  $('btn-upload').disabled = news === 0;
-  $('btn-upload').textContent = news === 0
-    ? 'Nada nuevo que subir'
-    : `Subir ${news} PB${news === 1 ? '' : 's'} nuevos`;
+  $('btn-upload').disabled = news === 0 && patches === 0;
+  $('btn-upload').textContent =
+    news === 0 && patches === 0 ? 'Nada que subir'
+    : news > 0 && patches > 0 ? `Subir ${news} y añadir sectores a ${patches}`
+    : news > 0 ? `Subir ${news} PB${news === 1 ? '' : 's'} nuevos`
+    : `Añadir sectores a ${patches} vuelta${patches === 1 ? '' : 's'}`;
 
   setStatus($('upload-status'), '');
   show('step-preview');
@@ -751,16 +803,29 @@ async function refreshPreview() {
 async function handleUpload() {
   if (!S.preview) return;
   const news = S.preview.filter(r => r.isNew);
-  if (!news.length) return;
+  const patches = S.preview.filter(r => r.needsSectors && r.docId);
+  if (!news.length && !patches.length) return;
   const conditions = $('conditions').value;
 
   $('btn-upload').disabled = true;
-  setStatus($('upload-status'), `Subiendo ${news.length} vueltas…`);
+  const doing = [
+    news.length ? `subiendo ${news.length}` : null,
+    patches.length ? `añadiendo sectores a ${patches.length}` : null,
+  ].filter(Boolean).join(' y ');
+  setStatus($('upload-status'), `${doing.charAt(0).toUpperCase()}${doing.slice(1)}…`);
   try {
     await uploadNewLaps(news, conditions);
+    await patchExistingSectors(patches);
     const count = news.length;
-    // Marca las claves como existentes para que el preview se actualice.
-    for (const r of news) S.existingKeys.add(`${r.track}|${r.car}|${r.timeMs}`);
+    // Actualiza el estado local para que el preview se refresque bien:
+    // las nuevas pasan a existir (con sectores) y las parcheadas ya los tienen.
+    for (const r of news) {
+      S.existing.set(`${r.track}|${r.car}|${r.timeMs}`, { docId: null, hasSectors: !!(r.sectors && r.sectors.length) });
+    }
+    for (const r of patches) {
+      const e = S.existing.get(`${r.track}|${r.car}|${r.timeMs}`);
+      if (e) e.hasSectors = true;
+    }
 
     // Tras subir las vueltas, garantiza que sus coches/circuitos no-vanilla
     // están en el catálogo de la liga (etiqueta MOD), para que aparezcan en el
@@ -777,9 +842,13 @@ async function handleUpload() {
       console.warn('No pude actualizar el catálogo:', e);
     }
 
-    setStatus($('upload-status'), `Subidas ${count} vueltas ✓`, 'ok');
+    const done = [
+      count ? `Subidas ${count} vueltas` : null,
+      patches.length ? `sectores añadidos a ${patches.length}` : null,
+    ].filter(Boolean).join(' · ');
+    setStatus($('upload-status'), `${done} ✓`, 'ok');
     await refreshPreview();
-    showSuccessModal(count);
+    showSuccessModal(count, patches.length);
   } catch (e) {
     setStatus($('upload-status'), 'Error subiendo: ' + e.message, 'err');
     $('btn-upload').disabled = false;
@@ -829,11 +898,17 @@ function renderGroupedPreview(rows) {
       const tr = document.createElement('tr');
       const badge = r.isNew
         ? '<span class="badge new">NUEVO</span>'
-        : '<span class="badge">YA EN LIGA</span>';
+        : r.needsSectors
+          ? '<span class="badge sectors">+ SECTORES</span>'
+          : '<span class="badge">YA EN LIGA</span>';
       const cls = r.isNew ? 'time' : 'time dup';
+      // Línea de sectores (S1/S2/S3) si la vuelta los trae.
+      const secLine = (r.sectors && r.sectors.length)
+        ? `<div class="sectors-line">${r.sectors.map((s, i) => `S${i + 1} ${fmtMs(s)}`).join(' · ')}</div>`
+        : '';
       tr.innerHTML =
         `<td style="width: 110px;">${badge}</td>` +
-        `<td${r.isNew ? '' : ' class="dup"'}>${escapeHtml(r.car)}</td>` +
+        `<td${r.isNew ? '' : ' class="dup"'}>${escapeHtml(r.car)}${secLine}</td>` +
         `<td class="${cls}" style="text-align: right;">${fmtMs(r.timeMs)}</td>`;
       tbody.appendChild(tr);
     }
@@ -842,8 +917,11 @@ function renderGroupedPreview(rows) {
 }
 
 // Modal de éxito tras subir
-function showSuccessModal(count) {
+function showSuccessModal(count, patched = 0) {
   $('success-count').textContent = String(count);
+  $('success-new').classList.toggle('hide', count === 0);
+  $('success-sectors-count').textContent = String(patched);
+  $('success-sectors').classList.toggle('hide', patched === 0);
   $('success-modal').classList.remove('hide');
 }
 function hideSuccessModal() {

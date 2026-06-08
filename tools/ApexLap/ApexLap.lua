@@ -546,6 +546,9 @@ local function detectLaps()
 
   seen[key] = true -- marca ya para no duplicar mientras sube
   log('vuelta limpia ' .. fmt(t) .. ' (' .. tostring(carId) .. ')')
+  -- DEBUG sectores: la clave EN VIVO. Debe coincidir con la que calcula el
+  -- escaneo del JSON de CM (línea "JSON key=…") para que el PATCH la encuentre.
+  log('LIVE key=' .. key)
   uploadLap({
     timeMs = t,
     car = prettify(carId),
@@ -721,9 +724,19 @@ local function scanSectorsFromCM()
     log('sectores: procesados ' .. limit .. '/' .. total .. ' ficheros (cota)')
   end
 
-  local patched, uploaded = 0, 0
+  local patched, uploaded, dbg = 0, 0, 0
   for combo, best in pairs(agg) do
     local key = combo .. '|' .. tostring(best.timeMs)
+    -- DEBUG sectores: muestra las primeras claves del JSON y su veredicto, para
+    -- compararlas con las "LIVE key=…" y ver si el emparejamiento cuadra.
+    if dbg < 5 then
+      dbg = dbg + 1
+      local why = sectorsDone[key] and 'ya tiene sectores'
+        or (docByKey[key] and 'PATCH (doc ' .. docByKey[key] .. ')')
+        or (seen[key] and 'subida sin docId: no se puede parchear')
+        or 'nueva con sectores'
+      log('JSON key=' .. key .. ' sec=' .. #best.sectors .. ' -> ' .. why)
+    end
     if not sectorsDone[key] then
       local docId = docByKey[key]
       if docId then

@@ -90,6 +90,19 @@ Detalles:
   recientes**; lo registra en el log si hay más.
 - **Requiere lanzar el juego desde Content Manager** (es quien escribe esos JSON).
 
+### Depuración del emparejamiento
+
+Para que el `PATCH` encuentre la vuelta, la clave que calcula la detección en vivo
+(`pista|coche|ms`) debe coincidir con la del JSON. El mod loguea ambas:
+
+- `[ApexLap] LIVE key=…` → al cerrar una vuelta en vivo.
+- `[ApexLap] JSON key=… -> …` → al escanear los JSON (primeras 5), con su veredicto
+  (`PATCH`, `nueva con sectores`, `ya tiene sectores`, etc.).
+
+Si una `LIVE key` y su `JSON key` deberían ser la misma vuelta pero salen distintas
+(p. ej. el nombre de pista/coche difiere), pásame esas dos líneas y ajusto cómo se
+construye el `combo`.
+
 ## ⚙️ Importante: primera prueba (puede necesitar un retoque)
 
 Este mod se ha escrito contra la API documentada de CSP Lua, pero **no se ha podido
