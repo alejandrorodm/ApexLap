@@ -104,11 +104,21 @@ const SANS = 'Inter, Arial, sans-serif';
 
 async function renderCard(c: ShareCard): Promise<Blob> {
   const g = globalThis as any;
-  // Mejor esfuerzo: espera a que la fuente de marca (Orbitron) esté lista.
-  try {
-    await g.document?.fonts?.ready;
-  } catch {
-    /* sin Font Loading API: usa la fuente que haya */
+  // Fuerza la carga de las variantes de Orbitron e Inter que usa la tarjeta
+  // ANTES de dibujar (si no, el canvas usaría la fuente de reserva).
+  const fonts = g.document?.fonts;
+  if (fonts?.load) {
+    try {
+      await Promise.all([
+        fonts.load('900 200px Orbitron'),
+        fonts.load('800 28px Orbitron'),
+        fonts.load('900 58px Inter'),
+        fonts.load('800 46px Inter'),
+        fonts.ready,
+      ]);
+    } catch {
+      /* si falla la carga, se dibuja con la fuente que haya */
+    }
   }
 
   const W = 1080;
@@ -145,8 +155,8 @@ async function renderCard(c: ShareCard): Promise<Blob> {
   ctx.fillStyle = colors.primary;
   ctx.fillText('LAP', M + apexW + 6, 250);
 
-  // Badge (RÉCORD / PIQUE GANADO)
-  ctx.font = `800 30px ${SANS}`;
+  // Badge (RÉCORD / PIQUE GANADO) — en Orbitron, como los títulos de la app.
+  ctx.font = `800 28px ${DISPLAY}`;
   ctx.fillStyle = colors.accent;
   ctx.fillText(c.badge.toUpperCase(), M, 300);
 
@@ -171,8 +181,8 @@ async function renderCard(c: ShareCard): Promise<Blob> {
     ctx.fillText(c.note, W / 2, 1020);
   }
 
-  // Pie con URL
-  ctx.font = `700 30px ${SANS}`;
+  // Pie con URL — en Orbitron, como el "LEAGUE · RACING" de la cabecera.
+  ctx.font = `700 28px ${DISPLAY}`;
   ctx.fillStyle = colors.textFaint;
   ctx.fillText(APP_URL.replace('https://', ''), W / 2, H - 110);
 

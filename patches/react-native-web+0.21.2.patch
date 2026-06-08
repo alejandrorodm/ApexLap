@@ -1,0 +1,26 @@
+diff --git a/node_modules/react-native-web/dist/cjs/exports/StyleSheet/compiler/createReactDOMStyle.js b/node_modules/react-native-web/dist/cjs/exports/StyleSheet/compiler/createReactDOMStyle.js
+index bb2b3ca..e93ca00 100644
+--- a/node_modules/react-native-web/dist/cjs/exports/StyleSheet/compiler/createReactDOMStyle.js
++++ b/node_modules/react-native-web/dist/cjs/exports/StyleSheet/compiler/createReactDOMStyle.js
+@@ -28,7 +28,7 @@ var _canUseDom = _interopRequireDefault(require("../../../modules/canUseDom"));
+ var emptyObject = {};
+ var supportsCSS3TextDecoration = !_canUseDom.default || window.CSS != null && window.CSS.supports != null && (window.CSS.supports('text-decoration-line', 'none') || window.CSS.supports('-webkit-text-decoration-line', 'none'));
+ var MONOSPACE_FONT_STACK = 'monospace,monospace';
+-var SYSTEM_FONT_STACK = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
++var SYSTEM_FONT_STACK = 'Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
+ var STYLE_SHORT_FORM_EXPANSIONS = {
+   borderColor: ['borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor'],
+   borderBlockColor: ['borderTopColor', 'borderBottomColor'],
+diff --git a/node_modules/react-native-web/dist/exports/StyleSheet/compiler/createReactDOMStyle.js b/node_modules/react-native-web/dist/exports/StyleSheet/compiler/createReactDOMStyle.js
+index dc4ffb9..7ea5f29 100644
+--- a/node_modules/react-native-web/dist/exports/StyleSheet/compiler/createReactDOMStyle.js
++++ b/node_modules/react-native-web/dist/exports/StyleSheet/compiler/createReactDOMStyle.js
+@@ -23,7 +23,7 @@ import canUseDOM from '../../../modules/canUseDom';
+ var emptyObject = {};
+ var supportsCSS3TextDecoration = !canUseDOM || window.CSS != null && window.CSS.supports != null && (window.CSS.supports('text-decoration-line', 'none') || window.CSS.supports('-webkit-text-decoration-line', 'none'));
+ var MONOSPACE_FONT_STACK = 'monospace,monospace';
+-var SYSTEM_FONT_STACK = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
++var SYSTEM_FONT_STACK = 'Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
+ var STYLE_SHORT_FORM_EXPANSIONS = {
+   borderColor: ['borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor'],
+   borderBlockColor: ['borderTopColor', 'borderBottomColor'],

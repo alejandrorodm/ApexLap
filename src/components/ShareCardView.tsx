@@ -68,6 +68,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1.5,
     marginTop: 4,
+    fontFamily: font.display,
   },
   car: {
     color: colors.text,
@@ -92,5 +93,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     letterSpacing: 1,
+    fontFamily: font.display,
   },
 });
