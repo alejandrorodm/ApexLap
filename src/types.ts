@@ -77,6 +77,18 @@ export interface Bet {
 // Datos que se mandan a Firestore al crear una vuelta (sin id ni metadatos derivados).
 export type NewLap = Omit<Lap, 'id' | 'createdAt'>;
 
+// Objetivo personal: un tiempo a batir en un coche+circuito. Vive en
+// profiles/{uid}/goals/{id}. "Logrado" se deriva de tus vueltas (no se guarda).
+export interface Goal {
+  id: string;
+  car: string;
+  track: string;
+  targetMs: number;
+  createdAt: number;
+}
+
+export type NewGoal = Omit<Goal, 'id' | 'createdAt'>;
+
 // ── Catálogo de coches/circuitos personalizados ──────────────────────────────
 // Cada liga guarda los coches y circuitos que sus miembros añaden a mano (mods,
 // DLC…), con una etiqueta de origen y, para los mods, la URL de descarga.

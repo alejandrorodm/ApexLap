@@ -19,6 +19,12 @@ service cloud.firestore {
     match /profiles/{userId} {
       allow read: if signedIn();
       allow write: if signedIn() && request.auth.uid == userId;
+
+      // Objetivos personales: solo el dueño los crea/borra; legibles por la liga.
+      match /goals/{goalId} {
+        allow read: if signedIn();
+        allow write: if signedIn() && request.auth.uid == userId;
+      }
     }
 
     // Ligas: lectura/creación para cualquier usuario autenticado.

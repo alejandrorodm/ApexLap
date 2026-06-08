@@ -29,6 +29,8 @@ import {
   Bet,
   CatalogEntry,
   NewCatalogEntry,
+  Goal,
+  NewGoal,
 } from '../types';
 
 // ── Perfiles ───────────────────────────────────────────────────────────────
@@ -384,4 +386,30 @@ export async function placeBet(
     ),
     { ...bet, createdAt: Date.now() }
   );
+}
+
+// ── Objetivos personales (profiles/{uid}/goals) ──────────────────────────────
+
+export function subscribeGoals(
+  userId: string,
+  onData: (goals: Goal[]) => void,
+  onError: (e: unknown) => void
+): () => void {
+  return onSnapshot(
+    collection(getDb(), 'profiles', userId, 'goals'),
+    (snap) => onData(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Goal, 'id'>) }))),
+    onError
+  );
+}
+
+export async function addGoal(userId: string, goal: NewGoal): Promise<string> {
+  const ref = await addDoc(collection(getDb(), 'profiles', userId, 'goals'), {
+    ...goal,
+    createdAt: Date.now(),
+  });
+  return ref.id;
+}
+
+export async function deleteGoal(userId: string, goalId: string): Promise<void> {
+  await deleteDoc(doc(getDb(), 'profiles', userId, 'goals', goalId));
 }

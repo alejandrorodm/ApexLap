@@ -1,18 +1,21 @@
 // "Mi progreso": evolución de tus tiempos por combo coche+circuito a lo largo
 // del tiempo. Eliges un combo (de los que tienes 2+ vueltas) y ves la gráfica
 // con tu mejor marca, la mejora total y cuántas vueltas llevas.
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Pressable } from 'react-native';
 import { colors, spacing, radius, font } from '../theme';
-import { Chip, EmptyState } from '../components/ui';
+import { Chip, EmptyState, Button, Field } from '../components/ui';
 import ProgressChart from '../components/ProgressChart';
 import { useApp } from '../context/AppContext';
 import { driverProgress } from '../utils/leaderboard';
-import { formatTime, formatDelta, timeAgo } from '../utils/time';
+import { formatTime, formatDelta, timeAgo, parseTime } from '../utils/time';
+import { subscribeGoals, addGoal, deleteGoal } from '../firebase/db';
+import { notify } from '../utils/alerts';
+import { Goal } from '../types';
 import { RootStackParamList } from '../navigation/types';
 
 export default function ProgressScreen() {
@@ -42,6 +45,46 @@ export default function ProgressScreen() {
   const combo = combos.find((c) => c.key === key) ?? null;
 
   const improvement = combo ? combo.first - combo.pb : 0; // cuánto has bajado
+
+  // Objetivos personales del piloto.
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [goalText, setGoalText] = useState('');
+  const [goalBusy, setGoalBusy] = useState(false);
+  useEffect(() => {
+    if (!userId) return;
+    return subscribeGoals(userId, setGoals, () => {});
+  }, [userId]);
+
+  const comboGoal = combo
+    ? goals.find((g) => g.car === combo.car && g.track === combo.track) ?? null
+    : null;
+
+  async function setGoal() {
+    if (!userId || !combo) return;
+    const ms = parseTime(goalText);
+    if (ms == null) {
+      notify('Tiempo no válido', 'Escribe el objetivo como m:ss.mmm (p. ej. 1:42.000).');
+      return;
+    }
+    setGoalBusy(true);
+    try {
+      await addGoal(userId, { car: combo.car, track: combo.track, targetMs: ms });
+      setGoalText('');
+    } catch (e: any) {
+      notify('Error', e?.message ?? 'No se pudo guardar el objetivo.');
+    } finally {
+      setGoalBusy(false);
+    }
+  }
+
+  async function removeGoal() {
+    if (!userId || !comboGoal) return;
+    try {
+      await deleteGoal(userId, comboGoal.id);
+    } catch {
+      /* da igual */
+    }
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -117,6 +160,61 @@ export default function ProgressScreen() {
                   Última: {formatTime(combo.points[combo.points.length - 1].timeMs)}{' '}
                   · {timeAgo(combo.points[combo.points.length - 1].at, now)}
                 </Text>
+              </View>
+
+              {/* Objetivo personal para este combo */}
+              <View style={styles.goalCard}>
+                <Text style={styles.goalTitle}>🎯 Objetivo</Text>
+                {comboGoal ? (
+                  (() => {
+                    const done = combo.pb <= comboGoal.targetMs;
+                    return (
+                      <>
+                        <View style={styles.goalRow}>
+                          <Text style={styles.goalTarget}>
+                            {formatTime(comboGoal.targetMs)}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.goalState,
+                              { color: done ? colors.green : colors.textDim },
+                            ]}
+                          >
+                            {done
+                              ? '✓ ¡Logrado!'
+                              : `te faltan ${formatDelta(combo.pb, comboGoal.targetMs).replace('+', '')}`}
+                          </Text>
+                        </View>
+                        <Button
+                          title="Quitar objetivo"
+                          variant="ghost"
+                          onPress={removeGoal}
+                          style={{ marginTop: spacing.xs }}
+                        />
+                      </>
+                    );
+                  })()
+                ) : (
+                  <>
+                    <Text style={styles.goalHint}>
+                      Fija un tiempo a batir con este coche aquí. Tu mejor:{' '}
+                      {formatTime(combo.pb)}.
+                    </Text>
+                    <Field
+                      value={goalText}
+                      onChangeText={setGoalText}
+                      placeholder="m:ss.mmm (p. ej. 1:42.000)"
+                      keyboardType="numbers-and-punctuation"
+                      style={styles.goalInput}
+                    />
+                    <Button
+                      title="🎯 Fijar objetivo"
+                      onPress={setGoal}
+                      loading={goalBusy}
+                      style={{ marginTop: spacing.xs }}
+                    />
+                  </>
+                )}
               </View>
             </>
           ) : null}
@@ -228,4 +326,33 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   rangeText: { color: colors.textDim, fontSize: 13, fontWeight: '600' },
+  goalCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.accentDim,
+    padding: spacing.md,
+    marginTop: spacing.lg,
+  },
+  goalTitle: { color: colors.text, fontSize: 16, fontWeight: '900', marginBottom: spacing.sm },
+  goalHint: { color: colors.textDim, fontSize: 13, fontWeight: '600', marginBottom: spacing.sm },
+  goalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  goalTarget: {
+    color: colors.accent,
+    fontSize: 28,
+    fontWeight: '900',
+    fontFamily: font.display,
+    fontVariant: ['tabular-nums'],
+  },
+  goalState: { fontSize: 14, fontWeight: '800' },
+  goalInput: {
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    color: colors.text,
+    paddingHorizontal: spacing.md,
+    height: 48,
+    fontSize: 16,
+  },
 });
