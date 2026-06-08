@@ -54,6 +54,9 @@ opcional) para evitar trampas.
 - **Apuestas** 🎲: cada piloto predice quién ganará un pique (incluido él mismo).
 - **Clasificación por puntos** 🏆: suma por **pique ganado** y por **acertar la
   apuesta**; tabla de la liga con podio.
+- **Modo temporada** 🏆: cada pique cerrado es un evento que reparte puntos
+  **F1-style** (25-18-15…) por posición; clasificación de temporada acumulada y
+  lista de eventos (desde Liga).
 - **Compartir resultado** 📲: tarjeta del pique ganado lista para mandar al grupo.
 - **Comparador 1 vs 1** 🆚: enfrenta dos vueltas (mismo coche+circuito) con el
   desglose por sector y el delta acumulado — para ver dónde se gana el pique.
@@ -201,7 +204,7 @@ el catálogo compartido de la liga, así que podéis añadir vuestros mods y DLC
 
 Cosas que harían la app aún más adictiva (no implementadas todavía):
 
-- **Modo temporada**: torneo con calendario de eventos y clasificación F1-style
-  (25-18-15…) acumulada por jornadas.
+- **Calendario de temporada**: agrupar eventos por fechas/jornadas con apertura
+  y cierre automáticos (hoy la temporada agrega todos los piques cerrados).
 
 ¿Quieres alguna de estas? Dímelo y la añadimos. 🏎️

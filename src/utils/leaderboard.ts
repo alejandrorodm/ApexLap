@@ -350,6 +350,83 @@ export function standings(results: ChallengeResult[]): StandingRow[] {
   );
 }
 
+// ── Modo temporada: puntos F1 por posición en cada pique cerrado ─────────────
+
+// Puntos por posición (1º…10º), estilo F1. A partir del 11º, 0 puntos.
+export const SEASON_POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+
+export interface SeasonResult {
+  userId: string;
+  driverName: string;
+  timeMs: number;
+  pos: number; // 1-based
+  points: number;
+}
+
+export interface SeasonEvent {
+  challenge: Challenge;
+  results: SeasonResult[]; // orden de llegada (mejor vuelta por piloto)
+}
+
+export interface SeasonRow {
+  userId: string;
+  driverName: string;
+  points: number;
+  events: number; // eventos puntuados
+  wins: number; // veces 1º
+  podiums: number; // veces top-3
+}
+
+/**
+ * Temporada: trata cada pique CERRADO como un evento y reparte puntos F1 según
+ * el orden de llegada (mejor vuelta de cada piloto en ese pique). Devuelve los
+ * eventos (con su orden) y la clasificación acumulada de la temporada.
+ */
+export function season(
+  laps: Lap[],
+  challenges: Challenge[]
+): { events: SeasonEvent[]; table: SeasonRow[] } {
+  const closed = challenges
+    .filter((c) => c.status === 'closed' && c.winnerId)
+    .sort((a, b) => (a.resolvedAt ?? a.createdAt) - (b.resolvedAt ?? b.createdAt));
+
+  const rows = new Map<string, SeasonRow>();
+  const events: SeasonEvent[] = [];
+
+  for (const c of closed) {
+    const order = bestPerDriver(lapsForChallenge(laps, c.id));
+    if (order.length === 0) continue;
+    const results: SeasonResult[] = order.map((l, i) => ({
+      userId: l.userId,
+      driverName: l.driverName,
+      timeMs: l.timeMs,
+      pos: i + 1,
+      points: SEASON_POINTS[i] ?? 0,
+    }));
+    events.push({ challenge: c, results });
+
+    for (const r of results) {
+      let row = rows.get(r.userId);
+      if (!row) {
+        row = { userId: r.userId, driverName: r.driverName, points: 0, events: 0, wins: 0, podiums: 0 };
+        rows.set(r.userId, row);
+      }
+      row.driverName = r.driverName;
+      row.points += r.points;
+      row.events += 1;
+      if (r.pos === 1) row.wins += 1;
+      if (r.pos <= 3) row.podiums += 1;
+    }
+  }
+
+  const table = [...rows.values()].sort(
+    (a, b) => b.points - a.points || b.wins - a.wins || b.podiums - a.podiums
+  );
+  // Los eventos más recientes primero para la lista.
+  events.reverse();
+  return { events, table };
+}
+
 /** Valores únicos presentes en las vueltas, para poblar filtros. */
 export function uniqueValues(laps: Lap[]): { cars: string[]; tracks: string[] } {
   const cars = new Set<string>();

@@ -93,6 +93,13 @@ export default function StandingsScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <ScreenHeader title="Liga" subtitle={league?.name ?? ''} />
 
+        <Pressable
+          style={styles.seasonBtn}
+          onPress={() => navigation.navigate('Season')}
+        >
+          <Text style={styles.seasonBtnText}>🏆 Temporada · puntos F1 por evento ›</Text>
+        </Pressable>
+
         {table.length > 0 ? (
           <Podium rows={table.slice(0, 3)} userId={userId} />
         ) : null}
@@ -327,6 +334,23 @@ const styles = StyleSheet.create({
   podPtsUnit: { color: colors.textDim, fontSize: 12, fontWeight: '800' },
   podSub: { color: colors.textFaint, fontSize: 12, fontWeight: '700', marginTop: 2 },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  seasonBtn: {
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+  },
+  seasonBtnText: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+  },
   sectionTitle: {
     color: colors.text,
     fontSize: 14,
