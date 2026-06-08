@@ -19,6 +19,7 @@ export type TabParamList = {
   Tiempos: undefined;
   Records: undefined;
   Ruleta: undefined;
+  Muro: undefined;
   Liga: undefined;
   Perfil: undefined;
 };

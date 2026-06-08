@@ -9,6 +9,7 @@ import { RootStackParamList, TabParamList } from './types';
 import LapsScreen from '../screens/LapsScreen';
 import RecordsScreen from '../screens/RecordsScreen';
 import RouletteScreen from '../screens/RouletteScreen';
+import FeedScreen from '../screens/FeedScreen';
 import StandingsScreen from '../screens/StandingsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AddLapScreen from '../screens/AddLapScreen';
@@ -25,6 +26,7 @@ const ICONS: Record<keyof TabParamList, string> = {
   Tiempos: '🏁',
   Records: '👑',
   Ruleta: '🎰',
+  Muro: '🔥',
   Liga: '🏆',
   Perfil: '👤',
 };
@@ -63,6 +65,7 @@ function Tabs() {
       <Tab.Screen name="Tiempos" component={LapsScreen} />
       <Tab.Screen name="Records" component={RecordsScreen} options={{ title: 'Récords' }} />
       <Tab.Screen name="Ruleta" component={RouletteScreen} />
+      <Tab.Screen name="Muro" component={FeedScreen} />
       <Tab.Screen name="Liga" component={StandingsScreen} />
       <Tab.Screen name="Perfil" component={ProfileScreen} />
     </Tab.Navigator>
