@@ -11,6 +11,7 @@ import { useApp } from '../context/AppContext';
 import { subscribeChallenges } from '../firebase/db';
 import { season, SEASON_POINTS, SeasonEvent } from '../utils/leaderboard';
 import { motesByDriver, aggregateDrivers } from '../utils/achievements';
+import { shareTableCard } from '../utils/share';
 import { formatTime, timeAgo } from '../utils/time';
 import { Challenge } from '../types';
 import { RootStackParamList } from '../navigation/types';
@@ -64,7 +65,25 @@ export default function SeasonScreen() {
           ListHeaderComponent={
             <>
               {/* Clasificación de la temporada */}
-              <Text style={styles.sectionTitle}>Clasificación</Text>
+              <View style={styles.sectionRow}>
+                <Text style={styles.sectionTitle}>Clasificación</Text>
+                <Pressable
+                  hitSlop={8}
+                  onPress={() =>
+                    shareTableCard({
+                      title: 'Temporada',
+                      subtitle: league?.name,
+                      valueLabel: 'PTS',
+                      rows: table.map((r) => ({
+                        name: r.driverName,
+                        value: String(r.points),
+                      })),
+                    })
+                  }
+                >
+                  <Text style={styles.shareLink}>📊 Compartir</Text>
+                </Pressable>
+              </View>
               <View style={styles.tableHead}>
                 <Text style={[styles.posCol, styles.headCell]}>#</Text>
                 <Text style={[styles.headCell, { flex: 1 }]}>Piloto</Text>
@@ -169,6 +188,12 @@ const styles = StyleSheet.create({
   },
   subtitle: { color: colors.textDim, fontSize: 13, fontWeight: '600', marginTop: 2 },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  shareLink: { color: colors.accent, fontSize: 13, fontWeight: '800' },
   sectionTitle: {
     color: colors.text,
     fontSize: 16,

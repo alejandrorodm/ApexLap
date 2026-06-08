@@ -23,6 +23,37 @@ export interface DriverCard {
   bestLapWhere?: string; // "coche · circuito" de la mejor vuelta
 }
 
+export interface TableCard {
+  title: string; // "Clasificación", "Temporada"…
+  subtitle?: string; // nombre de la liga
+  valueLabel: string; // "PTS"
+  rows: { name: string; value: string }[]; // ya ordenadas (1º primero)
+}
+
+function tableCardText(t: TableCard): string {
+  const lines = [`🏁 ApexLap · ${t.title}${t.subtitle ? ` · ${t.subtitle}` : ''}`];
+  t.rows.slice(0, 10).forEach((r, i) => {
+    const medal = ['🥇', '🥈', '🥉'][i] ?? `${i + 1}.`;
+    lines.push(`${medal} ${r.name} — ${r.value} ${t.valueLabel}`);
+  });
+  lines.push(APP_URL);
+  return lines.join('\n');
+}
+
+/** Tarjeta de una CLASIFICACIÓN (tabla). Web: imagen; nativo: texto. */
+export async function shareTableCard(t: TableCard): Promise<void> {
+  const text = tableCardText(t);
+  if (Platform.OS === 'web') {
+    await shareImageWeb(() => renderTableCard(t), text);
+    return;
+  }
+  try {
+    await Share.share({ message: text });
+  } catch {
+    /* cancelado */
+  }
+}
+
 function driverCardText(d: DriverCard): string {
   const lines = [
     `🏁 ApexLap · ${d.name}${d.mote ? ` — ${d.mote}` : ''}`,
@@ -441,6 +472,127 @@ async function renderDriverCard(d: DriverCard): Promise<Blob> {
   ctx.fillStyle = colors.textFaint;
   setSpacing(ctx, '2px');
   ctx.fillText(APP_URL.replace('https://', ''), W / 2, H - 64);
+  setSpacing(ctx, '0px');
+
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (b: Blob | null) => (b ? resolve(b) : reject(new Error('toBlob nulo'))),
+      'image/png'
+    );
+  });
+}
+
+async function renderTableCard(t: TableCard): Promise<Blob> {
+  const g = globalThis as any;
+  await ensureCardFonts(g);
+
+  const W = 1080;
+  const H = 1350;
+  const M = 80;
+  const canvas = g.document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d no disponible');
+
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#0B0D12');
+  bg.addColorStop(1, '#06070A');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.filter = 'blur(20px)';
+  ctx.globalAlpha = 0.22;
+  drawChecker(ctx, -60, -60, W + 120, 400, 74, '#141A2B', '#37425C');
+  ctx.restore();
+  const fade = ctx.createLinearGradient(0, 180, 0, 420);
+  fade.addColorStop(0, 'rgba(11,13,18,0)');
+  fade.addColorStop(1, '#0B0D12');
+  ctx.fillStyle = fade;
+  ctx.fillRect(0, 180, W, 260);
+
+  ctx.fillStyle = colors.primary;
+  ctx.fillRect(0, 0, W * 0.72, 12);
+  ctx.fillStyle = colors.accent;
+  ctx.fillRect(W * 0.72, 0, W * 0.28, 12);
+
+  // Marca
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'left';
+  ctx.font = `900 56px ${DISPLAY}`;
+  ctx.fillStyle = colors.text;
+  ctx.fillText('APEX', M, 116);
+  const aw = ctx.measureText('APEX').width;
+  ctx.fillStyle = colors.primary;
+  ctx.fillText('LAP', M + aw + 6, 116);
+  ctx.textAlign = 'right';
+  ctx.font = `800 18px ${DISPLAY}`;
+  ctx.fillStyle = colors.textFaint;
+  setSpacing(ctx, '4px');
+  ctx.fillText('LEAGUE · RACING', W - M, 110);
+  setSpacing(ctx, '0px');
+  ctx.textAlign = 'left';
+
+  // Título + subtítulo
+  fitText(ctx, t.title.toUpperCase(), M, 210, W - 2 * M, 58, colors.accent);
+  if (t.subtitle) {
+    ctx.font = `700 28px ${SANS}`;
+    ctx.fillStyle = colors.textDim;
+    ctx.fillText(t.subtitle, M, 252);
+  }
+
+  // Filas
+  const rows = t.rows.slice(0, 8);
+  const startY = 320;
+  const rowH = Math.min(96, (H - 230 - startY) / Math.max(rows.length, 1));
+  ctx.font = `800 20px ${DISPLAY}`;
+  ctx.fillStyle = colors.textFaint;
+  setSpacing(ctx, '2px');
+  ctx.fillText(t.valueLabel.toUpperCase(), W - M - 4, startY - 14);
+  setSpacing(ctx, '0px');
+  ctx.textAlign = 'left';
+
+  rows.forEach((r, i) => {
+    const y = startY + i * rowH;
+    const top = i < 3;
+    // fondo de fila
+    ctx.fillStyle = top ? 'rgba(255,214,10,0.07)' : 'rgba(255,255,255,0.025)';
+    roundRect(ctx, M - 14, y - rowH * 0.62, W - 2 * M + 28, rowH * 0.84, 12);
+    ctx.fill();
+
+    const cy = y - rowH * 0.18;
+    // posición / medalla
+    const medal = ['🥇', '🥈', '🥉'][i];
+    ctx.textAlign = 'left';
+    if (medal) {
+      ctx.font = `900 40px ${SANS}`;
+      ctx.fillText(medal, M, cy);
+    } else {
+      ctx.font = `900 34px ${DISPLAY}`;
+      ctx.fillStyle = colors.textDim;
+      ctx.fillText(`${i + 1}`, M + 6, cy);
+    }
+    // nombre
+    ctx.font = `800 38px ${SANS}`;
+    ctx.fillStyle = colors.text;
+    const name = r.name.length > 22 ? `${r.name.slice(0, 21)}…` : r.name;
+    ctx.fillText(name, M + 76, cy);
+    // valor
+    ctx.textAlign = 'right';
+    ctx.font = `900 44px ${DISPLAY}`;
+    ctx.fillStyle = top ? colors.accent : colors.text;
+    ctx.fillText(r.value, W - M, cy);
+    ctx.textAlign = 'left';
+  });
+
+  // Bandera + URL
+  drawChecker(ctx, 0, H - 156, W, 52, 26, colors.text, '#0B0D12');
+  ctx.textAlign = 'center';
+  ctx.font = `700 26px ${DISPLAY}`;
+  ctx.fillStyle = colors.textFaint;
+  setSpacing(ctx, '2px');
+  ctx.fillText(APP_URL.replace('https://', ''), W / 2, H - 56);
   setSpacing(ctx, '0px');
 
   return new Promise<Blob>((resolve, reject) => {

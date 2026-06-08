@@ -16,6 +16,7 @@ import {
   POINTS,
 } from '../utils/leaderboard';
 import { aggregateDrivers, motesByDriver } from '../utils/achievements';
+import { shareTableCard } from '../utils/share';
 import { formatTime, timeAgo } from '../utils/time';
 import { Challenge, Bet } from '../types';
 import { RootStackParamList } from '../navigation/types';
@@ -99,6 +100,25 @@ export default function StandingsScreen() {
         >
           <Text style={styles.seasonBtnText}>🏆 Temporada · puntos F1 por evento ›</Text>
         </Pressable>
+
+        {table.length > 0 ? (
+          <Pressable
+            style={styles.shareTableBtn}
+            onPress={() =>
+              shareTableCard({
+                title: 'Clasificación',
+                subtitle: league?.name,
+                valueLabel: 'PTS',
+                rows: table.map((r) => ({
+                  name: r.driverName,
+                  value: String(r.points),
+                })),
+              })
+            }
+          >
+            <Text style={styles.shareTableText}>📊 Compartir clasificación</Text>
+          </Pressable>
+        ) : null}
 
         {table.length > 0 ? (
           <Podium rows={table.slice(0, 3)} userId={userId} />
@@ -351,6 +371,15 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.4,
   },
+  shareTableBtn: {
+    marginTop: spacing.sm,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  shareTableText: { color: colors.textDim, fontSize: 13, fontWeight: '800' },
   sectionTitle: {
     color: colors.text,
     fontSize: 14,
