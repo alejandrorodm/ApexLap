@@ -1,31 +1,83 @@
 # 🏁 ApexLap
 
-App móvil (iOS + Android) para guardar **tiempos de vuelta** de *Assetto Corsa*
-con tus colegas, comparar quién es más rápido y **picaros** con una ruleta que
-sortea coche y circuito.
+App móvil (iOS + Android) y **web** para guardar **tiempos de vuelta** de
+*Assetto Corsa* con tus colegas, comparar quién es más rápido, **picaros** con
+una ruleta que sortea coche y circuito, y hasta **apostar** por el ganador.
 
 Hecha con **Expo (React Native + TypeScript)** y **Firebase** (nube compartida
 en tiempo real). Un código de liga junta a todo el grupo: lo que registra uno,
 lo ven todos al instante.
 
+<p align="center">
+  <img src="docs/screenshots/01-login.png" alt="Pantalla de inicio de ApexLap" width="300" />
+</p>
+
 ---
 
 ## ✨ Funciones
 
+### Vueltas y rankings
 - **Registro de vueltas**: coche, circuito (con trazado), tiempo `m:ss.mmm`,
-  condiciones (seco/mojado/mixto), ayudas sí/no, caja de cambios y notas.
+  **sectores** (S1/S2/S3) opcionales, condiciones (seco/mojado/mixto), ayudas
+  sí/no, caja de cambios y notas.
 - **Ranking en vivo**: lista ordenada por tiempo con podio 🥇🥈🥉 y *delta* al
   líder. Filtros por coche, circuito, "sin ayudas" y "mojado". Modo
   **mejor de cada piloto** o **vueltas recientes**.
 - **Récords** 👑: quién tiene la vuelta más rápida en cada combinación
-  coche + circuito.
+  coche + circuito, con **detalle por pista**.
+
+### Importación automática desde el juego 🎮
+No hace falta meter los tiempos a mano. Hay tres acompañantes en [`tools/`](tools/):
+- **Mod in-game (Lua/CSP)** — [`tools/ApexLap`](tools/ApexLap/): app dentro de
+  Assetto Corsa que detecta tus vueltas limpias y las **sube solas** mientras
+  juegas. Requiere Custom Shaders Patch.
+- **Subidor de escritorio (Python)** — [`tools/cm-uploader`](tools/cm-uploader/):
+  vigila la carpeta de resultados de Content Manager y sube las vueltas. Windows,
+  Mac y Linux, solo Python 3.
+- **Importador web** — [`tools/web-import`](tools/web-import/): pega/sube los
+  ficheros de resultados desde el navegador.
+
+Las vueltas importadas entran como **verificadas**; las manuales entran como
+**pendientes** y el anfitrión las aprueba o rechaza (con **foto de prueba**
+opcional) para evitar trampas.
+
+### Piques, apuestas y liga
 - **Ruleta de piques** 🎰: tragaperras que sortea coche y circuito (y
   opcionalmente condiciones). Puedes **fijar** el coche o el circuito para
   sortear solo lo demás. Convoca un pique que les aparece a todos.
-- **Ligas**: crea una y comparte el código de 5 letras; o únete con el de un
-  colega.
+- **Retos / piques** con ciclo de vida: abierto → cerrado, con **ganador**
+  fijado a la mejor vuelta válida del pique.
+- **Apuestas** 🎲: cada piloto predice quién ganará un pique (incluido él mismo).
+- **Clasificación por puntos** 🏆: suma por **pique ganado** y por **acertar la
+  apuesta**; tabla de la liga con podio.
+
+### Cuenta, liga y avisos
+- **Ligas**: crea una y comparte el código; o únete con el de un colega. Lista de
+  **participantes**.
+- **Cuenta**: email + contraseña, **Google** (web) o **invitado** (anónimo).
+- **Catálogo de la liga**: coches/circuitos personalizados (mods, DLC) que añaden
+  los miembros, con etiqueta de origen (MOD/KUNOS/AC) y URL de descarga.
+- **Notificaciones push** 🔔 (Expo, sin servidor propio): aviso a los demás de la
+  liga cuando registras una vuelta. Solo en app nativa Android/iOS.
 - **Perfil y estadísticas**: tus vueltas, récords y mejor tiempo, más la
   clasificación de pilotos de la liga.
+
+---
+
+## 📸 Capturas
+
+| Login | Tiempos | Récords |
+|---|---|---|
+| <img src="docs/screenshots/01-login.png" width="220" /> | _añade `docs/screenshots/02-tiempos.png`_ | _añade `docs/screenshots/03-records.png`_ |
+
+| Ruleta | Liga (puntos) | Perfil |
+|---|---|---|
+| _añade `docs/screenshots/04-ruleta.png`_ | _añade `docs/screenshots/05-liga.png`_ | _añade `docs/screenshots/06-perfil.png`_ |
+
+> Para hacer una captura en el móvil: abre la app, ve a la pantalla, captura y
+> guarda el PNG en [`docs/screenshots/`](docs/screenshots/) con el nombre de la
+> tabla. (Las pantallas internas necesitan sesión y datos, por eso no se generan
+> automáticamente.)
 
 ---
 
@@ -56,14 +108,14 @@ Desplegar gratis en **Firebase Hosting** (mismo proyecto que ya usas):
 npm install -g firebase-tools
 firebase login
 firebase use --add            # elige tu proyecto Firebase (solo la 1ª vez)
-npm run deploy:web            # genera /dist y lo sube
+npm run deploy:web            # exporta /dist, empaqueta el mod y sube hosting + reglas
 ```
 Te dará una URL tipo `https://TU-PROYECTO.web.app`. ¡Esa es la que pasas al grupo!
 
 > Alternativa: cualquier hosting estático sirve (Vercel, Netlify…). Genera la web
 > con `npm run build:web` y sube la carpeta `dist/`. Si **no** usas Firebase
 > Hosting, añade tu dominio en *Firebase Console › Authentication › Settings ›
-> Authorized domains*, o el login anónimo fallará. (Los dominios `*.web.app` y
+> Authorized domains*, o el login fallará. (Los dominios `*.web.app` y
 > `*.firebaseapp.com` ya vienen autorizados.)
 
 ### 📦 APK de Android — app instalable
@@ -87,14 +139,16 @@ Pasa ese enlace/`.apk` a tus colegas de Android. (En el móvil hay que permitir
 
 1. Entra en <https://console.firebase.google.com> → **Add project**.
 2. **Build › Firestore Database** → *Create database* (empieza en *modo test*).
-3. **Build › Authentication › Sign-in method** → habilita **Anonymous**.
+3. **Build › Authentication › Sign-in method** → habilita **Anonymous**
+   (invitado) y **Email/Password**. (Para "Entrar con Google" habilita también
+   **Google** y pega el Web client ID en `src/auth/googleConfig.ts`.)
 4. **⚙ Project settings › Tus apps** → añade una app **Web** (`</>`) y copia el
    objeto `firebaseConfig`.
 5. Pega esos valores en [`src/firebase/config.ts`](src/firebase/config.ts)
    (sustituye los `PEGA_AQUI_...`).
 6. **Reglas de seguridad**: en *Firestore Database › Rules*, pega el contenido
-   de [`firestore.rules`](firestore.rules) y pulsa **Publicar**. (El modo test
-   caduca a las semanas; estas reglas lo dejan listo para el grupo.)
+   de [`firestore.rules`](firestore.rules) y pulsa **Publicar** (o se suben solas
+   con `npm run deploy:web`). Para las **fotos de prueba**, habilita *Storage*.
 
 En cuanto guardes la config, la pantalla de "Conecta Firebase" desaparece sola.
 
@@ -104,39 +158,47 @@ En cuanto guardes la config, la pantalla de "Conecta Firebase" desaparece sola.
 
 ```
 src/
-  data/            catálogo de coches y circuitos de Assetto Corsa
+  data/            catálogo de coches y circuitos de Assetto Corsa (base)
   firebase/        config.ts (tus claves) + db.ts (servicio Firestore)
+  auth/            login con Google (nativo + stub web) y config
   context/         AppContext: sesión, perfil, liga y vueltas en vivo
-  components/      UI reutilizable (botones, cards, selector con buscador)
-  screens/         Tiempos, Récords, Ruleta, Perfil, Onboarding, Setup
-  navigation/      tabs inferiores + stack (añadir vuelta)
+  components/      UI reutilizable (botones, cards, selector, marco web)
+  screens/         Tiempos, Récords, Ruleta, Liga, Perfil, Reto, Pista,
+                   Participantes, Onboarding, Auth, Setup
+  navigation/      tabs inferiores + stack (añadir vuelta, reto, pista…)
   utils/           parseo/formato de tiempos y cálculos de ranking
+  notifications.ts push con la API de Expo (sin servidor propio)
 firestore.rules    reglas de seguridad para pegar en la consola
+tools/             importadores: mod Lua (CSP), subidor Python (CM), web-import
+docs/screenshots/  capturas para el README
 ```
 
-Los **coches y circuitos** salen de `src/data/`. No están todos los mods de AC,
-pero el selector permite **escribir cualquiera a mano**, así que puedes añadir
-los tuyos sobre la marcha.
+Modelo de datos (Firestore): `leagues/{id}` con subcolecciones `laps`,
+`challenges` (con `bets`), `cars` y `tracks`; y `profiles/{uid}`.
+
+Los **coches y circuitos** base salen de `src/data/` (Assetto Corsa vanilla, sin
+DLC de pago). El selector permite **escribir cualquiera a mano** y se guardan en
+el catálogo compartido de la liga, así que podéis añadir vuestros mods y DLC.
 
 ---
 
 ## 💡 Ideas para seguir creciendo
 
-Pensadas para hacerla aún más adictiva (no implementadas todavía):
+Cosas que harían la app aún más adictiva (no implementadas todavía):
 
-- **Sectores y telemetría**: guardar S1/S2/S3 y mejor vuelta teórica.
-- **Histórico y progreso**: gráfica de tu evolución por circuito.
-- **Modo torneo / liga por puntos**: F1-style (25-18-15…) sumando por evento,
-  con clasificación de temporada.
-- **Retos cronometrados**: un pique con fecha límite y notificación push
-  (`expo-notifications`) cuando alguien te quita el récord.
-- **Comparador 1 vs 1**: superponer dos vueltas y ver el *delta* acumulado.
-- **Validación opcional con captura**: adjuntar foto/replay del tiempo para
-  evitar trampas (`expo-image-picker` + Firebase Storage).
-- **Importar desde el juego**: parsear los CSV/JSON de tiempos que exporta
-  Assetto Corsa o Content Manager.
+- **Histórico y progreso**: gráfica de tu evolución por circuito a lo largo del
+  tiempo.
+- **Mejor vuelta teórica**: combinar los mejores sectores de tus vueltas para
+  mostrar el tiempo ideal alcanzable.
+- **Modo temporada**: torneo con calendario de eventos y clasificación F1-style
+  (25-18-15…) acumulada por jornadas.
+- **Comparador 1 vs 1**: superponer dos vueltas (por sectores) y ver el *delta*
+  acumulado.
 - **Logros y motes**: "Rey del mojado", "Sin ayudas", rachas de récords.
-- **Penalización por ayudas**: ranking separado o handicap configurable.
-- **Widget / share card**: imagen compartible del récord para mandar al grupo.
+- **Ranking separado por ayudas**: tabla "con ayudas" vs "sin ayudas" o handicap
+  configurable.
+- **Share card**: imagen compartible del récord/pique para mandar al grupo.
+- **Google Sign-In en nativo**: hoy solo en web; falta configurar credenciales
+  en EAS para Android/iOS.
 
 ¿Quieres alguna de estas? Dímelo y la añadimos. 🏎️
