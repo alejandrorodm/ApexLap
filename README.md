@@ -27,6 +27,8 @@ lo ven todos al instante.
   coche + circuito, con **detalle por pista** y **tarjeta compartible** del récord.
 - **Vuelta teórica** 🧪: en el detalle de un coche, el tiempo ideal alcanzable
   combinando el mejor S1/S2/S3 registrado, con el dueño de cada sector.
+- **Histórico y progreso** 📈: gráfica de tu evolución de tiempos por coche +
+  circuito a lo largo del tiempo, con tu mejor marca y la mejora total (Perfil).
 
 ### Importación automática desde el juego 🎮
 No hace falta meter los tiempos a mano. Hay tres acompañantes en [`tools/`](tools/):
@@ -196,8 +198,6 @@ el catálogo compartido de la liga, así que podéis añadir vuestros mods y DLC
 
 Cosas que harían la app aún más adictiva (no implementadas todavía):
 
-- **Histórico y progreso**: gráfica de tu evolución por circuito a lo largo del
-  tiempo.
 - **Modo temporada**: torneo con calendario de eventos y clasificación F1-style
   (25-18-15…) acumulada por jornadas.
 - **Logros y motes**: "Rey del mojado", "Sin ayudas", rachas de récords.
