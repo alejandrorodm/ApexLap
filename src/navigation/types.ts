@@ -12,6 +12,7 @@ export type RootStackParamList = {
   Participants: undefined;
   Track: { track: string };
   NewChallenge: { track?: string };
+  Compare: { track: string; car?: string };
 };
 
 export type TabParamList = {

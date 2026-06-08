@@ -16,6 +16,7 @@ import ChallengeScreen from '../screens/ChallengeScreen';
 import ParticipantsScreen from '../screens/ParticipantsScreen';
 import TrackDetailScreen from '../screens/TrackDetailScreen';
 import NewChallengeScreen from '../screens/NewChallengeScreen';
+import CompareScreen from '../screens/CompareScreen';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -103,6 +104,11 @@ export default function RootNavigator() {
         name="NewChallenge"
         component={NewChallengeScreen}
         options={{ headerShown: false, presentation: 'modal' }}
+      />
+      <Stack.Screen
+        name="Compare"
+        component={CompareScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

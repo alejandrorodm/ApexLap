@@ -155,13 +155,27 @@ export default function TrackDetailScreen() {
               ? ` · ${driversCount} ${driversCount === 1 ? 'piloto' : 'pilotos'}`
               : ''}
           </Text>
-          <Pressable
-            style={styles.challengeBtn}
-            onPress={() => navigation.navigate('NewChallenge', { track })}
-            hitSlop={6}
-          >
-            <Text style={styles.challengeBtnText}>🎰 Pique aquí</Text>
-          </Pressable>
+          <View style={styles.headerBtns}>
+            <Pressable
+              style={styles.compareBtn}
+              onPress={() =>
+                navigation.navigate('Compare', {
+                  track,
+                  car: selectedCar ?? undefined,
+                })
+              }
+              hitSlop={6}
+            >
+              <Text style={styles.compareBtnText}>🆚 Comparar</Text>
+            </Pressable>
+            <Pressable
+              style={styles.challengeBtn}
+              onPress={() => navigation.navigate('NewChallenge', { track })}
+              hitSlop={6}
+            >
+              <Text style={styles.challengeBtnText}>🎰 Pique aquí</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
 
@@ -497,6 +511,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 6,
     gap: spacing.sm,
+  },
+  headerBtns: { flexDirection: 'row', gap: spacing.sm },
+  compareBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.blue,
+  },
+  compareBtnText: {
+    color: colors.blue,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
   challengeBtn: {
     paddingHorizontal: spacing.md,
