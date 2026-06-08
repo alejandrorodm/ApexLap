@@ -63,6 +63,33 @@ Notas:
 - La detección corre en `script.update`, así que **basta con que la app esté
   activa en la barra lateral** — la ventana puede estar cerrada.
 
+## 📊 Sectores (S1/S2/S3) — leídos de Content Manager
+
+La detección en vivo de CSP **no** entrega los tiempos por sector ya cronometrados
+(su API solo da el tiempo total fiable). Pero **Content Manager sí los guarda**: al
+terminar cada sesión escribe un JSON en
+`%LOCALAPPDATA%\AcTools Content Manager\Progress\Sessions\` y cada vuelta de ese
+JSON trae su array `sectors`.
+
+Por eso el mod, **al iniciar sesión**, lee esos JSON y añade los sectores:
+
+- Si la vuelta **ya la había subido** (guarda su doc ID de Firestore), hace un
+  `PATCH` para añadirle los sectores **sin duplicarla**.
+- Si la vuelta la hiciste **con la app cerrada**, la sube nueva ya con sectores
+  (respetando el modo "solo mejores", salvo que haya un pique abierto).
+
+Detalles:
+- Como CM escribe el JSON **al terminar** la sesión, los sectores de las vueltas
+  que acabas de hacer se completan **en el siguiente arranque** del juego. Es
+  automático: no hay que tocar nada.
+- Empareja tus vueltas por el **nombre de piloto de Assetto Corsa**; en sesiones
+  de un solo jugador (hotlap/práctica) te reconoce aunque el nombre no coincida.
+- Se puede desactivar con el botón **"Leer sectores de CM"** en la ventana, o
+  `readSectors = false` en `ac.storage`.
+- Por rendimiento del arranque procesa hasta los **150 ficheros de sesión más
+  recientes**; lo registra en el log si hay más.
+- **Requiere lanzar el juego desde Content Manager** (es quien escribe esos JSON).
+
 ## ⚙️ Importante: primera prueba (puede necesitar un retoque)
 
 Este mod se ha escrito contra la API documentada de CSP Lua, pero **no se ha podido

@@ -20,6 +20,9 @@ ac.log('[ApexLap] script cargado') -- si ves esto en el log, el .lua se cargó b
 -- de ese coche+circuito (lo único que cuenta para récords y clasificación).
 local cfg = ac.storage{
   email = '', password = '', onlyBest = true,
+  -- Opción A: al arrancar, leer los JSON de sesión de Content Manager para
+  -- añadir los tiempos por sector (S1/S2/S3) a las vueltas. Ver scanSectorsFromCM.
+  readSectors = true,
 }
 local uploadedStore = ac.storage{ keys = '' } -- claves exactas ya subidas (';')
 local bestStore = ac.storage{ best = '' }      -- mejor tiempo por combo
@@ -38,6 +41,8 @@ local S = {
   driverName = nil,
   status = 'Introduce tu email y contraseña de ApexLap.',
   uploadedCount = 0,
+  sectorsCount = 0,        -- vueltas a las que hemos añadido sectores esta sesión
+  sectorsScanned = false,  -- ya se hizo el escaneo de JSON de esta sesión (una vez)
   -- true en cuanto se ha intentado el auto-login de esta sesión (con éxito o no),
   -- para no reintentar en bucle ni re-entrar si el usuario cerró sesión a mano.
   autoLoginTried = false,
@@ -63,6 +68,46 @@ local function saveBest()
   local parts = {}
   for k, v in pairs(bestByCombo) do parts[#parts + 1] = k .. '\t' .. tostring(v) end
   bestStore.best = table.concat(parts, '\n')
+end
+
+-- ── Sectores (Opción A) ──────────────────────────────────────────────────────
+-- Content Manager escribe el resultado de cada sesión en
+-- %LOCALAPPDATA%\AcTools Content Manager\Progress\Sessions\*.json, y cada vuelta
+-- de ese JSON trae `sectors` (S1/S2/S3 en ms). Como CM escribe ese fichero al
+-- TERMINAR la sesión (no durante), no podemos leerlo en vivo: lo escaneamos al
+-- arrancar y añadimos los sectores a las vueltas ya subidas con un PATCH (sin
+-- duplicar). Para eso guardamos el doc ID de Firestore de cada vuelta subida.
+
+-- key "combo|ms" -> docId de Firestore, para poder parchear sectores luego.
+local docStore = ac.storage{ ids = '' }
+local docByKey = {}
+for line in (docStore.ids or ''):gmatch('[^\n]+') do
+  local k, id = line:match('^(.-)\t(.+)$')
+  if k then docByKey[k] = id end
+end
+local function rememberDoc(key, docId)
+  if not key or not docId or docByKey[key] == docId then return end
+  docByKey[key] = docId
+  docStore.ids = (docStore.ids == '' and (key .. '\t' .. docId))
+    or (docStore.ids .. '\n' .. key .. '\t' .. docId)
+end
+
+-- Claves cuyas vueltas YA tienen sectores en Firestore, para no repetir PATCH.
+local sectorsDoneStore = ac.storage{ done = '' }
+local sectorsDone = {}
+for k in (sectorsDoneStore.done or ''):gmatch('[^;]+') do sectorsDone[k] = true end
+local function markSectorsDone(key)
+  if not key or sectorsDone[key] then return end
+  sectorsDone[key] = true
+  sectorsDoneStore.done = (sectorsDoneStore.done == '' and key)
+    or (sectorsDoneStore.done .. ';' .. key)
+end
+
+-- Codifica un array de sectores (ms) como arrayValue de Firestore.
+local function encodeSectors(sectors)
+  local vals = {}
+  for i = 1, #sectors do vals[i] = { integerValue = tostring(sectors[i]) } end
+  return { arrayValue = { values = vals } }
 end
 
 local lastLapCount = -1
@@ -391,6 +436,10 @@ local function uploadLap(lap, isRetry)
     status = { stringValue = 'verified' },
     createdAt = { integerValue = tostring(nowMs()) },
   }
+  -- Si la vuelta llega con sectores (vía escaneo de JSON), súbelos ya.
+  if lap.sectors and #lap.sectors > 0 then
+    fields.sectors = encodeSectors(lap.sectors)
+  end
   -- ¿Hay un pique abierto con este coche+pista? Si lo hay, la vuelta cuenta para él.
   local cid = findOpenChallenge(lap.car, lap.track)
   if cid then
@@ -414,6 +463,11 @@ local function uploadLap(lap, isRetry)
         return
       end
       remember(lap.key)
+      -- Guarda el doc ID para poder parchear sectores más adelante (Opción A).
+      local okp, d = pcall(JSON.parse, res.body)
+      local docId = okp and d and d.name and tostring(d.name):match('([^/]+)$') or nil
+      if docId then rememberDoc(lap.key, docId) end
+      if lap.sectors and #lap.sectors > 0 then markSectorsDone(lap.key) end
       -- Mantén como PB local solo el más rápido: una vuelta de pique puede ser
       -- más lenta que tu mejor histórico y no debe pisarlo.
       if not bestByCombo[lap.combo] or lap.timeMs < bestByCombo[lap.combo] then
@@ -552,6 +606,152 @@ local function scanExistingBest()
   }, false)
 end
 
+-- ── Sectores: PATCH a una vuelta ya subida ──────────────────────────────────
+-- Añade el campo `sectors` a un documento existente sin tocar el resto (gracias
+-- a updateMask.fieldPaths=sectors), así no duplicamos la vuelta.
+local function patchSectors(key, docId, sectors, isRetry)
+  if not S.token or not S.leagueId then return end
+  local url = FIRESTORE .. '/projects/' .. PROJECT
+    .. '/databases/(default)/documents/leagues/' .. S.leagueId
+    .. '/laps/' .. docId .. '?updateMask.fieldPaths=sectors'
+  web.request('PATCH', url,
+    { ['Authorization'] = 'Bearer ' .. S.token, ['Content-Type'] = 'application/json' },
+    JSON.stringify{ fields = { sectors = encodeSectors(sectors) } },
+    function(err, res)
+      if res and res.status == 401 and not isRetry then
+        refreshToken(function() patchSectors(key, docId, sectors, true) end)
+        return
+      end
+      if err or (res and res.status >= 400) then
+        log('patch sectores error (' .. key .. '): ' .. tostring(err or (res and res.body)))
+        return
+      end
+      markSectorsDone(key)
+      S.sectorsCount = S.sectorsCount + 1
+      log('sectores añadidos a ' .. key)
+    end)
+end
+
+-- ── Escaneo de los JSON de Content Manager para extraer sectores ─────────────
+local SECTORS_MIN_MS = 15000     -- descarta out/in laps ridículamente cortas
+local SECTORS_MAX_MS = 3600000   -- tope del juego (1 h)
+local SECTORS_MAX_FILES = 150    -- cota para no congelar el primer frame de arranque
+
+-- Procesa un fichero de sesión y vuelca el mejor lap por combo (con sectores)
+-- en `agg`. Solo cuenta laps LIMPIAS (cuts==0) del jugador local.
+local function parseSessionFile(path, myNameLower, agg)
+  local okl, body = pcall(io.load, path)
+  if not okl or not body or body == '' then return end
+  local okj, data = pcall(JSON.parse, body)
+  if not okj or type(data) ~= 'table' then return end
+
+  local players = data.players or {}
+  local trackId = data.track or data.trackName or ''
+  local trackCfg = data.trackConfig or data.track_config or ''
+  if trackId == '' then return end
+  local trackFull = (trackCfg ~= '') and (trackId .. ' ' .. trackCfg) or trackId
+  -- En hotlap/práctica suele haber un solo jugador: ese eres tú aunque el
+  -- nombre del perfil ApexLap no coincida con el nombre de Assetto Corsa.
+  local solo = (#players == 1)
+
+  for _, sess in ipairs(data.sessions or {}) do
+    for _, lap in ipairs(sess.laps or {}) do
+      local cuts = tonumber(lap.cuts) or 0
+      local t = tonumber(lap.time) or 0
+      if cuts == 0 and t >= SECTORS_MIN_MS and t < SECTORS_MAX_MS
+         and type(lap.sectors) == 'table' then
+        local idx = tonumber(lap.car) or -1
+        local p = players[idx + 1] -- los índices del JSON son base 0
+        local pname = p and tostring(p.name or ''):lower() or ''
+        if p and (solo or (myNameLower ~= '' and pname == myNameLower)) then
+          local carId = p.car or ''
+          local secs = {}
+          for _, s in ipairs(lap.sectors) do
+            local v = tonumber(s)
+            if v and v > 0 then secs[#secs + 1] = math.floor(v) end
+          end
+          if carId ~= '' and #secs > 0 then
+            local combo = trackFull .. '|' .. carId
+            local cur = agg[combo]
+            if not cur or t < cur.timeMs then
+              agg[combo] = {
+                timeMs = t, sectors = secs,
+                carId = carId, trackId = trackId,
+                trackCfg = (trackCfg ~= '') and trackCfg or nil,
+              }
+            end
+          end
+        end
+      end
+    end
+  end
+end
+
+-- Escanea la carpeta de sesiones de CM y, por cada mejor vuelta con sectores:
+--  · si ya la subimos (tenemos su doc ID) → PATCH para añadir sectores;
+--  · si el modo en vivo no la pilló (jugaste con la app cerrada) → la sube
+--    con sectores, respetando "solo mejores" salvo que haya un pique abierto.
+local function scanSectorsFromCM()
+  local base = ac.getFolder(ac.FolderID.AppDataLocal)
+  if not base or base == '' then log('sectores: sin AppDataLocal'); return end
+  local dir = base .. '\\AcTools Content Manager\\Progress\\Sessions'
+
+  local files = {}
+  pcall(function()
+    io.scanDir(dir, '*.json', function(name, attr)
+      files[#files + 1] = { name = name, mtime = tonumber(attr.lastWriteTime) or 0 }
+    end)
+  end)
+  if #files == 0 then log('sectores: 0 ficheros en ' .. dir); return end
+
+  -- Procesa primero los más recientes y limita el total (coste de arranque).
+  table.sort(files, function(a, b) return a.mtime > b.mtime end)
+  local total = #files
+  local limit = math.min(total, SECTORS_MAX_FILES)
+
+  local myName = ''
+  local okn, n = pcall(function() return ac.getDriverName(0) end)
+  if okn and n then myName = tostring(n):lower() end
+
+  local agg = {}
+  for i = 1, limit do
+    pcall(parseSessionFile, dir .. '\\' .. files[i].name, myName, agg)
+  end
+  if total > limit then
+    log('sectores: procesados ' .. limit .. '/' .. total .. ' ficheros (cota)')
+  end
+
+  local patched, uploaded = 0, 0
+  for combo, best in pairs(agg) do
+    local key = combo .. '|' .. tostring(best.timeMs)
+    if not sectorsDone[key] then
+      local docId = docByKey[key]
+      if docId then
+        patchSectors(key, docId, best.sectors, false)
+        patched = patched + 1
+      elseif not seen[key] then
+        local car = prettify(best.carId)
+        local track = trackDisplayName(best.trackId, best.trackCfg)
+        local pb = bestByCombo[combo]
+        if (not cfg.onlyBest) or (not pb or best.timeMs < pb)
+           or findOpenChallenge(car, track) then
+          seen[key] = true
+          uploadLap({
+            timeMs = best.timeMs, car = car, track = track,
+            conditions = 'dry', key = key, combo = combo, sectors = best.sectors,
+          }, false)
+          uploaded = uploaded + 1
+        end
+      end
+    end
+  end
+  if patched + uploaded > 0 then
+    S.status = 'Sectores: ' .. patched .. ' al día, ' .. uploaded .. ' nuevas.'
+  end
+  log('sectores: patched=' .. patched .. ' uploaded=' .. uploaded
+    .. ' (de ' .. total .. ' ficheros)')
+end
+
 -- ── Tick global: corre con la app ACTIVA aunque la ventana esté cerrada ──────
 -- script.update es invocado por CSP en cada frame mientras la app esté activa
 -- en la barra lateral. Aquí dentro hacemos auto-login + detección de vueltas,
@@ -565,6 +765,15 @@ function script.update(dt)
   end
 
   if not S.loggedIn or not S.leagueId then return end
+
+  -- Una vez por sesión: lee los JSON de Content Manager y añade sectores a las
+  -- vueltas (PATCH a las ya subidas, o subida nueva con sectores). Síncrono, así
+  -- que solo corre cuando ya hay perfil/liga, y una sola vez.
+  if cfg.readSectors and not S.sectorsScanned then
+    S.sectorsScanned = true
+    local oks = pcall(scanSectorsFromCM)
+    if not oks then log('scanSectorsFromCM error') end
+  end
 
   -- Refresca la lista de piques abiertos cada ~20 s (por si se crea/cierra uno
   -- mientras juegas), para asociar bien las vueltas nuevas.
@@ -689,6 +898,18 @@ local function renderMain(dt)
   ui.popFont()
   ui.sameLine()
   ui.textColored('subidas esta sesión', DIM)
+  gap(4)
+
+  -- Sectores (Opción A): contador + toggle de lectura desde Content Manager.
+  if S.sectorsCount > 0 then
+    labeled('SECTORES', '+' .. tostring(S.sectorsCount) .. ' vueltas al día', GREEN)
+    gap(4)
+  end
+  if ghostButton(cfg.readSectors and 'Leer sectores de CM: SÍ'
+      or 'Leer sectores de CM: NO', 230) then
+    cfg.readSectors = not cfg.readSectors
+    if cfg.readSectors then S.sectorsScanned = false end -- re-escanea al activar
+  end
   gap(8)
 
   ui.textColored('La app sigue vigilando aunque cierres esta ventana, mientras '
@@ -699,6 +920,7 @@ local function renderMain(dt)
     S.loggedIn = false
     S.token = nil; S.uid = nil; S.leagueId = nil
     S.autoLoginTried = true -- evita que vuelva a entrar solo hasta que pulses Entrar
+    S.sectorsScanned = false -- re-escanea sectores en el próximo login
     S.status = 'Sesión cerrada.'
   end
 end
