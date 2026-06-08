@@ -138,3 +138,10 @@ no depende de CSP.
 - **Menos escrituras:** en modo PB (por defecto) solo sube si el tiempo mejora tu
   mejor marca de ese coche+circuito; los PBs por combo se guardan en `ac.storage`.
 - Persistencia de credenciales, PBs y de lo ya subido con `ac.storage`.
+- **Ayudas y caja**: se toman de tu **Perfil** en la app (ajústalas ahí: "Sin/Con
+  ayudas" y la caja). Además el mod intenta autodetectar ayudas del juego
+  (best-effort) y registra los campos disponibles en el log (`ayudas-candidatos`)
+  para afinarlo.
+- **Clima**: marca la vuelta como seco / mixto / mojado según la lluvia del juego.
+- **Battle the ghost**: muestra el récord de la liga del coche+circuito actual y
+  tu delta en vivo; si bajas el récord de otro piloto, recibe un aviso push.

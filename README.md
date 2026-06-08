@@ -216,13 +216,13 @@ Cosas que harían la app aún más adictiva (no implementadas todavía):
 - **Calendario de temporada**: agrupar eventos por fechas/jornadas con apertura
   y cierre automáticos (hoy la temporada agrega todos los piques cerrados).
 - **Multi-liga**: pertenecer a varias ligas y cambiar entre ellas.
-- **Lado del mod / juego** (fase aparte):
-  - **Ayudas reales**: leer ABS/TC/control de estabilidad del juego en vez del
-    `false` por defecto del subidor.
-  - **Clima real de la sesión**: temperatura de pista y condiciones desde el JSON
-    de Content Manager (en vez del default).
-  - **"Battle the ghost"**: mostrar el récord de la liga en pantalla mientras ruedas.
-  - **Aviso "te han quitado el récord"**: push al perder un récord (Cloud Function
-    o desde el subidor, porque los récords llegan del importador, no de la app).
+- **Calibrar autodetección de ayudas**: el mod ya registra los campos de ayudas
+  que expone CSP (línea `ayudas-candidatos` en el log); afinar la heurística con
+  esos datos reales.
+
+> El mod (`tools/ApexLap`) ya hace: ayudas/caja del perfil declarado +
+> autodetección best-effort, clima seco/mixto/mojado, **battle the ghost** (récord
+> de la liga en pantalla con tu delta) y **aviso push de récord arrebatado**.
+> Pendiente de probar en el juego.
 
 ¿Quieres alguna de estas? Dímelo y la añadimos. 🏎️
