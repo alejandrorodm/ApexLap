@@ -28,6 +28,7 @@ import {
 } from '../firebase/db';
 import { bestPerDriver, lapsForChallenge, POINTS } from '../utils/leaderboard';
 import { formatTime, timeAgo } from '../utils/time';
+import { shareCard } from '../utils/share';
 import { confirmAction, notify } from '../utils/alerts';
 import { Challenge, Bet, Profile } from '../types';
 import { RootStackParamList } from '../navigation/types';
@@ -207,6 +208,22 @@ export default function ChallengeScreen() {
               <Text style={styles.winnerPts}>
                 +{POINTS.win} pts al ganador · +{POINTS.correctBet} a cada acierto
               </Text>
+              <Pressable
+                style={styles.shareBtn}
+                hitSlop={8}
+                onPress={() =>
+                  shareCard({
+                    badge: 'Pique ganado',
+                    car: challenge.car,
+                    track: challenge.track,
+                    timeMs: challenge.winnerTimeMs ?? 0,
+                    driverName: challenge.winnerName || 'Anónimo',
+                    note: challenge.title || undefined,
+                  })
+                }
+              >
+                <Text style={styles.shareBtnText}>⤴ Compartir resultado</Text>
+              </Pressable>
             </View>
           ) : null}
 
@@ -391,6 +408,21 @@ const styles = StyleSheet.create({
     fontFamily: font.display,
   },
   winnerPts: { color: colors.textDim, fontSize: 12, marginTop: 4 },
+  shareBtn: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.gold,
+  },
+  shareBtnText: {
+    color: colors.gold,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
   sectionTitle: {
     color: colors.text,
     fontSize: 16,

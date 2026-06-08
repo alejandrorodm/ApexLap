@@ -11,6 +11,7 @@ import { PickerModal, PickerGroup, PickerItem } from '../components/PickerModal'
 import { useApp } from '../context/AppContext';
 import { recordsByCombo } from '../utils/leaderboard';
 import { formatTime, timeAgo } from '../utils/time';
+import { shareCard } from '../utils/share';
 import {
   subscribeChallenges,
   updateChallenge,
@@ -298,7 +299,25 @@ export default function RecordsScreen() {
                   {rec.count === 1 ? 'vuelta' : 'vueltas'}
                 </Text>
               </View>
-              <Text style={styles.recTime}>{formatTime(rec.lap.timeMs)}</Text>
+              <View style={styles.recRight}>
+                <Text style={styles.recTime}>{formatTime(rec.lap.timeMs)}</Text>
+                <Pressable
+                  style={styles.shareBtn}
+                  hitSlop={8}
+                  onPress={() =>
+                    shareCard({
+                      badge: 'Récord',
+                      car: rec.car,
+                      track: rec.track,
+                      timeMs: rec.lap.timeMs,
+                      driverName: rec.lap.driverName || 'Anónimo',
+                      note: `${rec.count} ${rec.count === 1 ? 'vuelta' : 'vueltas'} en la liga`,
+                    })
+                  }
+                >
+                  <Text style={styles.shareBtnText}>⤴ Compartir</Text>
+                </Pressable>
+              </View>
             </View>
           );
         }}
@@ -484,6 +503,20 @@ const styles = StyleSheet.create({
   recCar: { color: colors.text, fontSize: 20, fontWeight: '900' },
   recTrack: { color: colors.textDim, fontSize: 15, marginTop: 3, fontWeight: '600' },
   recHolder: { color: colors.gold, fontSize: 13, marginTop: 5, fontWeight: '700' },
+  recRight: { alignItems: 'flex-end', gap: 6 },
+  shareBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  shareBtnText: {
+    color: colors.textDim,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
   recTime: {
     color: colors.accent,
     fontSize: 27,
