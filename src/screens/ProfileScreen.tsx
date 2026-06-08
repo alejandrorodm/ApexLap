@@ -24,9 +24,10 @@ import { driverStats } from '../utils/leaderboard';
 import { formatTime } from '../utils/time';
 import { confirmAction, notify } from '../utils/alerts';
 
-// APK de Android (artefacto de EAS Build). Si reconstruyes la app, actualiza
-// esta URL con la del nuevo build (o muévela a un alojamiento propio).
-const APK_URL = 'https://expo.dev/artifacts/eas/eVzeVDT3LeFeawffVgTA5G.apk';
+// APK de Android alojado en NUESTRO hosting (URL estable). El fichero se sube a
+// `dist/ApexLap.apk` en el deploy (ver script `copy:apk`), así no hay que tocar
+// esta URL en cada build: basta con reemplazar `release/ApexLap.apk` y desplegar.
+const APK_URL = 'https://apexlap.web.app/ApexLap.apk';
 
 export default function ProfileScreen() {
   const navigation =

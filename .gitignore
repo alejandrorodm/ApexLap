@@ -6,6 +6,8 @@ node_modules/
 # Expo
 .expo/
 dist/
+# APK de release (grande; se sube a hosting en el deploy, no a git)
+release/
 web-build/
 expo-env.d.ts
 
