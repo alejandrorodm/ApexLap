@@ -57,6 +57,9 @@ opcional) para evitar trampas.
 - **Modo temporada** 🏆: cada pique cerrado es un evento que reparte puntos
   **F1-style** (25-18-15…) por posición; clasificación de temporada acumulada y
   lista de eventos (desde Liga).
+- **Ranking de habilidad (ELO)** 🥇: puntuación que sube/baja según a quién bates
+  en los piques (no solo acumular), con su propio ranking compartible.
+- **Comentarios en los piques** 💬: hilo de pulla en tiempo real en cada pique.
 - **Compartir resultado** 📲: tarjeta del pique ganado lista para mandar al grupo.
 - **Comparador 1 vs 1** 🆚: enfrenta dos vueltas (mismo coche+circuito) con el
   desglose por sector y el delta acumulado — para ver dónde se gana el pique.
@@ -76,9 +79,15 @@ opcional) para evitar trampas.
 - **Catálogo de la liga**: coches/circuitos personalizados (mods, DLC) que añaden
   los miembros, con etiqueta de origen (MOD/KUNOS/AC) y URL de descarga.
 - **Notificaciones push** 🔔 (Expo, sin servidor propio): aviso a los demás de la
-  liga cuando registras una vuelta. Solo en app nativa Android/iOS.
+  liga cuando registras una vuelta o convocas un pique. Solo en app nativa.
 - **Perfil y estadísticas**: tus vueltas, récords y mejor tiempo, más la
   clasificación de pilotos de la liga.
+- **Tarjeta de piloto** 🪪: comparte tu tarjeta (mote, vueltas, récords, piques,
+  logros y mejor vuelta) como imagen.
+- **Objetivos personales** 🎯: fíjate un tiempo a batir en un coche+circuito y
+  sigue cuánto te falta (en "Mi progreso").
+- **Compartir clasificación** 📊: la tabla de la liga / temporada / habilidad,
+  como imagen para mandar al grupo.
 
 ---
 
@@ -206,5 +215,14 @@ Cosas que harían la app aún más adictiva (no implementadas todavía):
 
 - **Calendario de temporada**: agrupar eventos por fechas/jornadas con apertura
   y cierre automáticos (hoy la temporada agrega todos los piques cerrados).
+- **Multi-liga**: pertenecer a varias ligas y cambiar entre ellas.
+- **Lado del mod / juego** (fase aparte):
+  - **Ayudas reales**: leer ABS/TC/control de estabilidad del juego en vez del
+    `false` por defecto del subidor.
+  - **Clima real de la sesión**: temperatura de pista y condiciones desde el JSON
+    de Content Manager (en vez del default).
+  - **"Battle the ghost"**: mostrar el récord de la liga en pantalla mientras ruedas.
+  - **Aviso "te han quitado el récord"**: push al perder un récord (Cloud Function
+    o desde el subidor, porque los récords llegan del importador, no de la app).
 
 ¿Quieres alguna de estas? Dímelo y la añadimos. 🏎️
