@@ -18,6 +18,8 @@ import { ALL_CARS } from '../data/cars';
 import { ALL_TRACKS } from '../data/tracks';
 import { addChallenge } from '../firebase/db';
 import { confirmAction, notify } from '../utils/alerts';
+import { tick as playTick, impact, win } from '../utils/feedback';
+import Confetti from '../components/Confetti';
 import { Conditions } from '../types';
 import { RootStackParamList } from '../navigation/types';
 
@@ -59,6 +61,7 @@ export default function RouletteScreen() {
   const [lockCar, setLockCar] = useState(false);
   const [lockTrack, setLockTrack] = useState(false);
   const [randomCond, setRandomCond] = useState(false);
+  const [confetti, setConfetti] = useState(0); // se incrementa para lanzar confeti
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scale = useRef(new Animated.Value(1)).current;
@@ -90,6 +93,10 @@ export default function RouletteScreen() {
         setCondText(CONDITION_LABEL[finalCond]);
         setResult({ car: finalCar, track: finalTrack, conditions: finalCond });
         setSpinning(false);
+        // ¡tachán!: golpe, fanfarria y confeti al revelar el sorteo
+        impact();
+        win();
+        setConfetti((c) => c + 1);
         // animación de "golpe" al revelar
         Animated.sequence([
           Animated.timing(scale, {
@@ -108,6 +115,7 @@ export default function RouletteScreen() {
         return;
       }
       // mientras gira, muestra valores aleatorios (respeta locks)
+      playTick();
       setCarText(lockCar && result ? result.car : pick(carPool));
       setTrackText(lockTrack && result ? result.track : pick(trackPool));
       if (randomCond) setCondText(CONDITION_LABEL[pick(conds)]);
@@ -155,6 +163,7 @@ export default function RouletteScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <Confetti fire={confetti} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.headerWrap}>
           <ScreenHeader

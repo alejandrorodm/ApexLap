@@ -1,6 +1,6 @@
 // Detalle de un pique: clasificación de vueltas, apuestas (predecir ganador) y
 // cierre con reparto de puntos. Solo el creador puede cerrarlo.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -29,6 +29,8 @@ import {
 import { bestPerDriver, lapsForChallenge, POINTS } from '../utils/leaderboard';
 import { formatTime, timeAgo } from '../utils/time';
 import { shareCard } from '../utils/share';
+import { win } from '../utils/feedback';
+import Confetti from '../components/Confetti';
 import { confirmAction, notify } from '../utils/alerts';
 import { Challenge, Bet, Profile } from '../types';
 import { RootStackParamList } from '../navigation/types';
@@ -73,6 +75,18 @@ export default function ChallengeScreen() {
 
   const isClosed = challenge?.status === 'closed';
   const isOwner = challenge?.createdBy === userId;
+
+  // Celebración: confeti + fanfarria cuando el pique se cierra MIENTRAS lo miras
+  // (transición abierto→cerrado). Abrir uno ya cerrado no la dispara.
+  const [confetti, setConfetti] = useState(0);
+  const prevClosed = useRef(isClosed);
+  useEffect(() => {
+    if (!prevClosed.current && isClosed && challenge?.winnerId) {
+      win();
+      setConfetti((c) => c + 1);
+    }
+    prevClosed.current = isClosed;
+  }, [isClosed, challenge?.winnerId]);
 
   // Clasificación de vueltas del pique (mejor por piloto, más rápida primero).
   const ranking = useMemo(
@@ -163,6 +177,7 @@ export default function ChallengeScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <Confetti fire={confetti} />
       <ScrollView contentContainerStyle={styles.content}>
         <Pressable onPress={() => navigation.goBack()} hitSlop={10}>
           <Text style={styles.back}>‹ Volver</Text>
