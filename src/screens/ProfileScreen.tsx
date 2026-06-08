@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius, font } from '../theme';
-import { Button, Card, SectionTitle, Label, ScreenHeader, Field } from '../components/ui';
+import { Button, Card, SectionTitle, Label, ScreenHeader, Field, Chip } from '../components/ui';
 import { RootStackParamList } from '../navigation/types';
 import { useApp } from '../context/AppContext';
 import { driverStats } from '../utils/leaderboard';
@@ -51,6 +51,7 @@ export default function ProfileScreen() {
     isGuest,
     hasPassword,
     setDriverName,
+    setDriverPrefs,
     leaveLeague,
     signOut,
     linkPassword,
@@ -256,6 +257,48 @@ export default function ProfileScreen() {
             onPress={() => navigation.navigate('Progress')}
             style={{ marginTop: spacing.md }}
           />
+        </Card>
+
+        {/* Mi setup: ayudas y caja declaradas, que el mod y el subidor aplican. */}
+        <Card style={{ marginTop: spacing.lg }}>
+          <SectionTitle>Mi setup</SectionTitle>
+          <Text style={styles.setupHint}>
+            Cómo conduces. El mod y el subidor aplican esto a las vueltas que
+            suben solas (puedes editar vueltas sueltas después).
+          </Text>
+          <Label>Ayudas</Label>
+          <View style={styles.rowChips}>
+            <Chip
+              label="🟢 Sin ayudas"
+              active={!profile?.assists}
+              onPress={() => setDriverPrefs({ assists: false })}
+              color={colors.green}
+            />
+            <Chip
+              label="🅰 Con ayudas"
+              active={!!profile?.assists}
+              onPress={() => setDriverPrefs({ assists: true })}
+              color={colors.accent}
+            />
+          </View>
+          <Label>Caja</Label>
+          <View style={styles.rowChips}>
+            <Chip
+              label="Manual"
+              active={(profile?.gearbox ?? 'manual') === 'manual'}
+              onPress={() => setDriverPrefs({ gearbox: 'manual' })}
+            />
+            <Chip
+              label="Manual + embrague"
+              active={profile?.gearbox === 'manual-clutch'}
+              onPress={() => setDriverPrefs({ gearbox: 'manual-clutch' })}
+            />
+            <Chip
+              label="Automática"
+              active={profile?.gearbox === 'auto'}
+              onPress={() => setDriverPrefs({ gearbox: 'auto' })}
+            />
+          </View>
         </Card>
 
         {/* Logros y mote */}
@@ -564,6 +607,8 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   badgeDone: { color: colors.green },
+  setupHint: { color: colors.textDim, fontSize: 13, lineHeight: 18, marginBottom: spacing.sm },
+  rowChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
   leagueName: { color: colors.text, fontSize: 20, fontWeight: '800', marginBottom: spacing.md },
   codeBox: {
     backgroundColor: colors.surfaceAlt,

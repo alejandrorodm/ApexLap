@@ -33,6 +33,11 @@ export interface Profile {
   driverName: string;
   leagueId?: string;
   pushToken?: string; // Expo push token de este dispositivo (para notificaciones)
+  // Ajustes de conducción declarados por el piloto. El mod y el subidor los
+  // aplican a las vueltas que suben automáticamente (que si no irían con valores
+  // neutros: sin ayudas / caja manual).
+  assists?: boolean;
+  gearbox?: Gearbox;
   createdAt: number;
 }
 

@@ -64,6 +64,7 @@ interface AppState {
   linkPassword: (password: string) => Promise<void>;
   // acciones de la app
   setDriverName: (name: string) => Promise<void>;
+  setDriverPrefs: (prefs: { assists?: boolean; gearbox?: Profile['gearbox'] }) => Promise<void>;
   createLeague: (name: string) => Promise<void>;
   joinLeague: (code: string) => Promise<void>;
   leaveLeague: () => Promise<void>;
@@ -308,6 +309,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [userId]
   );
 
+  // Ajustes de conducción del piloto (ayudas / caja) que usan el mod y el subidor.
+  const setDriverPrefs = useCallback(
+    async (prefs: { assists?: boolean; gearbox?: Profile['gearbox'] }) => {
+      if (!userId) return;
+      await saveProfile(userId, prefs);
+      setProfile((p) => (p ? { ...p, ...prefs } : p));
+    },
+    [userId]
+  );
+
   const createLeague = useCallback(
     async (name: string) => {
       if (!userId) return;
@@ -406,6 +417,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         signOut,
         linkPassword,
         setDriverName,
+        setDriverPrefs,
         createLeague,
         joinLeague,
         leaveLeague,
