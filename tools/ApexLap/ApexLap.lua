@@ -673,7 +673,8 @@ local function parseSessionFile(path, myNameLower, agg)
             local v = tonumber(s)
             if v and v > 0 then secs[#secs + 1] = math.floor(v) end
           end
-          if carId ~= '' and #secs > 0 then
+          -- 1 solo sector == la vuelta entera, no aporta: requiere 2+.
+          if carId ~= '' and #secs >= 2 then
             local combo = trackFull .. '|' .. carId
             local cur = agg[combo]
             if not cur or t < cur.timeMs then

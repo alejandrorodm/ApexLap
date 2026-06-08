@@ -215,6 +215,7 @@ export default function TrackDetailScreen() {
               lap={item}
               index={index}
               leaderMs={leaderMs}
+              leaderSectors={lapList[0]?.sectors ?? null}
               isMine={item.userId === userId}
               now={now}
               onLongPress={() => confirmDelete(item)}
@@ -295,6 +296,7 @@ function LapRow({
   lap,
   index,
   leaderMs,
+  leaderSectors,
   isMine,
   now,
   onLongPress,
@@ -302,6 +304,7 @@ function LapRow({
   lap: Lap;
   index: number;
   leaderMs: number | null;
+  leaderSectors: number[] | null;
   isMine: boolean;
   now: number;
   onLongPress: () => void;
@@ -360,14 +363,32 @@ function LapRow({
           ) : null}
           <Text style={styles.ago}>{timeAgo(lap.createdAt, now)}</Text>
         </View>
-        {lap.sectors && lap.sectors.length ? (
+        {/* Sectores: solo si hay 2+ (en pistas de 1 solo sector el tiempo del
+            sector coincide con el de la vuelta, así que no aporta nada). El
+            delta se mide contra el sector del líder (P1), como el de la vuelta. */}
+        {lap.sectors && lap.sectors.length >= 2 ? (
           <View style={styles.sectors}>
-            {lap.sectors.map((s, i) => (
-              <View key={i} style={styles.sector}>
-                <Text style={styles.sectorLabel}>S{i + 1}</Text>
-                <Text style={styles.sectorTime}>{formatSector(s)}</Text>
-              </View>
-            ))}
+            {lap.sectors.map((s, i) => {
+              const ref = leaderSectors?.[i];
+              const showDelta = index > 0 && ref != null;
+              const faster = showDelta && s < (ref as number);
+              return (
+                <View key={i} style={styles.sector}>
+                  <Text style={styles.sectorLabel}>S{i + 1}</Text>
+                  <Text style={styles.sectorTime}>{formatSector(s)}</Text>
+                  {showDelta ? (
+                    <Text
+                      style={[
+                        styles.sectorDelta,
+                        { color: faster ? colors.green : colors.primary },
+                      ]}
+                    >
+                      {formatDelta(s, ref as number)}
+                    </Text>
+                  ) : null}
+                </View>
+              );
+            })}
           </View>
         ) : null}
         {lap.notes ? (
@@ -654,6 +675,11 @@ const styles = StyleSheet.create({
   sectorTime: {
     color: colors.textDim,
     fontSize: 12,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  sectorDelta: {
+    fontSize: 11,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },

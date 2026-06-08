@@ -478,10 +478,13 @@ function aggregateFiles(jsonDocs, playerName) {
         const carId = player?.car || '';
         if (!carId) continue;
 
-        // Sectores: solo si AC los trae como array de tiempos positivos.
-        const sectors = Array.isArray(lap.sectors)
+        // Sectores: solo si AC los trae como array de tiempos positivos. En
+        // pistas de 1 solo sector ese tiempo == la vuelta entera, así que no
+        // aporta nada: lo descartamos (solo guardamos cuando hay 2+).
+        let sectors = Array.isArray(lap.sectors)
           ? lap.sectors.map(s => parseInt(s ?? 0, 10)).filter(s => s > 0)
           : [];
+        if (sectors.length < 2) sectors = [];
 
         const combo = `${trackId}|${carId}`;
         const prev = byCombo.get(combo);
