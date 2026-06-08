@@ -32,7 +32,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:web": "expo export --platform web",
-    "deploy:web": "expo export --platform web && firebase deploy --only hosting,firestore:rules",
+    "zip:mod": "cd tools && rm -f ../dist/ApexLap-mod.zip && zip -rq ../dist/ApexLap-mod.zip ApexLap -x '*/.DS_Store'",
+    "deploy:web": "expo export --platform web && npm run zip:mod && firebase deploy --only hosting,firestore:rules",
     "build:apk": "eas build -p android --profile preview"
   },
   "private": true
