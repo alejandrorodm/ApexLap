@@ -427,6 +427,73 @@ export function season(
   return { events, table };
 }
 
+// ── Ranking de habilidad (ELO) ───────────────────────────────────────────────
+
+export interface EloRow {
+  userId: string;
+  driverName: string;
+  elo: number;
+  events: number; // piques disputados
+  wins: number; // piques ganados
+}
+
+/**
+ * Ranking de HABILIDAD por ELO multijugador. Cada pique cerrado es un "match":
+ * se enfrenta a cada piloto contra todos los demás del pique (ganas ELO si
+ * superas a alguien mejor, pierdes si te gana alguien peor). Todos parten de
+ * 1000. Procesa los piques en orden cronológico.
+ */
+export function eloTable(laps: Lap[], challenges: Challenge[]): EloRow[] {
+  const closed = challenges
+    .filter((c) => c.status === 'closed' && c.winnerId)
+    .sort((a, b) => (a.resolvedAt ?? a.createdAt) - (b.resolvedAt ?? b.createdAt));
+
+  const K = 32;
+  const R = new Map<string, number>();
+  const names = new Map<string, string>();
+  const events = new Map<string, number>();
+  const wins = new Map<string, number>();
+
+  for (const c of closed) {
+    const order = bestPerDriver(lapsForChallenge(laps, c.id));
+    const n = order.length;
+    if (n < 2) continue;
+
+    order.forEach((l) => {
+      if (!R.has(l.userId)) R.set(l.userId, 1000);
+      names.set(l.userId, l.driverName);
+      events.set(l.userId, (events.get(l.userId) ?? 0) + 1);
+    });
+    wins.set(order[0].userId, (wins.get(order[0].userId) ?? 0) + 1);
+
+    // Deltas contra las puntuaciones PREVIAS al evento (se aplican al final).
+    const deltas = new Map<string, number>();
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        if (i === j) continue;
+        const a = order[i].userId;
+        const b = order[j].userId;
+        const Ea = 1 / (1 + Math.pow(10, (R.get(b)! - R.get(a)!) / 400));
+        const Sa = i < j ? 1 : 0; // i llegó por delante de j
+        deltas.set(a, (deltas.get(a) ?? 0) + (K * (Sa - Ea)) / (n - 1));
+      }
+    }
+    for (const [u, d] of deltas) R.set(u, R.get(u)! + d);
+  }
+
+  const rows: EloRow[] = [];
+  for (const [u, elo] of R) {
+    rows.push({
+      userId: u,
+      driverName: names.get(u) ?? 'Piloto',
+      elo: Math.round(elo),
+      events: events.get(u) ?? 0,
+      wins: wins.get(u) ?? 0,
+    });
+  }
+  return rows.sort((a, b) => b.elo - a.elo);
+}
+
 /** Valores únicos presentes en las vueltas, para poblar filtros. */
 export function uniqueValues(laps: Lap[]): { cars: string[]; tracks: string[] } {
   const cars = new Set<string>();

@@ -15,6 +15,7 @@ export type RootStackParamList = {
   Compare: { track: string; car?: string };
   Progress: { car?: string; track?: string } | undefined;
   Season: undefined;
+  Skill: undefined;
 };
 
 export type TabParamList = {

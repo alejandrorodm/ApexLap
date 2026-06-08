@@ -20,6 +20,7 @@ import NewChallengeScreen from '../screens/NewChallengeScreen';
 import CompareScreen from '../screens/CompareScreen';
 import ProgressScreen from '../screens/ProgressScreen';
 import SeasonScreen from '../screens/SeasonScreen';
+import SkillScreen from '../screens/SkillScreen';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -123,6 +124,11 @@ export default function RootNavigator() {
       <Stack.Screen
         name="Season"
         component={SeasonScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Skill"
+        component={SkillScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

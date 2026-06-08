@@ -94,12 +94,20 @@ export default function StandingsScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <ScreenHeader title="Liga" subtitle={league?.name ?? ''} />
 
-        <Pressable
-          style={styles.seasonBtn}
-          onPress={() => navigation.navigate('Season')}
-        >
-          <Text style={styles.seasonBtnText}>🏆 Temporada · puntos F1 por evento ›</Text>
-        </Pressable>
+        <View style={styles.navBtnRow}>
+          <Pressable
+            style={[styles.seasonBtn, { flex: 1, marginTop: 0 }]}
+            onPress={() => navigation.navigate('Season')}
+          >
+            <Text style={styles.seasonBtnText}>🏆 Temporada</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.seasonBtn, { flex: 1, marginTop: 0, borderColor: colors.blue }]}
+            onPress={() => navigation.navigate('Skill')}
+          >
+            <Text style={[styles.seasonBtnText, { color: colors.blue }]}>🥇 Habilidad</Text>
+          </Pressable>
+        </View>
 
         {table.length > 0 ? (
           <Pressable
@@ -354,6 +362,7 @@ const styles = StyleSheet.create({
   podPtsUnit: { color: colors.textDim, fontSize: 12, fontWeight: '800' },
   podSub: { color: colors.textFaint, fontSize: 12, fontWeight: '700', marginTop: 2 },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  navBtnRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md, marginBottom: spacing.xs },
   seasonBtn: {
     marginTop: spacing.md,
     marginBottom: spacing.xs,
