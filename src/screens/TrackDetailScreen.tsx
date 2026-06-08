@@ -26,7 +26,7 @@ import { useGridColumns } from '../responsive';
 import { Chip, EmptyState } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import { lapsForTrack, bestPerCarOnTrack, CarRecord } from '../utils/leaderboard';
-import { formatTime, formatDelta, timeAgo } from '../utils/time';
+import { formatTime, formatDelta, formatSector, timeAgo } from '../utils/time';
 import { deleteLap } from '../firebase/db';
 import { Lap } from '../types';
 import { RootStackParamList } from '../navigation/types';
@@ -360,6 +360,16 @@ function LapRow({
           ) : null}
           <Text style={styles.ago}>{timeAgo(lap.createdAt, now)}</Text>
         </View>
+        {lap.sectors && lap.sectors.length ? (
+          <View style={styles.sectors}>
+            {lap.sectors.map((s, i) => (
+              <View key={i} style={styles.sector}>
+                <Text style={styles.sectorLabel}>S{i + 1}</Text>
+                <Text style={styles.sectorTime}>{formatSector(s)}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
         {lap.notes ? (
           <Text style={styles.notes} numberOfLines={2}>
             💬 {lap.notes}
@@ -624,6 +634,29 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontSize: 10, fontWeight: '700' },
   ago: { color: colors.textFaint, fontSize: 11, marginLeft: spacing.xs },
+  sectors: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  sector: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+  },
+  sectorLabel: {
+    color: colors.textFaint,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  sectorTime: {
+    color: colors.textDim,
+    fontSize: 12,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
   notes: {
     color: colors.textDim,
     fontSize: 12,

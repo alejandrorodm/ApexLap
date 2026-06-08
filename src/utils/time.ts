@@ -11,6 +11,19 @@ export function formatTime(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
 }
 
+/**
+ * Formatea un tiempo de sector. Los sectores suelen durar menos de un minuto,
+ * así que se muestran como "ss.mmm" (p.ej. "31.234"); si pasan del minuto, se
+ * cae al formato completo "m:ss.mmm".
+ */
+export function formatSector(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return '--.---';
+  if (ms >= 60_000) return formatTime(ms);
+  const seconds = Math.floor(ms / 1000);
+  const millis = Math.floor(ms % 1000);
+  return `${seconds}.${String(millis).padStart(3, '0')}`;
+}
+
 /** Diferencia con signo respecto a una referencia, p.ej. "+0.482" o "-1.230". */
 export function formatDelta(ms: number, referenceMs: number): string {
   const diff = ms - referenceMs;

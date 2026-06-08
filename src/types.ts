@@ -10,6 +10,9 @@ export interface Lap {
   car: string;
   track: string;
   timeMs: number; // tiempo de vuelta en milisegundos
+  // Tiempos por sector en ms (S1, S2, S3…), tal y como los guarda AC/Content
+  // Manager. Opcional: las vueltas manuales y las antiguas no lo traen.
+  sectors?: number[];
   conditions: Conditions;
   assists: boolean; // true = con ayudas (ABS/TC/etc.)
   gearbox: Gearbox;

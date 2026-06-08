@@ -430,7 +430,8 @@ async function fetchExistingKeys() {
 
 // ─── Parseo de ficheros de CM ────────────────────────────────────────────────
 // Cada fichero de Progress\Sessions tiene esta forma (mismo que race_out.json):
-//   { track, players: [{name, car, ...}], sessions: [{ laps: [{car, time, cuts}], ... }] }
+//   { track, players: [{name, car, ...}], sessions: [{ laps: [{car, time, cuts, sectors}], ... }] }
+// `sectors` es un array de tiempos por sector en ms (S1, S2, S3…); puede faltar.
 // Devuelve un agregado best-por-(carId, trackId) de TODOS los ficheros para el
 // playerName seleccionado, además del set de nombres detectados.
 function aggregateFiles(jsonDocs, playerName) {
@@ -467,11 +468,17 @@ function aggregateFiles(jsonDocs, playerName) {
         const carId = player?.car || '';
         if (!carId) continue;
 
+        // Sectores: solo si AC los trae como array de tiempos positivos.
+        const sectors = Array.isArray(lap.sectors)
+          ? lap.sectors.map(s => parseInt(s ?? 0, 10)).filter(s => s > 0)
+          : [];
+
         const combo = `${trackId}|${carId}`;
         const prev = byCombo.get(combo);
         if (!prev || t < prev.timeMs) {
           byCombo.set(combo, {
             carId, trackId, timeMs: t,
+            sectors,
             driverNameAc: pname,
           });
         }
@@ -489,11 +496,11 @@ function aggregateFiles(jsonDocs, playerName) {
 // ─── Construir preview (con prettify + dedup vs liga) ────────────────────────
 function buildPreview(agg, existingKeys) {
   const rows = [];
-  for (const { carId, trackId, timeMs } of agg.byCombo.values()) {
+  for (const { carId, trackId, timeMs, sectors } of agg.byCombo.values()) {
     const car = prettify(carId);
     const track = prettify(trackId);
     const key = `${track}|${car}|${timeMs}`;
-    rows.push({ car, track, timeMs, isNew: !existingKeys.has(key) });
+    rows.push({ car, track, timeMs, sectors, isNew: !existingKeys.has(key) });
   }
   rows.sort((a, b) => {
     if (a.isNew !== b.isNew) return a.isNew ? -1 : 1;
@@ -565,6 +572,15 @@ function encodeLap(lap, conditions) {
     car: { stringValue: lap.car },
     track: { stringValue: lap.track },
     timeMs: { integerValue: String(lap.timeMs) },
+    ...(lap.sectors && lap.sectors.length
+      ? {
+          sectors: {
+            arrayValue: {
+              values: lap.sectors.map(s => ({ integerValue: String(s) })),
+            },
+          },
+        }
+      : {}),
     conditions: { stringValue: conditions },
     assists: { booleanValue: false },
     gearbox: { stringValue: 'manual' },
