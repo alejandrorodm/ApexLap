@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     fontFamily: font.display,
   },
   label: {
-    color: colors.textFaint,
+    color: colors.primary, // rojo de carrera: se aprecia bien sobre el fondo
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 3,

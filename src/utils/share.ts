@@ -261,7 +261,7 @@ function label(ctx: any, text: string, x: number, y: number): void {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
   ctx.font = `800 22px ${DISPLAY}`;
-  ctx.fillStyle = colors.textFaint;
+  ctx.fillStyle = colors.primary; // rojo de carrera: se aprecia bien sobre el fondo
   setSpacing(ctx, '5px');
   ctx.fillText(text, x, y);
   setSpacing(ctx, '0px');
