@@ -29,6 +29,7 @@ import {
   Mote,
 } from '../utils/achievements';
 import { formatTime } from '../utils/time';
+import { shareDriverCard } from '../utils/share';
 import { subscribeChallenges } from '../firebase/db';
 import { Challenge } from '../types';
 import { confirmAction, notify } from '../utils/alerts';
@@ -90,15 +91,31 @@ export default function ProfileScreen() {
     return subscribeChallenges(league.id, setChallenges, () => {});
   }, [league?.id]);
 
-  const { myBadges, myMote } = useMemo(() => {
+  const { myBadges, myMote, myWins } = useMemo(() => {
     const aggs = aggregateDrivers(laps, challenges);
     const mine = aggs.find((a) => a.userId === userId);
     return {
       myBadges: mine ? badgesFor(mine) : [],
       myMote: userId ? motesByDriver(aggs).get(userId) ?? null : null,
+      myWins: mine?.wins ?? 0,
     };
   }, [laps, challenges, userId]);
   const unlockedCount = myBadges.filter((b) => b.unlocked).length;
+
+  function shareMyCard() {
+    shareDriverCard({
+      name: profile?.driverName || 'Piloto',
+      mote: myMote ? `${myMote.icon} ${myMote.title}` : undefined,
+      laps: myStats?.totalLaps ?? 0,
+      records: myStats?.records ?? 0,
+      wins: myWins,
+      badges: unlockedCount,
+      bestLapMs: myStats?.bestLap?.timeMs,
+      bestLapWhere: myStats?.bestLap
+        ? `${myStats.bestLap.car} · ${myStats.bestLap.track}`
+        : undefined,
+    });
+  }
 
   // Descarga del mod de Assetto Corsa (zip servido por la propia web).
   function downloadMod() {
@@ -252,6 +269,12 @@ export default function ProfileScreen() {
               <BadgeView key={b.id} badge={b} />
             ))}
           </View>
+          <Button
+            title="🪪 Compartir mi tarjeta"
+            variant="secondary"
+            onPress={shareMyCard}
+            style={{ marginTop: spacing.md }}
+          />
         </Card>
 
         {/* Liga */}

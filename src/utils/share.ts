@@ -6,11 +6,34 @@
 //
 // El acceso al DOM (document/navigator/canvas) va siempre detrás de
 // Platform.OS === 'web', así que en el bundle nativo nunca se ejecuta.
-import { Platform } from 'react-native';
+import { Platform, Share } from 'react-native';
 import { colors } from '../theme';
 import { formatTime } from './time';
 import { notify } from './alerts';
 import { APP_URL, ShareCard, shareCardText } from './shareTypes';
+
+export interface DriverCard {
+  name: string;
+  mote?: string; // "👑 Dominador" (opcional)
+  laps: number;
+  records: number;
+  wins: number; // piques ganados
+  badges: number; // logros desbloqueados
+  bestLapMs?: number;
+  bestLapWhere?: string; // "coche · circuito" de la mejor vuelta
+}
+
+function driverCardText(d: DriverCard): string {
+  const lines = [
+    `🏁 ApexLap · ${d.name}${d.mote ? ` — ${d.mote}` : ''}`,
+    `${d.laps} vueltas · ${d.records} récords · ${d.wins} piques · ${d.badges} logros`,
+  ];
+  if (d.bestLapMs) {
+    lines.push(`⏱ Mejor: ${formatTime(d.bestLapMs)}${d.bestLapWhere ? ` (${d.bestLapWhere})` : ''}`);
+  }
+  lines.push(APP_URL);
+  return lines.join('\n');
+}
 // Metro resuelve `nativeShare.web.ts` en web (stub), así que view-shot/expo-sharing
 // no entran en el bundle web.
 import { shareCardNative } from './nativeShare';
@@ -19,21 +42,40 @@ export type { ShareCard } from './shareTypes';
 
 export async function shareCard(c: ShareCard): Promise<void> {
   if (Platform.OS === 'web') {
-    await shareWeb(c, shareCardText(c));
+    await shareImageWeb(() => renderCard(c), shareCardText(c));
     return;
   }
   await shareCardNative(c);
 }
 
+/** Tarjeta de PILOTO (mote + estadísticas). Web: imagen; nativo: texto. */
+export async function shareDriverCard(d: DriverCard): Promise<void> {
+  const text = driverCardText(d);
+  if (Platform.OS === 'web') {
+    await shareImageWeb(() => renderDriverCard(d), text);
+    return;
+  }
+  try {
+    await Share.share({ message: text });
+  } catch {
+    /* cancelado */
+  }
+}
+
 // ── Web ─────────────────────────────────────────────────────────────────────
 
-async function shareWeb(c: ShareCard, text: string): Promise<void> {
+// Comparte una imagen (PNG generada por `makeBlob`) con la hoja del sistema, o
+// la descarga + copia el texto si no hay share de ficheros (escritorio).
+async function shareImageWeb(
+  makeBlob: () => Promise<Blob>,
+  text: string
+): Promise<void> {
   const g = globalThis as any;
   const nav = g.navigator;
 
   let blob: Blob | null = null;
   try {
-    blob = await renderCard(c);
+    blob = await makeBlob();
   } catch {
     blob = null; // si el canvas falla, caemos a compartir/copiar solo texto
   }
@@ -102,24 +144,29 @@ function downloadBlob(g: any, blob: Blob, name: string): void {
 const DISPLAY = 'Orbitron, Inter, Arial, sans-serif';
 const SANS = 'Inter, Arial, sans-serif';
 
+// Fuerza la carga de las variantes de Orbitron/Inter que usan las tarjetas ANTES
+// de dibujar en el canvas (si no, saldría con la fuente de reserva).
+async function ensureCardFonts(g: any): Promise<void> {
+  const fonts = g.document?.fonts;
+  if (!fonts?.load) return;
+  try {
+    await Promise.all([
+      fonts.load('900 200px Orbitron'),
+      fonts.load('900 88px Orbitron'),
+      fonts.load('900 64px Orbitron'),
+      fonts.load('800 28px Orbitron'),
+      fonts.load('900 58px Inter'),
+      fonts.load('800 46px Inter'),
+      fonts.ready,
+    ]);
+  } catch {
+    /* si falla la carga, se dibuja con la fuente que haya */
+  }
+}
+
 async function renderCard(c: ShareCard): Promise<Blob> {
   const g = globalThis as any;
-  // Fuerza la carga de las variantes de Orbitron e Inter que usa la tarjeta
-  // ANTES de dibujar (si no, el canvas usaría la fuente de reserva).
-  const fonts = g.document?.fonts;
-  if (fonts?.load) {
-    try {
-      await Promise.all([
-        fonts.load('900 200px Orbitron'),
-        fonts.load('800 28px Orbitron'),
-        fonts.load('900 58px Inter'),
-        fonts.load('800 46px Inter'),
-        fonts.ready,
-      ]);
-    } catch {
-      /* si falla la carga, se dibuja con la fuente que haya */
-    }
-  }
+  await ensureCardFonts(g);
 
   const W = 1080;
   const H = 1350;
@@ -274,6 +321,134 @@ function setSpacing(ctx: any, value: string): void {
   } catch {
     /* navegador sin soporte: sin espaciado extra */
   }
+}
+
+async function renderDriverCard(d: DriverCard): Promise<Blob> {
+  const g = globalThis as any;
+  await ensureCardFonts(g);
+
+  const W = 1080;
+  const H = 1350;
+  const M = 80;
+  const canvas = g.document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d no disponible');
+
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#0B0D12');
+  bg.addColorStop(1, '#06070A');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Bandera difuminada en la cabecera
+  ctx.save();
+  ctx.filter = 'blur(20px)';
+  ctx.globalAlpha = 0.22;
+  drawChecker(ctx, -60, -60, W + 120, 560, 74, '#141A2B', '#37425C');
+  ctx.restore();
+  const fade = ctx.createLinearGradient(0, 230, 0, 560);
+  fade.addColorStop(0, 'rgba(11,13,18,0)');
+  fade.addColorStop(1, '#0B0D12');
+  ctx.fillStyle = fade;
+  ctx.fillRect(0, 230, W, 340);
+
+  ctx.fillStyle = colors.primary;
+  ctx.fillRect(0, 0, W * 0.72, 12);
+  ctx.fillStyle = colors.accent;
+  ctx.fillRect(W * 0.72, 0, W * 0.28, 12);
+
+  // Marca
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'left';
+  ctx.font = `900 64px ${DISPLAY}`;
+  ctx.fillStyle = colors.text;
+  ctx.fillText('APEX', M, 128);
+  const aw = ctx.measureText('APEX').width;
+  ctx.fillStyle = colors.primary;
+  ctx.fillText('LAP', M + aw + 6, 128);
+  ctx.textAlign = 'right';
+  ctx.font = `800 18px ${DISPLAY}`;
+  ctx.fillStyle = colors.textFaint;
+  setSpacing(ctx, '4px');
+  ctx.fillText('LEAGUE · RACING', W - M, 122);
+  setSpacing(ctx, '0px');
+  ctx.textAlign = 'left';
+
+  // Piloto
+  label(ctx, 'PILOTO', M, 248);
+  fitText(ctx, d.name, M, 326, W - 2 * M, 76, colors.text);
+
+  // Mote en pastilla
+  if (d.mote) {
+    ctx.font = `800 26px ${DISPLAY}`;
+    setSpacing(ctx, '1px');
+    const padX = 22;
+    const bw = ctx.measureText(d.mote).width + padX * 2;
+    const bh = 52;
+    const by = 366;
+    ctx.fillStyle = colors.accent;
+    roundRect(ctx, M, by, bw, bh, 12);
+    ctx.fill();
+    ctx.fillStyle = colors.bgDeep;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(d.mote, M + padX, by + bh / 2 + 1);
+    ctx.textBaseline = 'alphabetic';
+    setSpacing(ctx, '0px');
+  }
+
+  // Estadísticas (4 columnas)
+  const stats: [string, string][] = [
+    ['VUELTAS', String(d.laps)],
+    ['RÉCORDS', String(d.records)],
+    ['PIQUES', String(d.wins)],
+    ['LOGROS', String(d.badges)],
+  ];
+  const colW = (W - 2 * M) / 4;
+  const sy = 580;
+  ctx.textAlign = 'center';
+  stats.forEach(([lab, val], i) => {
+    const cx = M + i * colW + colW / 2;
+    ctx.font = `900 60px ${DISPLAY}`;
+    ctx.fillStyle = colors.accent;
+    ctx.fillText(val, cx, sy);
+    ctx.font = `800 18px ${DISPLAY}`;
+    ctx.fillStyle = colors.textFaint;
+    setSpacing(ctx, '2px');
+    ctx.fillText(lab, cx, sy + 36);
+    setSpacing(ctx, '0px');
+  });
+  ctx.textAlign = 'left';
+
+  // Mejor vuelta
+  if (d.bestLapMs) {
+    label(ctx, 'MEJOR VUELTA', M, 770);
+    ctx.fillStyle = colors.gold;
+    ctx.font = `900 96px ${DISPLAY}`;
+    ctx.fillText(formatTime(d.bestLapMs), M, 866);
+    if (d.bestLapWhere) {
+      ctx.font = `700 30px ${SANS}`;
+      ctx.fillStyle = colors.textDim;
+      ctx.fillText(d.bestLapWhere, M, 916);
+    }
+  }
+
+  // Bandera al pie + URL
+  drawChecker(ctx, 0, H - 184, W, 52, 26, colors.text, '#0B0D12');
+  ctx.textAlign = 'center';
+  ctx.font = `700 26px ${DISPLAY}`;
+  ctx.fillStyle = colors.textFaint;
+  setSpacing(ctx, '2px');
+  ctx.fillText(APP_URL.replace('https://', ''), W / 2, H - 64);
+  setSpacing(ctx, '0px');
+
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (b: Blob | null) => (b ? resolve(b) : reject(new Error('toBlob nulo'))),
+      'image/png'
+    );
+  });
 }
 
 function roundRect(
