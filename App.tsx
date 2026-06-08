@@ -3,6 +3,7 @@ import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { useFonts, Orbitron_800ExtraBold } from '@expo-google-fonts/orbitron';
 
 import { colors } from './src/theme';
 import { isFirebaseConfigured } from './src/firebase/config';
@@ -54,6 +55,19 @@ function Gate() {
 }
 
 export default function App() {
+  // Carga Orbitron empaquetada para que la app NATIVA use la misma tipografía
+  // tecno que la web (en nativo, sin esto, los títulos caían a la del sistema).
+  const [fontsLoaded, fontError] = useFonts({ Orbitron: Orbitron_800ExtraBold });
+
+  if (!fontsLoaded && !fontError) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar style="light" />
+        <Splash />
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />

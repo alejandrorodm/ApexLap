@@ -75,11 +75,12 @@ export const radius = {
 };
 
 export const font = {
-  // Tipografía "display" tecno para titulares, tiempos y posiciones. Orbitron se
-  // carga en web (ver WebFrame); en nativo cae a la del sistema (undefined).
+  // Tipografía "display" tecno para titulares, tiempos y posiciones. En web se
+  // sirve por Google Fonts (ver WebFrame); en nativo se empaqueta con expo-font
+  // (ver App.tsx, familia 'Orbitron'). Misma fuente en todas las plataformas.
   display: Platform.select({
     web: 'Orbitron, Inter, sans-serif',
-    default: undefined,
+    default: 'Orbitron',
   }) as string | undefined,
   // RN no permite fácilmente fuentes monoespaciadas custom sin cargarlas;
   // usamos la del sistema para los tiempos para que queden alineados.
