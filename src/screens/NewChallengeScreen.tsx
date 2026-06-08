@@ -15,6 +15,7 @@ import { Button, Chip, Label, ScreenHeader } from '../components/ui';
 import { PickerModal, PickerGroup, PickerItem } from '../components/PickerModal';
 import { useApp } from '../context/AppContext';
 import { addChallenge } from '../firebase/db';
+import { notifyLeague } from '../notifications';
 import { confirmAction, notify } from '../utils/alerts';
 import { CAR_GROUPS } from '../data/cars';
 import { TRACKS, trackLabel } from '../data/tracks';
@@ -93,6 +94,12 @@ export default function NewChallengeScreen() {
         createdByName: profile?.driverName ?? 'Anónimo',
         status: 'open',
       });
+      notifyLeague(
+        league.id,
+        userId,
+        `🎰 Nuevo pique en ${league.name}`,
+        `${profile?.driverName ?? 'Alguien'}: ${car} · ${track}`
+      );
       const go = await confirmAction({
         title: '¡Pique convocado! 🎰',
         message: `${car}\n${track}\n${COND_LABEL[conditions]}\n\nTus colegas podrán apostar por el ganador en la pestaña Liga. ¿Registrar tu vuelta ahora?`,

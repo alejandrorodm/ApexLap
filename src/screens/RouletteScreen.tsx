@@ -17,6 +17,7 @@ import { useApp } from '../context/AppContext';
 import { ALL_CARS } from '../data/cars';
 import { ALL_TRACKS } from '../data/tracks';
 import { addChallenge } from '../firebase/db';
+import { notifyLeague } from '../notifications';
 import { confirmAction, notify } from '../utils/alerts';
 import { tick as playTick, impact, win } from '../utils/feedback';
 import Confetti from '../components/Confetti';
@@ -138,6 +139,12 @@ export default function RouletteScreen() {
         createdByName: profile?.driverName ?? 'Anónimo',
         status: 'open',
       });
+      notifyLeague(
+        league.id,
+        userId,
+        `🎰 Nuevo pique en ${league.name}`,
+        `${profile?.driverName ?? 'Alguien'}: ${convened.car} · ${convened.track}`
+      );
       const go = await confirmAction({
         title: '¡Pique convocado! 🎰',
         message: `${convened.car}\n${convened.track}\n${CONDITION_LABEL[convened.conditions]}\n\nTus colegas podrán apostar por el ganador en la pestaña Liga. ¿Registrar tu vuelta ahora?`,

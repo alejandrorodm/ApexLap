@@ -101,3 +101,22 @@ export async function sendPushToTokens(
     /* sin conexión o API caída: lo dejamos pasar */
   }
 }
+
+/**
+ * Avisa (push) al resto de la liga, salvo a `exceptUserId`. Best-effort: si algo
+ * falla o no hay tokens, no pasa nada. En web es no-op (no hay push remoto).
+ */
+export async function notifyLeague(
+  leagueId: string,
+  exceptUserId: string,
+  title: string,
+  body: string
+): Promise<void> {
+  try {
+    const { getLeagueMemberTokens } = await import('./firebase/db');
+    const tokens = await getLeagueMemberTokens(leagueId, exceptUserId);
+    await sendPushToTokens(tokens, title, body);
+  } catch {
+    /* notificar es opcional */
+  }
+}
