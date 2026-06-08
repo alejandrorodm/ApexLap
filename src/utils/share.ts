@@ -9,6 +9,7 @@
 import { Platform } from 'react-native';
 import { colors } from '../theme';
 import { formatTime } from './time';
+import { notify } from './alerts';
 import { APP_URL, ShareCard, shareCardText } from './shareTypes';
 // Metro resuelve `nativeShare.web.ts` en web (stub), así que view-shot/expo-sharing
 // no entran en el bundle web.
@@ -51,20 +52,39 @@ async function shareWeb(c: ShareCard, text: string): Promise<void> {
   }
 
   // 2) Sin share de ficheros (escritorio): descarga la imagen + copia el texto.
-  if (blob) downloadBlob(g, blob, 'apexlap.png');
-  try {
-    await nav?.clipboard?.writeText?.(text);
-  } catch {
-    /* portapapeles no disponible: da igual */
+  //    Damos AVISO porque si no parece que el botón "no hace nada".
+  if (blob) {
+    downloadBlob(g, blob, 'apexlap.png');
+    let copied = false;
+    try {
+      await nav?.clipboard?.writeText?.(text);
+      copied = true;
+    } catch {
+      /* portapapeles no disponible */
+    }
+    notify(
+      '📲 Tarjeta lista',
+      copied
+        ? 'Imagen descargada (apexlap.png) y resumen copiado al portapapeles. Pégala/súbela al grupo.'
+        : 'Imagen descargada (apexlap.png). Ya puedes mandarla al grupo.'
+    );
+    return;
   }
 
-  // 3) Si ni siquiera hubo imagen, intenta compartir el texto a secas.
-  if (!blob && nav?.share) {
+  // 3) Si ni siquiera hubo imagen, intenta compartir/copiar el texto a secas.
+  if (nav?.share) {
     try {
       await nav.share({ text });
+      return;
     } catch {
       /* cancelado */
     }
+  }
+  try {
+    await nav?.clipboard?.writeText?.(text);
+    notify('📋 Copiado', 'Resumen copiado al portapapeles para mandarlo al grupo.');
+  } catch {
+    notify('Compartir', text);
   }
 }
 

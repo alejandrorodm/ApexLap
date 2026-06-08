@@ -53,6 +53,12 @@ opcional) para evitar trampas.
 - **Clasificación por puntos** 🏆: suma por **pique ganado** y por **acertar la
   apuesta**; tabla de la liga con podio.
 - **Compartir resultado** 📲: tarjeta del pique ganado lista para mandar al grupo.
+- **Comparador 1 vs 1** 🆚: enfrenta dos vueltas (mismo coche+circuito) con el
+  desglose por sector y el delta acumulado — para ver dónde se gana el pique.
+- **Muro** 🔥: feed de rivalidad en vivo (vueltas, récords batidos, "X manda en
+  tu combo", piques nuevos y ganados).
+- **Juice** ✨: sonido, vibración (haptics) y **confeti** al tirar la ruleta y al
+  ganar un pique.
 
 ### Cuenta, liga y avisos
 - **Ligas**: crea una y comparte el código; o únete con el de un colega. Lista de
@@ -192,15 +198,9 @@ Cosas que harían la app aún más adictiva (no implementadas todavía):
 
 - **Histórico y progreso**: gráfica de tu evolución por circuito a lo largo del
   tiempo.
-- **Mejor vuelta teórica**: combinar los mejores sectores de tus vueltas para
-  mostrar el tiempo ideal alcanzable.
 - **Modo temporada**: torneo con calendario de eventos y clasificación F1-style
   (25-18-15…) acumulada por jornadas.
-- **Comparador 1 vs 1**: superponer dos vueltas (por sectores) y ver el *delta*
-  acumulado.
 - **Logros y motes**: "Rey del mojado", "Sin ayudas", rachas de récords.
-- **Ranking separado por ayudas**: tabla "con ayudas" vs "sin ayudas" o handicap
-  configurable.
 - **Detección de trampas más fina**: validar coherencia de sectores vs vuelta.
 
 ¿Quieres alguna de estas? Dímelo y la añadimos. 🏎️
