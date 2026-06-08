@@ -207,6 +207,12 @@ export default function ProfileScreen() {
               />
             </View>
           ) : null}
+          <Button
+            title="📈 Mi progreso"
+            variant="secondary"
+            onPress={() => navigation.navigate('Progress')}
+            style={{ marginTop: spacing.md }}
+          />
         </Card>
 
         {/* Liga */}

@@ -170,6 +170,64 @@ export function theoreticalBest(laps: Lap[]): TheoreticalBest | null {
   };
 }
 
+export interface ProgressPoint {
+  lap: Lap;
+  at: number; // epoch ms
+  timeMs: number;
+  isPB: boolean; // marcó un nuevo mejor tiempo (PB) en ese momento
+  runningBest: number; // mejor tiempo acumulado hasta este punto (incl.)
+}
+
+export interface ProgressCombo {
+  key: string; // "car|track"
+  car: string;
+  track: string;
+  count: number;
+  points: ProgressPoint[]; // cronológico (más antiguo primero)
+  pb: number; // mejor tiempo absoluto del combo
+  first: number; // primer tiempo registrado
+}
+
+/**
+ * Progresión de UN piloto por combinación coche+circuito a lo largo del tiempo.
+ * Solo combos con 2+ vueltas (hace falta historia para ver evolución). Cada
+ * punto marca si batió su mejor tiempo (PB) en ese momento. Ordena por actividad.
+ */
+export function driverProgress(laps: Lap[], userId: string): ProgressCombo[] {
+  const byCombo = new Map<string, Lap[]>();
+  for (const l of laps) {
+    if (!isCounted(l) || l.userId !== userId) continue;
+    const key = `${l.car}|${l.track}`;
+    const arr = byCombo.get(key);
+    if (arr) arr.push(l);
+    else byCombo.set(key, [l]);
+  }
+
+  const combos: ProgressCombo[] = [];
+  for (const [key, ls] of byCombo) {
+    if (ls.length < 2) continue;
+    const sorted = [...ls].sort((a, b) => a.createdAt - b.createdAt);
+    let rb = Infinity;
+    const points: ProgressPoint[] = sorted.map((l) => {
+      const isPB = l.timeMs < rb;
+      if (isPB) rb = l.timeMs;
+      return { lap: l, at: l.createdAt, timeMs: l.timeMs, isPB, runningBest: rb };
+    });
+    combos.push({
+      key,
+      car: sorted[0].car,
+      track: sorted[0].track,
+      count: sorted.length,
+      points,
+      pb: rb,
+      first: sorted[0].timeMs,
+    });
+  }
+  return combos.sort(
+    (a, b) => b.count - a.count || a.track.localeCompare(b.track)
+  );
+}
+
 /** Récord (vuelta más rápida) por combinación coche+circuito. */
 export function recordsByCombo(laps: Lap[]): Record[] {
   const map = new Map<string, Record>();

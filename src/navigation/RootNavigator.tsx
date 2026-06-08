@@ -18,6 +18,7 @@ import ParticipantsScreen from '../screens/ParticipantsScreen';
 import TrackDetailScreen from '../screens/TrackDetailScreen';
 import NewChallengeScreen from '../screens/NewChallengeScreen';
 import CompareScreen from '../screens/CompareScreen';
+import ProgressScreen from '../screens/ProgressScreen';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -111,6 +112,11 @@ export default function RootNavigator() {
       <Stack.Screen
         name="Compare"
         component={CompareScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Progress"
+        component={ProgressScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
