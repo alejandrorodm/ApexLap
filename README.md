@@ -59,6 +59,9 @@ opcional) para evitar trampas.
   desglose por sector y el delta acumulado — para ver dónde se gana el pique.
 - **Muro** 🔥: feed de rivalidad en vivo (vueltas, récords batidos, "X manda en
   tu combo", piques nuevos y ganados).
+- **Logros y motes** 🏅: insignias que desbloqueas (Rodador, Plusmarquista,
+  Trotamundos…) y motes comparativos de la liga (Dominador, Rey del mojado…),
+  en el Perfil y junto a cada nombre en la clasificación.
 - **Juice** ✨: sonido, vibración (haptics) y **confeti** al tirar la ruleta y al
   ganar un pique.
 
@@ -200,7 +203,5 @@ Cosas que harían la app aún más adictiva (no implementadas todavía):
 
 - **Modo temporada**: torneo con calendario de eventos y clasificación F1-style
   (25-18-15…) acumulada por jornadas.
-- **Logros y motes**: "Rey del mojado", "Sin ayudas", rachas de récords.
-- **Detección de trampas más fina**: validar coherencia de sectores vs vuelta.
 
 ¿Quieres alguna de estas? Dímelo y la añadimos. 🏎️
