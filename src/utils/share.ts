@@ -1,49 +1,27 @@
-// Compartir una "tarjeta" de un récord/pique, SIN dependencias nativas nuevas:
-//   - Web: dibuja una imagen PNG en un <canvas> y la comparte con la hoja de
-//     compartir del sistema (navigator.share con fichero, típico en móvil) o, si
-//     no se puede, la descarga y copia además un resumen al portapapeles.
-//   - Nativo: Share.share de React Native con un resumen en texto + la URL.
+// Compartir una "tarjeta" de un récord/pique como IMAGEN:
+//   - Web: dibuja un PNG en un <canvas> y lo comparte con la hoja del sistema
+//     (navigator.share con fichero) o lo descarga + copia un resumen.
+//   - Nativo: captura una vista con react-native-view-shot y la comparte con
+//     expo-sharing (ver nativeShare.tsx). Si algo falla, cae a texto.
 //
 // El acceso al DOM (document/navigator/canvas) va siempre detrás de
 // Platform.OS === 'web', así que en el bundle nativo nunca se ejecuta.
-import { Platform, Share } from 'react-native';
-import { formatTime } from './time';
+import { Platform } from 'react-native';
 import { colors } from '../theme';
+import { formatTime } from './time';
+import { APP_URL, ShareCard, shareCardText } from './shareTypes';
+// Metro resuelve `nativeShare.web.ts` en web (stub), así que view-shot/expo-sharing
+// no entran en el bundle web.
+import { shareCardNative } from './nativeShare';
 
-const APP_URL = 'https://apexlap.web.app';
-
-export interface ShareCard {
-  badge: string; // "RÉCORD", "PIQUE GANADO"…
-  car: string;
-  track: string;
-  timeMs: number;
-  driverName: string;
-  note?: string; // línea extra: condiciones, nº de vueltas…
-}
-
-function buildText(c: ShareCard): string {
-  const lines = [
-    `🏁 ApexLap · ${c.badge}`,
-    `🚗 ${c.car}`,
-    `📍 ${c.track}`,
-    `⏱ ${formatTime(c.timeMs)} — 👑 ${c.driverName}`,
-  ];
-  if (c.note) lines.push(c.note);
-  lines.push(APP_URL);
-  return lines.join('\n');
-}
+export type { ShareCard } from './shareTypes';
 
 export async function shareCard(c: ShareCard): Promise<void> {
-  const text = buildText(c);
   if (Platform.OS === 'web') {
-    await shareWeb(c, text);
+    await shareWeb(c, shareCardText(c));
     return;
   }
-  try {
-    await Share.share({ message: text });
-  } catch {
-    /* el usuario canceló: nada que hacer */
-  }
+  await shareCardNative(c);
 }
 
 // ── Web ─────────────────────────────────────────────────────────────────────

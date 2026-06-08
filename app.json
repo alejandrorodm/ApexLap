@@ -36,7 +36,8 @@
           "color": "#3B82F6"
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "expo-sharing"
     ],
     "extra": {
       "eas": {

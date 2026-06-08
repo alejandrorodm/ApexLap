@@ -8,6 +8,7 @@ import { colors } from './src/theme';
 import { isFirebaseConfigured } from './src/firebase/config';
 import { AppProvider, useApp } from './src/context/AppContext';
 import RootNavigator from './src/navigation/RootNavigator';
+import { ShareCardHost } from './src/utils/nativeShare';
 import SetupScreen from './src/screens/SetupScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import AuthScreen from './src/screens/AuthScreen';
@@ -73,6 +74,8 @@ export default function App() {
           )}
         </NavigationContainer>
       </WebFrame>
+      {/* Host invisible para capturar la share card en nativo (null en web). */}
+      <ShareCardHost />
     </SafeAreaProvider>
   );
 }
