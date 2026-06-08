@@ -205,6 +205,40 @@ local function safeGet(obj, field)
   return nil
 end
 
+-- Condiciones según la lluvia del juego: seco / mixto (lluvia ligera) / mojado.
+local function drivingConditions(sim)
+  local rain = safeGet(sim, 'rainIntensity')
+  if type(rain) ~= 'number' then return 'dry' end
+  if rain > 0.35 then return 'wet' end
+  if rain > 0.02 then return 'mixed' end
+  return 'dry'
+end
+
+-- Ayudas: parte del ajuste DECLARADO del piloto (S.assists) y, best-effort,
+-- intenta detectar ayudas activas en el juego (solo puede AÑADIR, nunca quitar).
+-- Como los nombres de la API de CSP varían entre versiones, loguea los candidatos
+-- que encuentre para poder calibrarlo con datos reales. `declared` = S.assists.
+local function detectAssists(car, declared)
+  local on = declared == true
+  -- Vuelca los campos plausibles que existan (para calibrar sin romper nada).
+  local cands = {
+    'absMode', 'tractionControlMode', 'absInAction', 'tractionControlInAction',
+    'autoShift', 'autoClutch', 'autoBlip', 'stabilityControl', 'drivingAssistance',
+  }
+  local parts = {}
+  for _, n in ipairs(cands) do
+    local v = safeGet(car, n)
+    if v ~= nil then parts[#parts + 1] = n .. '=' .. tostring(v) end
+  end
+  if #parts > 0 then log('ayudas-candidatos: ' .. table.concat(parts, ' ')) end
+  -- Heurística conservadora: ayudas claras del piloto (no el ABS/TC de fábrica).
+  local sc = safeGet(car, 'stabilityControl')
+  if type(sc) == 'number' and sc > 0 then on = true end
+  if safeGet(car, 'autoShift') == true then on = true end
+  if safeGet(car, 'autoClutch') == true then on = true end
+  return on
+end
+
 local PREFIXES = { 'ks_', 'rss_', 'tatuusfa1_', 'abarth500_' }
 local function prettify(raw)
   if not raw or raw == '' then return 'Desconocido' end
@@ -365,6 +399,9 @@ local function fetchProfile()
       local f = (d and d.fields) or {}
       S.leagueId = f.leagueId and f.leagueId.stringValue or nil
       S.driverName = f.driverName and f.driverName.stringValue or nil
+      -- Ajuste declarado de conducción (lo edita el piloto en la app).
+      S.assists = f.assists and f.assists.booleanValue == true or false
+      S.gearbox = f.gearbox and f.gearbox.stringValue or 'manual'
       if not S.leagueId then
         S.status = 'Tu perfil no tiene liga. Únete a una desde la app ApexLap.'
         return
@@ -475,10 +512,10 @@ local function uploadLap(lap, isRetry)
     track = { stringValue = lap.track },
     timeMs = { integerValue = tostring(lap.timeMs) },
     conditions = { stringValue = lap.conditions or 'dry' },
-    -- Sin botones de UI: marcamos las vueltas con valores neutros. Si quieres
-    -- ayudas/caja distintas, edítalas en la app (móvil/web) tras la subida.
-    assists = { booleanValue = false },
-    gearbox = { stringValue = 'manual' },
+    -- Ayudas/caja: el ajuste DECLARADO del piloto en su perfil (S.assists/S.gearbox),
+    -- más una autodetección best-effort en el juego. Editable en la app después.
+    assists = { booleanValue = lap.assists == true },
+    gearbox = { stringValue = lap.gearbox or 'manual' },
     -- Subida automática del mod: validada en el juego, entra ya verificada.
     source = { stringValue = 'auto' },
     status = { stringValue = 'verified' },
@@ -602,13 +639,13 @@ local function detectLaps()
     end
   end
 
-  -- condiciones: seco por defecto; mojado si hay lluvia (CSP).
-  local conditions = 'dry'
-  local rain = safeGet(sim, 'rainIntensity')
-  if rain and rain > 0.02 then conditions = 'wet' end
+  -- condiciones reales (seco/mixto/mojado) y ayudas (declaradas + autodetección).
+  local conditions = drivingConditions(sim)
+  local assists = detectAssists(car, S.assists)
 
   seen[key] = true -- marca ya para no duplicar mientras sube
-  log('vuelta limpia ' .. fmt(t) .. ' (' .. tostring(carId) .. ')')
+  log('vuelta limpia ' .. fmt(t) .. ' (' .. tostring(carId)
+    .. ', ' .. conditions .. ', ayudas=' .. tostring(assists) .. ')')
   -- DEBUG sectores: la clave EN VIVO. Debe coincidir con la que calcula el
   -- escaneo del JSON de CM (línea "JSON key=…") para que el PATCH la encuentre.
   log('LIVE key=' .. key)
@@ -617,6 +654,8 @@ local function detectLaps()
     car = prettify(carId),
     track = trackDisplayName(trackId, trackCfg),
     conditions = conditions,
+    assists = assists,
+    gearbox = S.gearbox or 'manual',
     key = key,
     combo = combo,
   }, false)
@@ -655,9 +694,8 @@ local function scanExistingBest()
     end
   end
 
-  local conditions = 'dry'
-  local rain = safeGet(sim, 'rainIntensity')
-  if rain and rain > 0.02 then conditions = 'wet' end
+  local conditions = drivingConditions(sim)
+  local assists = detectAssists(car, S.assists)
 
   seen[key] = true
   S.status = 'Subiendo tu mejor ya registrado (' .. fmt(t) .. ')…'
@@ -667,6 +705,8 @@ local function scanExistingBest()
     car = prettify(carId),
     track = trackDisplayName(trackId, trackCfg),
     conditions = conditions,
+    assists = assists,
+    gearbox = S.gearbox or 'manual',
     key = key,
     combo = combo,
   }, false)

@@ -115,13 +115,19 @@ def fs_doc_url(project_id, path):
 
 
 def get_profile(session, project_id):
-    """Devuelve (leagueId, driverName) leyendo profiles/{uid}."""
+    """Devuelve (leagueId, driverName, assists, gearbox) leyendo profiles/{uid}.
+
+    `assists`/`gearbox` son el ajuste de conducción declarado por el piloto en la
+    app; pueden venir vacíos (None) si nunca los tocó.
+    """
     url = fs_doc_url(project_id, f"profiles/{session.uid}")
     doc = _get_json(url, session.auth_header())
     fields = doc.get("fields", {})
     league_id = fields.get("leagueId", {}).get("stringValue")
     driver_name = fields.get("driverName", {}).get("stringValue")
-    return league_id, driver_name
+    assists = fields.get("assists", {}).get("booleanValue")
+    gearbox = fields.get("gearbox", {}).get("stringValue")
+    return league_id, driver_name, assists, gearbox
 
 
 def encode_fields(lap):
@@ -268,7 +274,8 @@ def now_ms():
     return int(time.time() * 1000)
 
 
-def process_file(path, session, cfg, project_id, league_id, driver_name, uploaded, state_path):
+def process_file(path, session, cfg, project_id, league_id, driver_name, uploaded,
+                 state_path, prof_assists=None, prof_gearbox=None):
     try:
         with open(path, "r", encoding="utf-8", errors="replace") as f:
             data = json.load(f)
@@ -283,6 +290,9 @@ def process_file(path, session, cfg, project_id, league_id, driver_name, uploade
     # Junta en un array todas las vueltas nuevas (las ya subidas se saltan) y las
     # manda en una sola llamada, en vez de una petición por vuelta.
     defaults = cfg.get("defaults", {})
+    # Ayudas/caja: lo declarado en el perfil manda; si no, el default de config.
+    assists = prof_assists if prof_assists is not None else defaults.get("assists", False)
+    gearbox = prof_gearbox or defaults.get("gearbox", "manual")
     pending = []  # (key, lap_doc, etiqueta)
     for l in laps:
         key = lap_key(l)
@@ -297,8 +307,8 @@ def process_file(path, session, cfg, project_id, league_id, driver_name, uploade
             "track": track,
             "timeMs": l["timeMs"],
             "conditions": defaults.get("conditions", "dry"),
-            "assists": defaults.get("assists", False),
-            "gearbox": defaults.get("gearbox", "manual"),
+            "assists": assists,
+            "gearbox": gearbox,
             "createdAt": now_ms(),
         }
         pending.append((key, lap_doc, f"{fmt_time(l['timeMs'])}  {car} @ {track}"))
@@ -371,7 +381,9 @@ def main():
         sys.exit(1)
 
     try:
-        league_id, driver_name = get_profile(session, cfg["projectId"])
+        league_id, driver_name, prof_assists, prof_gearbox = get_profile(
+            session, cfg["projectId"]
+        )
     except Exception as e:
         print(f"  ! No se pudo leer tu perfil: {e}")
         sys.exit(1)
@@ -380,7 +392,9 @@ def main():
         print("  ! Tu perfil no tiene liga. Únete a una desde la app primero.")
         sys.exit(1)
 
+    asist_txt = "con ayudas" if prof_assists else "sin ayudas"
     print(f"  Piloto: {driver_name or '(sin nombre)'}  ·  Liga: {league_id}")
+    print(f"  Setup: {asist_txt} · caja {prof_gearbox or 'manual'}")
     print(f"  Vueltas ya registradas localmente: {len(uploaded)}")
 
     if args.once:
@@ -388,7 +402,7 @@ def main():
         for path in find_json_files(folder):
             total += process_file(
                 path, session, cfg, cfg["projectId"], league_id, driver_name,
-                uploaded, state_path,
+                uploaded, state_path, prof_assists, prof_gearbox,
             )
         print(f"Hecho. Subidas {total} vueltas nuevas.")
         return
@@ -433,7 +447,7 @@ def main():
                     print(f"[{time.strftime('%H:%M:%S')}] sesión cerrada: {name}")
                     process_file(
                         path, session, cfg, cfg["projectId"], league_id,
-                        driver_name, uploaded, state_path,
+                        driver_name, uploaded, state_path, prof_assists, prof_gearbox,
                     )
                     del last_change[path]
             time.sleep(poll)
