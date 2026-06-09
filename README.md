@@ -95,16 +95,11 @@ opcional) para evitar trampas.
 
 | Login | Tiempos | Récords |
 |---|---|---|
-| <img src="docs/screenshots/01-login.png" width="220" /> | _añade `docs/screenshots/02-tiempos.png`_ | _añade `docs/screenshots/03-records.png`_ |
+| <img src="docs/screenshots/01-login.png" width="220" /> | <img src="docs/screenshots/02-tiempos.png" width="220" /> | <img src="docs/screenshots/03-records.png" width="220" /> |
 
 | Ruleta | Liga (puntos) | Perfil |
 |---|---|---|
-| _añade `docs/screenshots/04-ruleta.png`_ | _añade `docs/screenshots/05-liga.png`_ | _añade `docs/screenshots/06-perfil.png`_ |
-
-> Para hacer una captura en el móvil: abre la app, ve a la pantalla, captura y
-> guarda el PNG en [`docs/screenshots/`](docs/screenshots/) con el nombre de la
-> tabla. (Las pantallas internas necesitan sesión y datos, por eso no se generan
-> automáticamente.)
+| <img src="docs/screenshots/04-ruleta.png" width="220" /> | <img src="docs/screenshots/05-liga.png" width="220" /> | <img src="docs/screenshots/06-perfil.png" width="220" /> |
 
 ---
 
@@ -216,13 +211,14 @@ Cosas que harían la app aún más adictiva (no implementadas todavía):
 - **Calendario de temporada**: agrupar eventos por fechas/jornadas con apertura
   y cierre automáticos (hoy la temporada agrega todos los piques cerrados).
 - **Multi-liga**: pertenecer a varias ligas y cambiar entre ellas.
-- **Calibrar autodetección de ayudas**: el mod ya registra los campos de ayudas
-  que expone CSP (línea `ayudas-candidatos` en el log); afinar la heurística con
-  esos datos reales.
+- **Calibrar autodetección de ayudas**: el mod trae un **modo calibración** (v1.1)
+  que vuelca al log de CSP qué campos expone tu versión (bloques `CALIB`); falta
+  rodar y afinar la heurística con esos datos reales.
 
-> El mod (`tools/ApexLap`) ya hace: ayudas/caja del perfil declarado +
-> autodetección best-effort, clima seco/mixto/mojado, **battle the ghost** (récord
-> de la liga en pantalla con tu delta) y **aviso push de récord arrebatado**.
-> Pendiente de probar en el juego.
+> El mod (`tools/ApexLap`, [release v1.1](../../releases/tag/v1.1)) ya hace:
+> ayudas/caja del perfil declarado + autodetección best-effort, clima
+> seco/mixto/mojado, **battle the ghost** (récord de la liga en pantalla con tu
+> delta), **aviso push de récord arrebatado** y un **modo calibración** para afinar
+> los campos de CSP. Pendiente de probar en el juego.
 
 ¿Quieres alguna de estas? Dímelo y la añadimos. 🏎️
