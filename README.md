@@ -222,3 +222,10 @@ Cosas que harían la app aún más adictiva (no implementadas todavía):
 > los campos de CSP. Pendiente de probar en el juego.
 
 ¿Quieres alguna de estas? Dímelo y la añadimos. 🏎️
+
+---
+
+<p align="center">
+  Hecho con 🏁 por <strong>Alejandro Rodríguez Moreno</strong>
+  · <a href="https://github.com/alejandrorodm">@alejandrorodm</a>
+</p>
