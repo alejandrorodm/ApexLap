@@ -4,6 +4,16 @@ App **dentro del juego** que detecta tus vueltas limpias y las **sube solas** a 
 liga de ApexLap mientras juegas. Es lo más parecido a un "plugin de Content
 Manager" que es técnicamente posible (CM no admite plugins propios).
 
+## 📱 Dónde acaban tus vueltas
+
+Cada vuelta que sube el mod aparece al instante en la app de ApexLap (móvil y web),
+con su coche, circuito, condiciones y el setup (ayudas/caja) de tu perfil:
+
+| Tiempos | Perfil y setup | Récords y piques | Muro en vivo |
+| :-----: | :------------: | :--------------: | :----------: |
+| ![Listado de tiempos por combo](img/app-tiempos.png) | ![Perfil con el setup que aplica el mod](img/app-perfil.png) | ![Récords y piques activos](img/app-records.png) | ![Muro de récords en vivo](img/app-muro.png) |
+| Tus vueltas, agrupadas por coche+circuito. | El **setup** (ayudas/caja) que el mod aplica a lo que sube. | Récords de la liga y **piques** a los que se asocian tus vueltas. | Récords en vivo; al arrebatar uno, su dueño recibe un push. |
+
 ## ⚠️ Requisito imprescindible
 
 Necesitas **Custom Shaders Patch (CSP)** instalado, con soporte de **apps Lua**
@@ -59,9 +69,10 @@ Notas:
   ese combo coche+circuito — que es lo único que cuenta para récords y
   clasificación. Editable en `ac.storage` (`onlyBest = false`) si quisieras subir
   todas las vueltas limpias.
-- **Ayudas/caja:** las vueltas se suben marcadas como *sin ayudas* y caja
-  *Manual* (valores neutros). Si necesitas otra etiqueta, edítala desde la app
-  móvil/web después de la subida.
+- **Ayudas/caja:** se toman del **setup de tu Perfil** en la app ("Sin/Con ayudas"
+  y la caja), más una **autodetección** best-effort en el juego (solo puede
+  *añadir* ayudas, nunca quitarlas). Si alguna vuelta queda mal etiquetada, edítala
+  desde la app móvil/web después de la subida.
 - No duplica: recuerda lo subido (por circuito + coche + tiempo).
 - La detección corre en `script.update`, así que **basta con que la app esté
   activa en la barra lateral** — la ventana puede estar cerrada.
@@ -122,6 +133,22 @@ versión de CSP. Si das una vuelta limpia y **no sube**:
    pruebas: `car.lapCount`, `car.previousLapTimeMs`, `car.bestLapTimeMs`,
    `ac.getCarID`, `ac.getTrackID`/`ac.getTrackLayout`. La validez NO se lee de
    `isLapValid` (daba falsos negativos): se infiere de `bestLapTimeMs`.
+
+### 🔧 Modo calibración (v1.1)
+
+Para afinar esto sin adivinar la API, la app trae un **modo calibración** que
+vuelca al log de CSP **qué campos expone tu versión** (tiempos, ayudas, clima,
+pista) con su valor y tipo:
+
+1. En la ventana de la app pulsa **«Modo calibración: SÍ»** (queda guardado; déjalo
+   en NO para el uso normal, genera mucho log).
+2. Da un par de vueltas —una limpia y una con corte, para comparar—. Al cerrar
+   cada vuelta verás en el log un bloque **`=== CALIB (vuelta cerrada) ===`** con
+   las líneas `car.*` y `sim.*` que existen. El botón **«Volcar estado ahora»**
+   hace el mismo volcado al instante (útil parado en boxes para ver las ayudas con
+   distintos ajustes).
+3. Copia esos bloques `CALIB` y pásamelos: con ellos calibro la detección de
+   tiempos y la **autodetección de ayudas** a tu CSP.
 
 Mientras tanto, el **subidor de escritorio** (`../cm-uploader/`) funciona seguro y
 no depende de CSP.

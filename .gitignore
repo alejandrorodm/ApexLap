@@ -32,7 +32,8 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files (credenciales de prueba del mod, etc.) — NUNCA subir
+.env
 .env*.local
 
 # SECRETOS: claves de cuenta de servicio, tokens, etc. NUNCA subir.
