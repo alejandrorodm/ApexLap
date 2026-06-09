@@ -14,7 +14,11 @@ export interface Lap {
   // Manager. Opcional: las vueltas manuales y las antiguas no lo traen.
   sectors?: number[];
   conditions: Conditions;
-  assists: boolean; // true = con ayudas (ABS/TC/etc.)
+  assists: boolean; // true = con ayudas (flag declarado en el perfil)
+  // Estado real de ABS/TC en el juego, DESCRIPTIVO (no cuenta como "ayuda"). Lo
+  // sube el mod por vuelta; ausente (undefined) en vueltas manuales/antiguas.
+  abs?: boolean;
+  tc?: boolean;
   gearbox: Gearbox;
   notes?: string;
   challengeId?: string; // si la vuelta nace de un pique de la ruleta

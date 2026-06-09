@@ -21,6 +21,8 @@ export interface LapFilter {
   track?: string;
   conditions?: Lap['conditions'];
   noAssists?: boolean; // solo vueltas sin ayudas
+  noAbs?: boolean; // oculta las vueltas con ABS activo
+  noTc?: boolean; // oculta las vueltas con TC activo
 }
 
 export function applyFilter(laps: Lap[], f: LapFilter): Lap[] {
@@ -29,6 +31,10 @@ export function applyFilter(laps: Lap[], f: LapFilter): Lap[] {
     if (f.track && l.track !== f.track) return false;
     if (f.conditions && l.conditions !== f.conditions) return false;
     if (f.noAssists && l.assists) return false;
+    // ABS/TC: solo descartan las vueltas que SE SABE que los llevaban activos;
+    // las de estado desconocido (manuales/antiguas) pasan el filtro.
+    if (f.noAbs && l.abs === true) return false;
+    if (f.noTc && l.tc === true) return false;
     return true;
   });
 }
