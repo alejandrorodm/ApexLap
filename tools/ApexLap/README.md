@@ -25,6 +25,10 @@ el subidor de escritorio en `../cm-uploader/`.
 
 ## Instalación
 
+> **Descarga la última versión** (v1.2) desde
+> [Releases](https://github.com/alejandrorodm/ApexLap/releases/latest) →
+> `ApexLap-v1.2.zip`, o usa la carpeta `ApexLap` de este repositorio.
+
 1. Copia la carpeta **`ApexLap`** entera dentro de:
    ```
    <Assetto Corsa>\apps\lua\
