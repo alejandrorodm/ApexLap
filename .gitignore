@@ -55,3 +55,8 @@ aaa.txt
 
 # logs de Assetto Corsa / CSP que se peguen para depurar el mod
 logs/
+
+# Ficheros de configuración de agentes de IA
+CLAUDE.md
+AGENTS.md
+.claude/
