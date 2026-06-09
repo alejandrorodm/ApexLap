@@ -389,6 +389,7 @@ function LapRow({
           ) : lap.conditions === 'mixed' ? (
             <Badge text="mixto" color={colors.blue} />
           ) : null}
+          <AbsTcBadges lap={lap} />
           {lap.challengeId ? (
             <Badge text="🎰 pique" color={colors.accent} />
           ) : null}
@@ -474,6 +475,25 @@ function Badge({ text, color }: { text: string; color: string }) {
     <View style={[styles.badge, { borderColor: color }]}>
       <Text style={[styles.badgeText, { color }]}>{text}</Text>
     </View>
+  );
+}
+
+// Chips descriptivos de ABS/TC (los sube el mod por vuelta). Solo se pintan si la
+// vuelta trae el dato: "sin ABS"/"sin TC" en verde, "ABS"/"TC" en tenue.
+function AbsTcBadges({ lap }: { lap: Lap }) {
+  return (
+    <>
+      {lap.abs === false ? (
+        <Badge text="sin ABS" color={colors.green} />
+      ) : lap.abs === true ? (
+        <Badge text="ABS" color={colors.textFaint} />
+      ) : null}
+      {lap.tc === false ? (
+        <Badge text="sin TC" color={colors.green} />
+      ) : lap.tc === true ? (
+        <Badge text="TC" color={colors.textFaint} />
+      ) : null}
+    </>
   );
 }
 

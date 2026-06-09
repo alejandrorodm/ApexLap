@@ -304,6 +304,43 @@ function DriverHead({
         {formatTime(lap.timeMs)}
       </Text>
       {winner ? <Text style={styles.headWin}>🏆 más rápida</Text> : null}
+      <LapTags lap={lap} />
+    </View>
+  );
+}
+
+// Tags descriptivos de la vuelta (ayudas declaradas + ABS/TC reales del juego).
+// ABS/TC solo se pintan si la vuelta trae el dato (vueltas del mod v1.2+).
+function LapTags({ lap }: { lap: Lap }) {
+  return (
+    <View style={styles.tags}>
+      <Tag
+        text={lap.assists ? 'ayudas' : 'sin ayudas'}
+        color={lap.assists ? colors.textFaint : colors.green}
+      />
+      {lap.conditions === 'wet' ? (
+        <Tag text="mojado" color={colors.blue} />
+      ) : lap.conditions === 'mixed' ? (
+        <Tag text="mixto" color={colors.blue} />
+      ) : null}
+      {lap.abs === false ? (
+        <Tag text="sin ABS" color={colors.green} />
+      ) : lap.abs === true ? (
+        <Tag text="ABS" color={colors.textFaint} />
+      ) : null}
+      {lap.tc === false ? (
+        <Tag text="sin TC" color={colors.green} />
+      ) : lap.tc === true ? (
+        <Tag text="TC" color={colors.textFaint} />
+      ) : null}
+    </View>
+  );
+}
+
+function Tag({ text, color }: { text: string; color: string }) {
+  return (
+    <View style={[styles.tag, { borderColor: color }]}>
+      <Text style={[styles.tagText, { color }]}>{text}</Text>
     </View>
   );
 }
@@ -362,6 +399,20 @@ const styles = StyleSheet.create({
   },
   headBadgeText: { fontSize: 13, fontWeight: '900' },
   headDriver: { color: colors.text, fontSize: 14, fontWeight: '800', maxWidth: 130 },
+  tags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  tag: {
+    borderWidth: 1,
+    borderRadius: radius.sm,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  tagText: { fontSize: 9, fontWeight: '700' },
   headTime: {
     color: colors.text,
     fontSize: 22,
