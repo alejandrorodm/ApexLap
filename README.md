@@ -211,15 +211,13 @@ Cosas que harían la app aún más adictiva (no implementadas todavía):
 - **Calendario de temporada**: agrupar eventos por fechas/jornadas con apertura
   y cierre automáticos (hoy la temporada agrega todos los piques cerrados).
 - **Multi-liga**: pertenecer a varias ligas y cambiar entre ellas.
-- **Calibrar autodetección de ayudas**: el mod trae un **modo calibración** (v1.1)
-  que vuelca al log de CSP qué campos expone tu versión (bloques `CALIB`); falta
-  rodar y afinar la heurística con esos datos reales.
+- **ABS/TC en la app**: el mod ya sube el estado real de **ABS y TC** por vuelta
+  (campos `abs`/`tc`); falta mostrarlos/filtrar por ellos en las pantallas.
 
-> El mod (`tools/ApexLap`, [release v1.1](../../releases/tag/v1.1)) ya hace:
-> ayudas/caja del perfil declarado + autodetección best-effort, clima
-> seco/mixto/mojado, **battle the ghost** (récord de la liga en pantalla con tu
-> delta), **aviso push de récord arrebatado** y un **modo calibración** para afinar
-> los campos de CSP. Pendiente de probar en el juego.
+> El mod (`tools/ApexLap`, [release v1.1](../../releases/tag/v1.1)) **ya probado en
+> el juego**: detecta y sube tus vueltas limpias, ayudas/caja del perfil declarado,
+> ABS/TC descriptivos del juego, clima seco/mixto/mojado, **battle the ghost**
+> (récord de la liga en pantalla con tu delta) y **aviso push de récord arrebatado**.
 
 ¿Quieres alguna de estas? Dímelo y la añadimos. 🏎️
 

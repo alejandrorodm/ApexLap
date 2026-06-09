@@ -69,10 +69,12 @@ Notas:
   ese combo coche+circuito — que es lo único que cuenta para récords y
   clasificación. Editable en `ac.storage` (`onlyBest = false`) si quisieras subir
   todas las vueltas limpias.
-- **Ayudas/caja:** se toman del **setup de tu Perfil** en la app ("Sin/Con ayudas"
-  y la caja), más una **autodetección** best-effort en el juego (solo puede
-  *añadir* ayudas, nunca quitarlas). Si alguna vuelta queda mal etiquetada, edítala
-  desde la app móvil/web después de la subida.
+- **Ayudas/caja:** el flag "Sin/Con ayudas" y la caja se toman del **setup de tu
+  Perfil** en la app (editable por vuelta después). El mod **no** intenta adivinar
+  ese flag desde el juego: la calibración mostró que daba falsos positivos
+  (autoembrague/autocambio dependen del mando/volante, y ABS/TC no son una "ayuda"
+  como tal). En su lugar, el mod **registra aparte el estado real de ABS y TC**
+  (campos `abs`/`tc`, descriptivos) leídos del juego en cada vuelta en vivo.
 - No duplica: recuerda lo subido (por circuito + coche + tiempo).
 - La detección corre en `script.update`, así que **basta con que la app esté
   activa en la barra lateral** — la ventana puede estar cerrada.
@@ -119,39 +121,34 @@ Si una `LIVE key` y su `JSON key` deberían ser la misma vuelta pero salen disti
 (p. ej. el nombre de pista/coche difiere), pásame esas dos líneas y ajusto cómo se
 construye el `combo`.
 
-## ⚙️ Importante: primera prueba (puede necesitar un retoque)
+## ✅ Probado en el juego
 
-Este mod se ha escrito contra la API documentada de CSP Lua, pero **no se ha podido
-probar dentro del juego**. Es posible que algún nombre de campo varíe según tu
-versión de CSP. Si das una vuelta limpia y **no sube**:
+Verificado en CSP real (carga, login, perfil, escaneo de sectores, detección y
+**subida** de la vuelta). Campos confirmados en tu versión de CSP:
+`car.lapCount`, `car.previousLapTimeMs`/`car.bestLapTimeMs` (tiempo de vuelta),
+`car.isLapValid`, `car.absMode`/`car.tractionControlMode` (números, 0 = off),
+`ac.getCarID`, `ac.getTrackID`/`ac.getTrackLayout`. La validez NO se lee de
+`isLapValid` directamente: se infiere de que la vuelta cerrada sea la mejor válida
+de la sesión (`bestLapTimeMs`).
 
-1. Abre el **log de CSP**: icono de CSP en CM → *Logs*, o el fichero
-   `Documents\Assetto Corsa\logs\` más reciente.
-2. Busca líneas con **`[ApexLap]`**. Te dirán si detecta la vuelta, si la descarta
-   o si hubo error de subida.
-3. Pásame esas líneas y ajusto los campos según tu versión. Campos confirmados en
-   pruebas: `car.lapCount`, `car.previousLapTimeMs`, `car.bestLapTimeMs`,
-   `ac.getCarID`, `ac.getTrackID`/`ac.getTrackLayout`. La validez NO se lee de
-   `isLapValid` (daba falsos negativos): se infiere de `bestLapTimeMs`.
+Si algo no sube, abre el **log de CSP** (icono de CSP en CM → *Logs*, o
+`Documents\Assetto Corsa\logs\` más reciente), busca líneas **`[ApexLap]`** y
+pásamelas.
 
 ### 🔧 Modo calibración (v1.1)
 
-Para afinar esto sin adivinar la API, la app trae un **modo calibración** que
-vuelca al log de CSP **qué campos expone tu versión** (tiempos, ayudas, clima,
-pista) con su valor y tipo:
+Diagnóstico para afinar el mod sin adivinar la API: vuelca al log de CSP **qué
+campos expone tu versión** (tiempos, ayudas, clima, pista) con su valor y tipo.
 
 1. En la ventana de la app pulsa **«Modo calibración: SÍ»** (queda guardado; déjalo
    en NO para el uso normal, genera mucho log).
-2. Da un par de vueltas —una limpia y una con corte, para comparar—. Al cerrar
-   cada vuelta verás en el log un bloque **`=== CALIB (vuelta cerrada) ===`** con
-   las líneas `car.*` y `sim.*` que existen. El botón **«Volcar estado ahora»**
-   hace el mismo volcado al instante (útil parado en boxes para ver las ayudas con
-   distintos ajustes).
-3. Copia esos bloques `CALIB` y pásamelos: con ellos calibro la detección de
-   tiempos y la **autodetección de ayudas** a tu CSP.
+2. Da un par de vueltas. Al cerrar cada una verás en el log un bloque
+   **`=== CALIB (vuelta cerrada) ===`** con las líneas `car.*` y `sim.*` que
+   existen. El botón **«Volcar estado ahora»** hace el mismo volcado al instante.
+3. Copia esos bloques `CALIB` y pásamelos para recalibrar cualquier campo.
 
-Mientras tanto, el **subidor de escritorio** (`../cm-uploader/`) funciona seguro y
-no depende de CSP.
+> El **subidor de escritorio** (`../cm-uploader/`) sigue disponible como alternativa
+> que no depende de CSP.
 
 ## Qué hace por dentro
 
@@ -165,10 +162,10 @@ no depende de CSP.
 - **Menos escrituras:** en modo PB (por defecto) solo sube si el tiempo mejora tu
   mejor marca de ese coche+circuito; los PBs por combo se guardan en `ac.storage`.
 - Persistencia de credenciales, PBs y de lo ya subido con `ac.storage`.
-- **Ayudas y caja**: se toman de tu **Perfil** en la app (ajústalas ahí: "Sin/Con
-  ayudas" y la caja). Además el mod intenta autodetectar ayudas del juego
-  (best-effort) y registra los campos disponibles en el log (`ayudas-candidatos`)
-  para afinarlo.
+- **Ayudas y caja**: el flag "Sin/Con ayudas" y la caja se toman de tu **Perfil**
+  en la app. Aparte, el mod lee del juego el estado real de **ABS y TC** y lo sube
+  como campos descriptivos `abs`/`tc` (no como "ayuda"; el log lo muestra en
+  `ayudas-candidatos`).
 - **Clima**: marca la vuelta como seco / mixto / mojado según la lluvia del juego.
 - **Battle the ghost**: muestra el récord de la liga del coche+circuito actual y
   tu delta en vivo; si bajas el récord de otro piloto, recibe un aviso push.

@@ -220,13 +220,13 @@ local function drivingConditions(sim)
   return 'dry'
 end
 
--- Ayudas: parte del ajuste DECLARADO del piloto (S.assists) y, best-effort,
--- intenta detectar ayudas activas en el juego (solo puede AÑADIR, nunca quitar).
--- Como los nombres de la API de CSP varían entre versiones, loguea los candidatos
--- que encuentre para poder calibrarlo con datos reales. `declared` = S.assists.
+-- Flag binario "ayuda" (lo que la app muestra como "Sin/Con ayudas"): SE RESPETA
+-- el ajuste DECLARADO del piloto en su perfil (S.assists). La calibración con logs
+-- reales mostró que autodetectarlo daba falsos positivos: autoembrague/autocambio
+-- dependen del HARDWARE (volante vs mando) y ABS/TC son DESCRIPTIVOS, no una ayuda
+-- de pilotaje como tal. Por eso aquí ya no se "añade" nada: solo se loguea el estado
+-- real (para depurar) y se devuelve lo declarado. `declared` = S.assists.
 local function detectAssists(car, declared)
-  local on = declared == true
-  -- Vuelca los campos plausibles que existan (para calibrar sin romper nada).
   local cands = {
     'absMode', 'tractionControlMode', 'absInAction', 'tractionControlInAction',
     'autoShift', 'autoClutch', 'autoBlip', 'stabilityControl', 'drivingAssistance',
@@ -237,12 +237,20 @@ local function detectAssists(car, declared)
     if v ~= nil then parts[#parts + 1] = n .. '=' .. tostring(v) end
   end
   if #parts > 0 then log('ayudas-candidatos: ' .. table.concat(parts, ' ')) end
-  -- Heurística conservadora: ayudas claras del piloto (no el ABS/TC de fábrica).
-  local sc = safeGet(car, 'stabilityControl')
-  if type(sc) == 'number' and sc > 0 then on = true end
-  if safeGet(car, 'autoShift') == true then on = true end
-  if safeGet(car, 'autoClutch') == true then on = true end
-  return on
+  return declared == true
+end
+
+-- Estado DESCRIPTIVO de ABS y TC (NO cuenta como "ayuda"): true si su modo > 0,
+-- false si está a 0. Devuelve nil para el que no exista en esta versión de CSP
+-- (entonces no se sube ese campo). Confirmado en CSP: car.absMode /
+-- car.tractionControlMode son números (0 = desactivado).
+local function detectAbsTc(car)
+  local abs, tc
+  local am = safeGet(car, 'absMode')
+  if type(am) == 'number' then abs = am > 0 end
+  local tm = safeGet(car, 'tractionControlMode')
+  if type(tm) == 'number' then tc = tm > 0 end
+  return abs, tc
 end
 
 local PREFIXES = { 'ks_', 'rss_', 'tatuusfa1_', 'abarth500_' }
@@ -580,8 +588,8 @@ local function uploadLap(lap, isRetry)
     track = { stringValue = lap.track },
     timeMs = { integerValue = tostring(lap.timeMs) },
     conditions = { stringValue = lap.conditions or 'dry' },
-    -- Ayudas/caja: el ajuste DECLARADO del piloto en su perfil (S.assists/S.gearbox),
-    -- más una autodetección best-effort en el juego. Editable en la app después.
+    -- Ayudas/caja: el ajuste DECLARADO del piloto en su perfil (S.assists/S.gearbox).
+    -- Editable en la app después.
     assists = { booleanValue = lap.assists == true },
     gearbox = { stringValue = lap.gearbox or 'manual' },
     -- Subida automática del mod: validada en el juego, entra ya verificada.
@@ -593,6 +601,9 @@ local function uploadLap(lap, isRetry)
   if lap.sectors and #lap.sectors > 0 then
     fields.sectors = encodeSectors(lap.sectors)
   end
+  -- ABS/TC descriptivos (no son "ayuda"): solo si el juego los reportó en vivo.
+  if lap.abs ~= nil then fields.abs = { booleanValue = lap.abs } end
+  if lap.tc ~= nil then fields.tc = { booleanValue = lap.tc } end
   -- ¿Hay un pique abierto con este coche+pista? Si lo hay, la vuelta cuenta para él.
   local cid = findOpenChallenge(lap.car, lap.track)
   if cid then
@@ -776,16 +787,18 @@ local function detectLaps()
     end
   end
 
-  -- condiciones reales (seco/mixto/mojado) y ayudas (declaradas + autodetección).
+  -- condiciones reales (seco/mixto/mojado), ayuda declarada y ABS/TC descriptivos.
   local conditions = drivingConditions(sim)
   local assists = detectAssists(car, S.assists)
+  local abs, tc = detectAbsTc(car)
 
   -- Tu mejor de la sesión (para el delta vs récord de la liga).
   if not S.sessionBestMs or t < S.sessionBestMs then S.sessionBestMs = t end
 
   seen[key] = true -- marca ya para no duplicar mientras sube
   log('vuelta limpia ' .. fmt(t) .. ' (' .. tostring(carId)
-    .. ', ' .. conditions .. ', ayudas=' .. tostring(assists) .. ')')
+    .. ', ' .. conditions .. ', ayudas=' .. tostring(assists)
+    .. ', abs=' .. tostring(abs) .. ', tc=' .. tostring(tc) .. ')')
   -- DEBUG sectores: la clave EN VIVO. Debe coincidir con la que calcula el
   -- escaneo del JSON de CM (línea "JSON key=…") para que el PATCH la encuentre.
   log('LIVE key=' .. key)
@@ -795,6 +808,8 @@ local function detectLaps()
     track = trackDisplayName(trackId, trackCfg),
     conditions = conditions,
     assists = assists,
+    abs = abs,
+    tc = tc,
     gearbox = S.gearbox or 'manual',
     key = key,
     combo = combo,
@@ -836,6 +851,7 @@ local function scanExistingBest()
 
   local conditions = drivingConditions(sim)
   local assists = detectAssists(car, S.assists)
+  local abs, tc = detectAbsTc(car)
 
   seen[key] = true
   S.status = 'Subiendo tu mejor ya registrado (' .. fmt(t) .. ')…'
@@ -846,6 +862,8 @@ local function scanExistingBest()
     track = trackDisplayName(trackId, trackCfg),
     conditions = conditions,
     assists = assists,
+    abs = abs,
+    tc = tc,
     gearbox = S.gearbox or 'manual',
     key = key,
     combo = combo,
