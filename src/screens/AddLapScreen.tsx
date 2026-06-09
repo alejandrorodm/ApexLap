@@ -71,6 +71,10 @@ export default function AddLapScreen({ navigation, route }: Props) {
   const [timeStr, setTimeStr] = useState('');
   const [conditions, setConditions] = useState<Conditions>(params.conditions ?? 'dry');
   const [assists, setAssists] = useState(false);
+  // ABS/TC opcionales (descriptivos): undefined = sin especificar. Cada chip
+  // alterna; volver a pulsar el activo lo deja de nuevo sin especificar.
+  const [abs, setAbs] = useState<boolean | undefined>(undefined);
+  const [tc, setTc] = useState<boolean | undefined>(undefined);
   const [gearbox, setGearbox] = useState<Gearbox>('manual');
   const [notes, setNotes] = useState('');
   const [picker, setPicker] = useState<null | 'car' | 'track'>(null);
@@ -92,6 +96,8 @@ export default function AddLapScreen({ navigation, route }: Props) {
         timeMs: parsedMs!,
         conditions,
         assists,
+        abs, // undefined si no se especifica (ignoreUndefinedProperties lo descarta)
+        tc,
         gearbox,
         notes: notes.trim() || undefined,
         challengeId: params.challengeId,
@@ -180,6 +186,14 @@ export default function AddLapScreen({ navigation, route }: Props) {
           <View style={styles.rowChips}>
             <Chip label="Sin ayudas" active={!assists} onPress={() => setAssists(false)} color={colors.green} />
             <Chip label="Con ayudas" active={assists} onPress={() => setAssists(true)} />
+          </View>
+
+          <Label>ABS / TC (opcional)</Label>
+          <View style={styles.rowChips}>
+            <Chip label="Sin ABS" active={abs === false} onPress={() => setAbs(abs === false ? undefined : false)} color={colors.green} />
+            <Chip label="Con ABS" active={abs === true} onPress={() => setAbs(abs === true ? undefined : true)} />
+            <Chip label="Sin TC" active={tc === false} onPress={() => setTc(tc === false ? undefined : false)} color={colors.green} />
+            <Chip label="Con TC" active={tc === true} onPress={() => setTc(tc === true ? undefined : true)} />
           </View>
 
           <Label>Caja de cambios</Label>
