@@ -1,6 +1,6 @@
 # 🏁 ApexLap
 
-App móvil (iOS + Android) y **web** para guardar **tiempos de vuelta** de
+App móvil (Android) y **web** para guardar **tiempos de vuelta** de
 *Assetto Corsa* con tus colegas, comparar quién es más rápido, **picaros** con
 una ruleta que sortea coche y circuito, y hasta **apostar** por el ganador.
 
