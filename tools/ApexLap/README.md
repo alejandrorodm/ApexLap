@@ -172,3 +172,10 @@ no depende de CSP.
 - **Clima**: marca la vuelta como seco / mixto / mojado según la lluvia del juego.
 - **Battle the ghost**: muestra el récord de la liga del coche+circuito actual y
   tu delta en vivo; si bajas el récord de otro piloto, recibe un aviso push.
+
+---
+
+<p align="center">
+  Hecho con 🏁 por <strong>Alejandro Rodríguez Moreno</strong>
+  · <a href="https://github.com/alejandrorodm">@alejandrorodm</a>
+</p>
