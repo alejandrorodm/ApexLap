@@ -23,6 +23,11 @@ local cfg = ac.storage{
   -- Opción A: al arrancar, leer los JSON de sesión de Content Manager para
   -- añadir los tiempos por sector (S1/S2/S3) a las vueltas. Ver scanSectorsFromCM.
   readSectors = true,
+  -- Modo CALIBRACIÓN: vuelca al log de CSP el estado completo de coche/sim al
+  -- cerrar cada vuelta (y con el botón manual), para descubrir qué campos expone
+  -- TU versión de CSP (tiempos, ayudas, pista). Déjalo en NO para uso normal:
+  -- genera mucho log. Ver dumpState().
+  calib = false,
 }
 local uploadedStore = ac.storage{ keys = '' } -- claves exactas ya subidas (';')
 local bestStore = ac.storage{ best = '' }      -- mejor tiempo por combo
@@ -645,6 +650,57 @@ local function uploadLap(lap, isRetry)
     end)
 end
 
+-- ── Calibración: volcado de estado de coche/sim ──────────────────────────────
+-- Sondea una lista amplia de campos candidatos de CSP y loguea SOLO los que
+-- existen, con su valor y tipo. Como los nombres cambian entre versiones de CSP,
+-- esto revela empíricamente qué expone TU build: tiempos de vuelta (para afinar
+-- detectLaps), ayudas (para calibrar detectAssists) y resolución de pista. Se
+-- dispara al cerrar cada vuelta con el modo calib ON, y con el botón manual.
+local CALIB_CAR_FIELDS = {
+  -- tiempos / estado de vuelta
+  'lapCount', 'lapTimeMs', 'bestLapTimeMs', 'previousLapTimeMs', 'lastLapTimeMs',
+  'splitTimeMs', 'isLapValid', 'lapInvalidated', 'personalBestLapMs',
+  -- ayudas (lo que queremos calibrar)
+  'absMode', 'absInAction', 'tractionControlMode', 'tractionControlMode2',
+  'tractionControlInAction', 'autoShift', 'autoClutch', 'autoBlip', 'autoBrake',
+  'stabilityControl', 'drivingAssistance', 'gearGrinding', 'autoShifter',
+}
+local CALIB_SIM_FIELDS = {
+  'rainIntensity', 'roadTemperature', 'ambientTemperature',
+  'trackId', 'track', 'trackConfig', 'bestLapTimeMs',
+}
+
+local function dumpState(reason)
+  local sim = ac.getSim()
+  local car = ac.getCar(0)
+  log('=== CALIB (' .. tostring(reason) .. ') ===')
+  -- Resolución de pista: ¿existen las funciones globales o hay que ir a sim?
+  if ac.getTrackID then
+    local ok, v = pcall(ac.getTrackID)
+    log('getTrackID() -> ' .. (ok and tostring(v) or 'ERROR'))
+  else
+    log('getTrackID: la función NO existe en este CSP')
+  end
+  if ac.getTrackLayout then
+    local ok, v = pcall(ac.getTrackLayout)
+    log('getTrackLayout() -> ' .. (ok and tostring(v) or 'ERROR'))
+  else
+    log('getTrackLayout: la función NO existe en este CSP')
+  end
+  local okc, cid = pcall(function() return ac.getCarID(0) end)
+  log('getCarID(0) -> ' .. (okc and tostring(cid) or 'ERROR'))
+  -- Campos del coche y de la sim que SÍ existen (los inexistentes se omiten).
+  for _, n in ipairs(CALIB_CAR_FIELDS) do
+    local v = safeGet(car, n)
+    if v ~= nil then log('car.' .. n .. ' = ' .. tostring(v) .. ' (' .. type(v) .. ')') end
+  end
+  for _, n in ipairs(CALIB_SIM_FIELDS) do
+    local v = safeGet(sim, n)
+    if v ~= nil then log('sim.' .. n .. ' = ' .. tostring(v) .. ' (' .. type(v) .. ')') end
+  end
+  log('=== fin CALIB ===')
+end
+
 -- ── Detección de vueltas completadas ─────────────────────────────────────────
 local function detectLaps()
   local sim = ac.getSim()
@@ -656,6 +712,11 @@ local function detectLaps()
   if lastLapCount < 0 then lastLapCount = lapCount; return end
   if lapCount <= lastLapCount then return end
   lastLapCount = lapCount
+
+  -- CALIBRACIÓN: vuelca el estado AHORA, justo al cerrar la vuelta (antes de
+  -- cualquier validación/descarte). Es el instante exacto en que leemos tiempos
+  -- y ayudas para subir, así que es la foto más útil para afinar los campos.
+  if cfg.calib then pcall(dumpState, 'vuelta cerrada') end
 
   -- Tiempo de la vuelta recién cerrada. El nombre del campo varía entre
   -- versiones de CSP; probamos varios y nos quedamos con el primero plausible.
@@ -1184,6 +1245,23 @@ local function renderMain(dt)
   if ghostButton('Volcar IDs de pista (diagnóstico)', 260) then
     S.status = 'Volcando ids de pista al log…'
     pcall(dumpTrackIds)
+  end
+  gap(8)
+
+  -- CALIBRACIÓN: modo que vuelca el estado de coche/sim al cerrar cada vuelta,
+  -- para descubrir los campos de tiempos/ayudas/pista de esta versión de CSP.
+  if ghostButton(cfg.calib and 'Modo calibración: SÍ (logs extra)'
+      or 'Modo calibración: NO', 280) then
+    cfg.calib = not cfg.calib
+    S.status = cfg.calib
+      and 'Calibración ON: rueda y mira el log de CSP ("CALIB").'
+      or 'Calibración OFF.'
+  end
+  -- Volcado inmediato (sin esperar a cerrar vuelta): útil parado en boxes para
+  -- ver el estado de las ayudas con distintos ajustes activados.
+  if ghostButton('Volcar estado ahora (calibración)', 280) then
+    S.status = 'Estado volcado al log de CSP (busca "CALIB").'
+    pcall(dumpState, 'botón manual')
   end
   gap(8)
 
