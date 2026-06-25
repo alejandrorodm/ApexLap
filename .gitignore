@@ -57,6 +57,4 @@ aaa.txt
 logs/
 
 # Ficheros de configuración de agentes de IA
-CLAUDE.md
 AGENTS.md
-.claude/
