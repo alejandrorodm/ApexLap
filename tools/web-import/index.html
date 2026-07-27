@@ -578,45 +578,6 @@ async function handleTrackFiles(fileList) {
 
     let name = trackDisplayName(trackFolderName, layoutFolderName);
 
-    const outlineDir = relPath.substring(0, relPath.lastIndexOf('/')).toLowerCase();
-    
-    const candidateJsonPaths = [
-      `${outlineDir}/ui_subtrack.json`,
-      `${outlineDir}/ui_track.json`,
-      `${trackPathPrefix}/ui/${layoutFolderName.toLowerCase()}/ui_subtrack.json`,
-      `${trackPathPrefix}/ui/${layoutFolderName.toLowerCase()}/ui_track.json`,
-      `${trackPathPrefix}/ui/ui_track.json`,
-      `${trackPathPrefix}/ui_track.json`,
-    ];
-
-    let foundJsonObj = null;
-    for (const jsonCandidate of candidateJsonPaths) {
-      const jsonFile = fileMap.get(jsonCandidate);
-      if (jsonFile) {
-        try {
-          const txt = await jsonFile.text();
-          const obj = JSON.parse(txt);
-          if (obj && obj.name) {
-            foundJsonObj = obj;
-            break;
-          }
-        } catch {}
-      }
-    }
-
-    if (foundJsonObj && foundJsonObj.name) {
-      const rawJsonName = String(foundJsonObj.name).trim();
-      if (rawJsonName) {
-        const normPretty = normName(prettify(trackFolderName));
-        const normJson = normName(rawJsonName);
-        if (normJson.includes(normPretty) || !layoutFolderName) {
-          name = rawJsonName;
-        } else {
-          name = `${prettify(trackFolderName)} · ${rawJsonName}`;
-        }
-      }
-    }
-
     const dataUrl = await processOutlineImage(file);
 
     detected.push({
