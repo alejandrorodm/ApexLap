@@ -264,6 +264,20 @@
 
       <!-- ================= PESTAÑA 2: CIRCUITOS (CONTENT/TRACKS) ================= -->
       <div id="view-tracks" class="hide">
+        <!-- Limpieza de base de datos -->
+        <section class="card" style="border-color: rgba(225, 6, 0, 0.4);">
+          <h2>🧹 Limpieza de Firestore</h2>
+          <p style="margin: 0 0 12px; color: var(--dim); font-size: 14px;">
+            Elimina permanentemente de la base de datos todos los circuitos del catálogo que <b>no tengan ninguna vuelta registrada</b> en tu liga.
+          </p>
+          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <button id="btn-purge-tracks" class="btn-ghost" style="border-color: var(--red); color: var(--red);">
+              🔥 Eliminar de Firestore circuitos sin vueltas
+            </button>
+            <span id="purge-status" class="status"></span>
+          </div>
+        </section>
+
         <section class="card">
           <h2>2 · Carpeta content\tracks</h2>
           <p style="margin: 0 0 12px; color: var(--dim); font-size: 14px;">
@@ -319,6 +333,16 @@ const MIN_LAP_MS = 15000;
 const MAX_LAP_MS = 3_600_000;
 const PREFIXES = ['ks_', 'rss_', 'tatuusfa1_', 'abarth500_', 'abarth500s_'];
 
+function normName(s) {
+  if (!s) return '';
+  return String(s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/^ks_|^rss_|^tatuus_|^abarth_/, '')
+    .replace(/[^a-z0-9]+/g, '');
+}
+
 function getRelPath(f) {
   return (f.relPath || f.webkitRelativePath || f.name || '').replace(/\\/g, '/').replace(/^\//, '');
 }
@@ -330,7 +354,7 @@ function prettify(raw) {
     if (name.startsWith(p)) { name = name.slice(p.length); break; }
   }
   name = name.replace(/[_-]/g, ' ').trim();
-  return name.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  return name.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
 }
 
 // Estado global
@@ -407,11 +431,75 @@ function setupTabs() {
   });
 }
 
+// ===================== PURGA DE CIRCUITOS SIN TIEMPOS =====================
+async function purgeEmptyTracks() {
+  if (!S.idToken || !S.leagueId) {
+    setStatus($('purge-status'), 'Inicia sesión primero.', 'err');
+    return;
+  }
+
+  if (!confirm('¿Seguro que quieres eliminar permanentemente de Firestore todos los circuitos que no tengan vueltas registradas en tu liga?')) {
+    return;
+  }
+
+  $('btn-purge-tracks').disabled = true;
+  setStatus($('purge-status'), 'Analizando vueltas y circuitos en Firestore…');
+
+  try {
+    // 1. Obtener vueltas registradas
+    const lapsUrl = `${FIRESTORE}/${FS_BASE}/leagues/${S.leagueId}/laps?pageSize=1000`;
+    const lapsRes = await getJson(lapsUrl, { Authorization: `Bearer ${S.idToken}` }).catch(() => ({ documents: [] }));
+    const lapsDocs = lapsRes.documents || [];
+
+    const activeTrackKeys = new Set();
+    lapsDocs.forEach(d => {
+      const f = d.fields || {};
+      const tName = f.track?.stringValue || '';
+      if (tName) activeTrackKeys.add(normName(tName));
+    });
+
+    // 2. Obtener catálogo de circuitos
+    const tracksUrl = `${FIRESTORE}/${FS_BASE}/leagues/${S.leagueId}/tracks?pageSize=1000`;
+    const tracksRes = await getJson(tracksUrl, { Authorization: `Bearer ${S.idToken}` }).catch(() => ({ documents: [] }));
+    const tracksDocs = tracksRes.documents || [];
+
+    const seenKeys = new Set();
+    let deletedCount = 0;
+
+    for (const tDoc of tracksDocs) {
+      const f = tDoc.fields || {};
+      const tName = f.name?.stringValue || '';
+      const key = normName(tName);
+
+      const hasLaps = activeTrackKeys.has(key);
+      const isDuplicate = seenKeys.has(key);
+
+      if (!hasLaps || isDuplicate) {
+        const delUrl = `${FIRESTORE}/${tDoc.name}`;
+        await fetch(delUrl, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${S.idToken}` },
+        });
+        deletedCount++;
+      } else {
+        seenKeys.add(key);
+      }
+    }
+
+    setStatus($('purge-status'), `Eliminados ${deletedCount} circuitos de Firestore ✓`, 'ok');
+    $('success-msg').textContent = `Se han eliminado permanentemente ${deletedCount} circuitos sin tiempo de Firestore.`;
+    show('success-modal');
+  } catch (e) {
+    setStatus($('purge-status'), 'Error borrando circuitos: ' + e.message, 'err');
+  } finally {
+    $('btn-purge-tracks').disabled = false;
+  }
+}
+
 // ===================== PROCESADOR DE CIRCUITOS GRANULAR (tracks) =====================
 async function handleTrackFiles(fileList) {
   const filesArr = [...fileList];
 
-  // Indexar archivos por su relPath normalizada
   const fileMap = new Map();
   filesArr.forEach(f => {
     const normPath = getRelPath(f).toLowerCase();
@@ -433,7 +521,6 @@ async function handleTrackFiles(fileList) {
     const relPath = getRelPath(file);
     const pathParts = relPath.split('/');
     
-    // Ubicar dónde está la carpeta 'tracks' en la ruta
     const tracksIdx = pathParts.findIndex(p => p.toLowerCase() === 'tracks');
     let trackFolderName = '';
     let trackPathPrefix = '';
@@ -446,57 +533,51 @@ async function handleTrackFiles(fileList) {
       trackPathPrefix = trackFolderName.toLowerCase();
     }
 
-    // Buscar si hay carpeta de variante/layout (subcarpeta dentro de ui/ o antes de ui/)
     const uiIdx = pathParts.findIndex((p, i) => i > tracksIdx && p.toLowerCase() === 'ui');
     let layoutFolderName = '';
 
     if (uiIdx !== -1) {
-      // Caso 1: tracks/ks_silverstone/ui/gp/outline.png -> layout = "gp"
       if (uiIdx + 1 < pathParts.length - 1 && pathParts[uiIdx + 1].toLowerCase() !== 'outline.png') {
         layoutFolderName = pathParts[uiIdx + 1];
-      }
-      // Caso 2: tracks/ks_silverstone/gp/ui/outline.png -> layout = "gp"
-      else if (uiIdx > 0 && uiIdx - 1 > (tracksIdx !== -1 ? tracksIdx + 1 : 0)) {
+      } else if (uiIdx > 0 && uiIdx - 1 > (tracksIdx !== -1 ? tracksIdx + 1 : 0)) {
         layoutFolderName = pathParts[uiIdx - 1];
       }
     }
 
-const TRACK_LABELS = {
-  'ks_silverstone-gp': 'Silverstone · GP',
-  'imola': 'Imola · GP',
-  'spa': 'Spa-Francorchamps · GP',
-  'trento-bondone': 'Trento-Bondone · Hillclimb',
-  'ks_laguna_seca': 'Laguna Seca · Full',
-  'drift': 'Drift · Track',
-};
+    const TRACK_LABELS = {
+      'ks_silverstone-gp': 'Silverstone · GP',
+      'imola': 'Imola · GP',
+      'spa': 'Spa-Francorchamps · GP',
+      'trento-bondone': 'Trento-Bondone · Hillclimb',
+      'ks_laguna_seca': 'Laguna Seca · Full',
+      'drift': 'Drift · Track',
+    };
 
-const NAME_ALIAS = {
-  'ks_barcelona': 'Barcelona-Catalunya',
-  'ks_nurburgring': 'Nürburgring',
-};
+    const NAME_ALIAS = {
+      'ks_barcelona': 'Barcelona-Catalunya',
+      'ks_nurburgring': 'Nürburgring',
+    };
 
-const LAYOUT_CASE = { gp: 'GP' };
+    const LAYOUT_CASE = { gp: 'GP' };
 
-function trackDisplayName(trackFolder, layoutFolder) {
-  const k = layoutFolder ? `${trackFolder}-${layoutFolder}` : trackFolder;
-  if (TRACK_LABELS[k]) return TRACK_LABELS[k];
+    function trackDisplayName(trackFolder, layoutFolder) {
+      const k = layoutFolder ? `${trackFolder}-${layoutFolder}` : trackFolder;
+      if (TRACK_LABELS[k]) return TRACK_LABELS[k];
 
-  let base = trackFolder;
-  let layout = layoutFolder;
+      let base = trackFolder;
+      let layout = layoutFolder;
 
-  let name = NAME_ALIAS[base] || prettify(base);
-  if (layout && layout.trim() !== '') {
-    layout = layout.replace(/^layout_/, '');
-    const formattedLayout = LAYOUT_CASE[layout.toLowerCase()] || prettify(layout);
-    return `${name} · ${formattedLayout}`;
-  }
-  return name;
-}
+      let name = NAME_ALIAS[base] || prettify(base);
+      if (layout && layout.trim() !== '') {
+        layout = layout.replace(/^layout_/, '');
+        const formattedLayout = LAYOUT_CASE[layout.toLowerCase()] || prettify(layout);
+        return `${name} · ${formattedLayout}`;
+      }
+      return name;
+    }
 
-    // 1. Nombre bonito idéntico al mod de Lua de CSP en Assetto Corsa
     let name = trackDisplayName(trackFolderName, layoutFolderName);
 
-    // 2. Búsqueda GRANULAR ESTRICTA de JSON en su propia carpeta (SIN SALIR DEL CIRCUITO)
     const outlineDir = relPath.substring(0, relPath.lastIndexOf('/')).toLowerCase();
     
     const candidateJsonPaths = [
@@ -526,17 +607,16 @@ function trackDisplayName(trackFolder, layoutFolder) {
     if (foundJsonObj && foundJsonObj.name) {
       const rawJsonName = String(foundJsonObj.name).trim();
       if (rawJsonName) {
-        const normPretty = normName(prettyTrack);
+        const normPretty = normName(prettify(trackFolderName));
         const normJson = normName(rawJsonName);
         if (normJson.includes(normPretty) || !layoutFolderName) {
           name = rawJsonName;
         } else {
-          name = `${prettyTrack} · ${rawJsonName}`;
+          name = `${prettify(trackFolderName)} · ${rawJsonName}`;
         }
       }
     }
 
-    // Procesar la imagen outline.png con Canvas para recortar fondo e iluminar silueta neón
     const dataUrl = await processOutlineImage(file);
 
     detected.push({
@@ -548,7 +628,6 @@ function trackDisplayName(trackFolder, layoutFolder) {
     });
   }
 
-  // Desduplicar trazados por nombre normalizado
   const uniqueDetectedMap = new Map();
   for (const item of detected) {
     const key = normName(item.name);
@@ -653,16 +732,44 @@ function renderTracksPreview() {
 }
 
 async function uploadSelectedTracks() {
-  const toUpload = S.detectedTracks.filter(t => t.selected && t.name.trim());
-  if (!toUpload.length) {
+  if (!S.idToken || !S.leagueId) {
+    setStatus($('tracks-upload-status'), 'Inicia sesión primero.', 'err');
+    return;
+  }
+
+  const selected = S.detectedTracks.filter(t => t.selected && t.name.trim());
+  if (!selected.length) {
     setStatus($('tracks-upload-status'), 'Selecciona al menos un circuito.', 'err');
     return;
   }
 
   $('btn-upload-tracks').disabled = true;
-  setStatus($('tracks-upload-status'), `Sincronizando ${toUpload.length} circuitos con tu liga…`);
+  setStatus($('tracks-upload-status'), `Comprobando vueltas de la liga…`);
 
   try {
+    // 1. Obtener vueltas existentes en la liga
+    const lapsUrl = `${FIRESTORE}/${FS_BASE}/leagues/${S.leagueId}/laps?pageSize=1000`;
+    const lapsRes = await getJson(lapsUrl, { Authorization: `Bearer ${S.idToken}` }).catch(() => ({ documents: [] }));
+    const lapsDocs = lapsRes.documents || [];
+
+    const activeTrackKeys = new Set();
+    lapsDocs.forEach(d => {
+      const f = d.fields || {};
+      const tName = f.track?.stringValue || '';
+      if (tName) activeTrackKeys.add(normName(tName));
+    });
+
+    // 2. Solo subir siluetas de circuitos QUE TENGAN VUELTAS REGISTRADAS
+    const toUpload = selected.filter(item => activeTrackKeys.has(normName(item.name)));
+
+    if (!toUpload.length) {
+      setStatus($('tracks-upload-status'), 'Ninguno de los circuitos seleccionados tiene vueltas registradas aún en tu liga. No se creará ningún circuito vacío.', 'err');
+      $('btn-upload-tracks').disabled = false;
+      return;
+    }
+
+    setStatus($('tracks-upload-status'), `Sincronizando ${toUpload.length} circuitos activos con vueltas…`);
+
     const existingUrl = `${FIRESTORE}/${FS_BASE}/leagues/${S.leagueId}/tracks`;
     const existingRes = await getJson(existingUrl, { Authorization: `Bearer ${S.idToken}` }).catch(() => ({ documents: [] }));
     const existingDocs = existingRes.documents || [];
@@ -710,38 +817,13 @@ async function uploadSelectedTracks() {
     );
 
     setStatus($('tracks-upload-status'), `Sincronizados ${toUpload.length} circuitos correctamente ✓`, 'ok');
-    $('success-msg').textContent = `Se han subido y actualizado ${toUpload.length} mapas de circuitos a tu liga sin duplicados.`;
+    $('success-msg').textContent = `Se han actualizado las siluetas de ${toUpload.length} circuitos con vueltas registradas.`;
     show('success-modal');
   } catch (e) {
     setStatus($('tracks-upload-status'), 'Error subiendo circuitos: ' + e.message, 'err');
   } finally {
     $('btn-upload-tracks').disabled = false;
   }
-}
-
-async function collectFilesFromDrop(items) {
-  const out = [];
-  const entries = [];
-  for (const item of items) {
-    const entry = item.webkitGetAsEntry?.();
-    if (entry) entries.push(entry);
-  }
-  async function walk(entry) {
-    if (entry.isFile) {
-      const file = await new Promise((res, rej) => entry.file(res, rej));
-      file.relPath = (entry.fullPath || file.webkitRelativePath || file.name).replace(/^\//, '');
-      out.push(file);
-    } else if (entry.isDirectory) {
-      const reader = entry.createReader();
-      let batch;
-      do {
-        batch = await new Promise((res, rej) => reader.readEntries(res, rej));
-        for (const e of batch) await walk(e);
-      } while (batch.length);
-    }
-  }
-  for (const e of entries) await walk(e);
-  return out;
 }
 
 function wireTracksPicker() {
@@ -811,12 +893,38 @@ function handleLogout() {
   show('auth');
 }
 
+async function collectFilesFromDrop(items) {
+  const out = [];
+  const entries = [];
+  for (const item of items) {
+    const entry = item.webkitGetAsEntry?.();
+    if (entry) entries.push(entry);
+  }
+  async function walk(entry) {
+    if (entry.isFile) {
+      const file = await new Promise((res, rej) => entry.file(res, rej));
+      file.relPath = (entry.fullPath || file.webkitRelativePath || file.name).replace(/^\//, '');
+      out.push(file);
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      let batch;
+      do {
+        batch = await new Promise((res, rej) => reader.readEntries(res, rej));
+        for (const e of batch) await walk(e);
+      } while (batch.length);
+    }
+  }
+  for (const e of entries) await walk(e);
+  return out;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   setupTabs();
   $('btn-login').addEventListener('click', handleLogin);
   $('password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
   $('btn-logout').addEventListener('click', handleLogout);
   $('btn-upload-tracks').addEventListener('click', uploadSelectedTracks);
+  $('btn-purge-tracks').addEventListener('click', purgeEmptyTracks);
   $('success-ok').addEventListener('click', () => hide('success-modal'));
   
   const picker = $('picker');
