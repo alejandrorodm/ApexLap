@@ -18,7 +18,7 @@ export function shareCardText(c: ShareCard): string {
   const lines = [
     `🏁 ApexLap · ${c.badge}`,
     `🚗 ${c.car}`,
-    `📍 ${c.track}`,
+    `${c.track}`,
     `⏱ ${formatTime(c.timeMs)} — 👑 ${c.driverName}`,
   ];
   if (c.note) lines.push(c.note);

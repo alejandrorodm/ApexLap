@@ -42,7 +42,7 @@ export function buildFeed(
     const mine = l.userId === userId;
     const isRecord = recordLapIds.has(l.id);
     const combo = `${l.car}|${l.track}`;
-    const sub = `🚗 ${l.car} · 📍 ${l.track}`;
+    const sub = `🚗 ${l.car} · ${l.track}`;
     const who = l.driverName || 'Anónimo';
 
     if (isRecord && !mine && myCombos.has(combo)) {
@@ -85,7 +85,7 @@ export function buildFeed(
         text: `${c.winnerName || 'Alguien'} ganó el pique${
           c.winnerTimeMs ? ` · ${formatTime(c.winnerTimeMs)}` : ''
         }`,
-        sub: `🚗 ${c.car} · 📍 ${c.track}`,
+        sub: `🚗 ${c.car} · ${c.track}`,
         tone: 'win',
       });
     } else {
@@ -94,7 +94,7 @@ export function buildFeed(
         at: c.createdAt,
         icon: '🎰',
         text: `Nuevo pique: ${c.car}`,
-        sub: `📍 ${c.track} · por ${c.createdByName || 'alguien'}`,
+        sub: `${c.track} · por ${c.createdByName || 'alguien'}`,
         tone: 'challenge',
       });
     }

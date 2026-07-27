@@ -124,7 +124,7 @@ export default function ProgressScreen() {
                 🚗 {combo.car}
               </Text>
               <Text style={styles.comboTrack} numberOfLines={1}>
-                📍 {combo.track}
+                {combo.track}
               </Text>
 
               {/* Estadísticas */}

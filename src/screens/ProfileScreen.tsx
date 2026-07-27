@@ -271,7 +271,7 @@ export default function ProfileScreen() {
                   )}
                   {myStats.topTracks.length > 0 && (
                     <View style={styles.topCol}>
-                      <Label>📍 Circuitos más usados</Label>
+                      <Label>Circuitos más usados</Label>
                       {myStats.topTracks.map((t, i) => (
                         <View key={t.track} style={styles.topItemRow}>
                           <Text style={styles.topRank}>{i + 1}.</Text>

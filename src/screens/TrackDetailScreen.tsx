@@ -175,7 +175,7 @@ export default function TrackDetailScreen() {
         <View style={styles.headerTitleRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.title} numberOfLines={2}>
-              📍 {track}
+              {track}
             </Text>
           </View>
           <Pressable

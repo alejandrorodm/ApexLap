@@ -136,7 +136,7 @@ export default function LapsScreen() {
             onPress={() => setPicker('car')}
           />
           <Chip
-            label={filter.track ? `📍 ${filter.track}` : '📍 Circuito'}
+            label={filter.track ? `${filter.track}` : 'Circuito'}
             active={!!filter.track}
             onPress={() => setPicker('track')}
           />
@@ -175,7 +175,7 @@ export default function LapsScreen() {
         </View>
         <View style={styles.filterRow}>
           <Chip
-            label="📍 Por circuito"
+            label="Por circuito"
             active={mode === 'byTrack' && !showPending}
             onPress={() => {
               setMode('byTrack');
@@ -454,56 +454,38 @@ function TrackRecordRow({
       ]}
       {...({ dataSet: { anim: 'rise' } } as any)}
     >
-      <View style={styles.trackHeader}>
-        {customTrackObj?.url ? (
-          <TrackMap track={trackName} imageUrl={customTrackObj.url} size={60} />
-        ) : null}
-        <View style={{ flex: 1, marginLeft: customTrackObj?.url ? spacing.sm : 0 }}>
-          <Text style={styles.trackName} numberOfLines={1}>
-            📍 {trackName}
-          </Text>
-          <Text style={styles.trackCount}>
-            {count} {count === 1 ? 'vuelta' : 'vueltas'} ›
-          </Text>
-        </View>
+      {/* Silueta en grande del circuito */}
+      <View style={styles.trackMapBox}>
+        <TrackMap
+          track={trackName}
+          imageUrl={customTrackObj?.url}
+          size={grid ? 150 : 170}
+        />
       </View>
 
-      {lap ? (
-        <>
-          <Text style={styles.trackTime}>{formatTime(lap.timeMs)}</Text>
-          <View style={styles.trackFoot}>
-            <Text style={styles.trackCar} numberOfLines={1}>
-              🚗 {lap.car}
-            </Text>
-            <Text style={styles.trackDriver} numberOfLines={1}>
-              👑 {lap.driverName || 'Anónimo'}
-              {isMine ? ' · tú' : ''}
-            </Text>
-          </View>
-          <View style={styles.badges}>
-            {lap.assists ? (
-              <Badge text="ayudas" color={colors.textFaint} />
-            ) : (
-              <Badge text="sin ayudas" color={colors.green} />
-            )}
-            {lap.conditions === 'wet' ? (
-              <Badge text="mojado" color={colors.blue} />
-            ) : lap.conditions === 'mixed' ? (
-              <Badge text="mixto" color={colors.blue} />
-            ) : null}
-            <AbsTcBadges lap={lap} />
-          </View>
-        </>
-      ) : (
-        <View style={{ marginTop: spacing.sm }}>
-          <Text style={{ color: colors.textDim, fontSize: 13, fontStyle: 'italic' }}>
-            Sin vueltas registradas aún
+      {/* Nombre en grande y mejor tiempo en pequeño */}
+      <View style={styles.trackContent}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.trackName} numberOfLines={1}>
+            {trackName}
           </Text>
-          <View style={{ marginTop: spacing.xs, flexDirection: 'row' }}>
-            <Badge text="MOD / CUSTOM" color={colors.accent} />
-          </View>
+          {lap ? (
+            <View style={styles.trackMetaRow}>
+              <Text style={styles.trackRefTime}>
+                ⏱️ {formatTime(lap.timeMs)}
+              </Text>
+              <Text style={styles.trackRefMeta} numberOfLines={1}>
+                · {lap.driverName || 'Piloto'} ({lap.car})
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.trackRefMeta}>Sin vueltas registradas aún</Text>
+          )}
         </View>
-      )}
+        <Text style={styles.trackCount}>
+          {count} {count === 1 ? 'vuelta' : 'vueltas'} ›
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -519,17 +501,20 @@ function Badge({ text, color }: { text: string; color: string }) {
 // Chips descriptivos de ABS/TC (los sube el mod por vuelta). Solo se pintan si la
 // vuelta trae el dato: "sin ABS"/"sin TC" en verde (mérito), "ABS"/"TC" en tenue.
 function AbsTcBadges({ lap }: { lap: Lap }) {
+  if (lap.abs === undefined && lap.tc === undefined) return null;
   return (
     <>
-      {lap.abs === false ? (
-        <Badge text="sin ABS" color={colors.green} />
-      ) : lap.abs === true ? (
-        <Badge text="ABS" color={colors.textFaint} />
+      {lap.abs !== undefined ? (
+        <Badge
+          text={lap.abs ? 'ABS' : 'sin ABS'}
+          color={lap.abs ? colors.textFaint : colors.green}
+        />
       ) : null}
-      {lap.tc === false ? (
-        <Badge text="sin TC" color={colors.green} />
-      ) : lap.tc === true ? (
-        <Badge text="TC" color={colors.textFaint} />
+      {lap.tc !== undefined ? (
+        <Badge
+          text={lap.tc ? 'TC' : 'sin TC'}
+          color={lap.tc ? colors.textFaint : colors.green}
+        />
       ) : null}
     </>
   );
@@ -640,66 +625,68 @@ const styles = StyleSheet.create({
   fabText: { color: colors.text, fontSize: 32, fontWeight: '300', marginTop: -2 },
   // Rejilla de circuitos en pantalla ancha
   gridRow: { gap: spacing.md, alignItems: 'stretch' },
-  // Tarjeta del modo "Por circuito"
+  // Tarjeta del modo "Por circuito" rediseñada
   trackCard: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.border,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.accent,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    padding: spacing.md,
     marginBottom: spacing.md,
+    overflow: 'hidden',
   },
   trackCardGrid: { flex: 1 },
   trackCardMine: {
-    borderColor: colors.primaryDim,
-    borderLeftColor: colors.primary,
+    borderColor: colors.accent,
+    shadowColor: colors.accent,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
   },
-  trackHeader: {
+  trackMapBox: {
+    width: '100%',
+    height: 145,
+    backgroundColor: 'rgba(12, 14, 18, 0.75)',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xs,
+  },
+  trackContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginTop: spacing.md,
     gap: spacing.sm,
   },
   trackName: {
-    flex: 1,
     color: colors.text,
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: '900',
     letterSpacing: 0.3,
   },
-  trackTime: {
-    color: colors.accent,
-    fontSize: 30,
-    fontWeight: '900',
-    fontFamily: font.display,
-    fontVariant: ['tabular-nums'],
-    letterSpacing: 0.5,
-    marginVertical: 4,
-  },
-  trackFoot: {
+  trackMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
+    marginTop: 3,
+    gap: 4,
   },
-  trackCar: {
-    flex: 1,
-    color: colors.text,
-    fontSize: 17,
+  trackRefTime: {
+    color: colors.accent,
+    fontSize: 13,
     fontWeight: '800',
+    fontFamily: font.display,
+    fontVariant: ['tabular-nums'],
   },
-  trackDriver: {
-    color: colors.gold,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  trackCount: {
+  trackRefMeta: {
     color: colors.textDim,
     fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.4,
+    fontWeight: '600',
+  },
+  trackCount: {
+    color: colors.textFaint,
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

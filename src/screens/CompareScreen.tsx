@@ -73,7 +73,7 @@ export default function CompareScreen() {
           🆚 Comparar
         </Text>
         <Text style={styles.subtitle} numberOfLines={1}>
-          📍 {track}
+          {track}
           {car ? ` · 🚗 ${car}` : ''}
         </Text>
       </View>

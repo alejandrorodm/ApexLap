@@ -141,7 +141,7 @@ export default function ParticipantsScreen() {
                     <Text style={styles.topFavs} numberOfLines={1}>
                       {r.topCars[0] ? `🚗 ${r.topCars[0].car}` : ''}
                       {r.topCars[0] && r.topTracks[0] ? ' · ' : ''}
-                      {r.topTracks[0] ? `📍 ${r.topTracks[0].track}` : ''}
+                      {r.topTracks[0] ? `${r.topTracks[0].track}` : ''}
                     </Text>
                   )}
                 </View>

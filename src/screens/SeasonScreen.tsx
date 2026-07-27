@@ -145,7 +145,7 @@ function EventCard({
         <Text style={styles.eventAgo}>{timeAgo(c.resolvedAt ?? c.createdAt, now)}</Text>
       </View>
       <Text style={styles.eventTrack} numberOfLines={1}>
-        📍 {c.track}
+        {c.track}
       </Text>
       {results.slice(0, 3).map((r) => (
         <View key={r.userId} style={styles.eventRow}>

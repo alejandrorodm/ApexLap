@@ -332,7 +332,7 @@ export default function RouletteScreen() {
               <Animated.View style={[styles.reels, { borderColor: glowBorder }]}>
                 <Reel icon="🚗" label="Coche" value={carText} spinning={spinning} />
                 <View style={styles.divider} />
-                <Reel icon="📍" label="Circuito" value={trackText} spinning={spinning} />
+                <Reel icon="🏁" label="Circuito" value={trackText} spinning={spinning} />
                 {randomCond ? (
                   <>
                     <View style={styles.divider} />

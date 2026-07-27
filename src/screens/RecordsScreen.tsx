@@ -293,7 +293,7 @@ export default function RecordsScreen() {
             <View style={styles.record} {...({ dataSet: { anim: 'rise' } } as any)}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.recCar}>🚗 {rec.car}</Text>
-                <Text style={styles.recTrack}>📍 {rec.track}</Text>
+                <Text style={styles.recTrack}>{rec.track}</Text>
                 <Text style={styles.recHolder}>
                   👑 {rec.lap.driverName} · {rec.count}{' '}
                   {rec.count === 1 ? 'vuelta' : 'vueltas'}
