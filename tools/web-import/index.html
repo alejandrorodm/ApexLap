@@ -414,11 +414,18 @@ function setupTabs() {
   });
 }
 
-// ===================== PROCESADOR DE CIRCUITOS (tracks) =====================
+// ===================== PROCESADOR DE CIRCUITOS GRANULAR (tracks) =====================
 async function handleTrackFiles(fileList) {
   const filesArr = [...fileList];
+
+  // Indexar archivos por su ruta relativa normalizada en minúsculas (con barras /)
+  const fileMap = new Map();
+  filesArr.forEach(f => {
+    const normPath = f.webkitRelativePath.replace(/\\/g, '/').toLowerCase();
+    fileMap.set(normPath, f);
+  });
+
   const outlineFiles = filesArr.filter(f => f.name.toLowerCase() === 'outline.png');
-  const jsonFiles = filesArr.filter(f => f.name.toLowerCase().endsWith('.json'));
 
   if (!outlineFiles.length) {
     setStatus($('tracks-status'), 'No se encontraron archivos outline.png en la carpeta.', 'err');
@@ -427,81 +434,80 @@ async function handleTrackFiles(fileList) {
 
   setStatus($('tracks-status'), `Escaneando ${outlineFiles.length} trazado(s)…`);
 
-  // Crear mapa de JSONs leídos key: relativePath (lowercase) -> object
-  const jsonMap = new Map();
-  for (const jf of jsonFiles) {
-    try {
-      const txt = await jf.text();
-      const obj = JSON.parse(txt);
-      if (obj && typeof obj === 'object') {
-        const normPath = jf.webkitRelativePath.toLowerCase().replace(/\\/g, '/');
-        jsonMap.set(normPath, obj);
-      }
-    } catch {}
-  }
-
   const detected = [];
 
   for (const file of outlineFiles) {
-    const relPath = file.webkitRelativePath.toLowerCase().replace(/\\/g, '/');
+    const relPath = file.webkitRelativePath.replace(/\\/g, '/');
     const pathParts = relPath.split('/');
-    const tracksIdx = pathParts.findIndex(p => p === 'tracks');
     
+    // Ubicar dónde está la carpeta 'tracks' en la ruta
+    const tracksIdx = pathParts.findIndex(p => p.toLowerCase() === 'tracks');
     let trackFolderName = '';
-    let trackPrefix = '';
+    let trackPathPrefix = '';
 
-    if (tracksIdx === -1 || tracksIdx + 1 >= pathParts.length) {
-      trackFolderName = pathParts[0];
-      trackPrefix = trackFolderName;
-    } else {
+    if (tracksIdx !== -1 && tracksIdx + 1 < pathParts.length) {
       trackFolderName = pathParts[tracksIdx + 1];
-      trackPrefix = pathParts.slice(0, tracksIdx + 2).join('/');
+      trackPathPrefix = pathParts.slice(0, tracksIdx + 2).join('/').toLowerCase();
+    } else {
+      trackFolderName = pathParts[0];
+      trackPathPrefix = trackFolderName.toLowerCase();
     }
 
-    const subFolders = pathParts
-      .slice(tracksIdx !== -1 ? tracksIdx + 2 : 1, pathParts.length - 1)
-      .filter(p => p !== 'ui');
-    const layoutFolderName = subFolders.join(' ');
+    // Buscar si hay carpeta de variante/layout (subcarpeta dentro de ui/ o antes de ui/)
+    const uiIdx = pathParts.findIndex((p, i) => i > tracksIdx && p.toLowerCase() === 'ui');
+    let layoutFolderName = '';
 
+    if (uiIdx !== -1) {
+      // Caso 1: tracks/ks_silverstone/ui/gp/outline.png -> layout = "gp"
+      if (uiIdx + 1 < pathParts.length - 1 && pathParts[uiIdx + 1].toLowerCase() !== 'outline.png') {
+        layoutFolderName = pathParts[uiIdx + 1];
+      }
+      // Caso 2: tracks/ks_silverstone/gp/ui/outline.png -> layout = "gp"
+      else if (uiIdx > 0 && uiIdx - 1 > (tracksIdx !== -1 ? tracksIdx + 1 : 0)) {
+        layoutFolderName = pathParts[uiIdx - 1];
+      }
+    }
+
+    // 1. Nombre bonito por defecto derivado exactamente de sus propias carpetas
     const prettyTrack = prettify(trackFolderName);
     const prettyLayout = layoutFolderName ? prettify(layoutFolderName) : '';
     let name = prettyLayout ? `${prettyTrack} · ${prettyLayout}` : prettyTrack;
 
-    const dirPath = relPath.substring(0, relPath.lastIndexOf('/'));
-    let jsonMatch = null;
+    // 2. Búsqueda GRANULAR ESTRICTA de JSON en su propia carpeta (SIN SALIR DEL CIRCUITO)
+    const outlineDir = relPath.substring(0, relPath.lastIndexOf('/')).toLowerCase();
+    
+    const candidateJsonPaths = [
+      `${outlineDir}/ui_subtrack.json`,
+      `${outlineDir}/ui_track.json`,
+      `${trackPathPrefix}/ui/${layoutFolderName.toLowerCase()}/ui_subtrack.json`,
+      `${trackPathPrefix}/ui/${layoutFolderName.toLowerCase()}/ui_track.json`,
+      `${trackPathPrefix}/ui/ui_track.json`,
+      `${trackPathPrefix}/ui_track.json`,
+    ];
 
-    // Buscar JSON estrictamente en la misma subcarpeta
-    for (const [jPath, jObj] of jsonMap.entries()) {
-      if (jObj && jObj.name && jPath.startsWith(dirPath)) {
-        jsonMatch = jObj;
-        break;
-      }
-    }
-
-    // Buscar dentro del prefijo exclusivo del circuito (SIN salirse de la carpeta de este circuito)
-    if (!jsonMatch) {
-      for (const [jPath, jObj] of jsonMap.entries()) {
-        if (jObj && jObj.name && jPath.startsWith(trackPrefix + '/')) {
-          if (layoutFolderName) {
-            if (jPath.includes(layoutFolderName.toLowerCase()) || jPath.includes('subtrack')) {
-              jsonMatch = jObj;
-              break;
-            }
-          } else {
-            jsonMatch = jObj;
+    let foundJsonObj = null;
+    for (const jsonCandidate of candidateJsonPaths) {
+      const jsonFile = fileMap.get(jsonCandidate);
+      if (jsonFile) {
+        try {
+          const txt = await jsonFile.text();
+          const obj = JSON.parse(txt);
+          if (obj && obj.name) {
+            foundJsonObj = obj;
             break;
           }
-        }
+        } catch {}
       }
     }
 
-    if (jsonMatch && jsonMatch.name) {
-      const jsonName = String(jsonMatch.name).trim();
-      if (jsonName) {
-        name = jsonName;
+    if (foundJsonObj && foundJsonObj.name) {
+      const rawJsonName = String(foundJsonObj.name).trim();
+      if (rawJsonName) {
+        name = rawJsonName;
       }
     }
 
+    // Procesar la imagen outline.png con Canvas para recortar fondo e iluminar silueta neón
     const dataUrl = await processOutlineImage(file);
 
     detected.push({
@@ -750,9 +756,7 @@ document.addEventListener('DOMContentLoaded', () => {
   ['dragenter', 'dragover'].forEach(ev => picker.addEventListener(ev, e => {
     e.preventDefault(); picker.classList.add('drag');
   }));
-  ['dragleave', 'drop'].forEach(ev => picker.addEventListener(ev, e => {
-    e.preventDefault(); picker.classList.remove('drag');
-  }));
+  ['dragleave', 'drop'].forEach(ev => picker.preventDefault());
   picker.addEventListener('drop', async e => {
     const items = e.dataTransfer?.items;
     if (!items) return;
