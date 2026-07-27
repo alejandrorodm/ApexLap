@@ -71,23 +71,8 @@ export default function LapsScreen() {
     }
     const filtered = applyFilter(laps.filter(isCounted), filter);
     switch (mode) {
-      case 'byTrack': {
-        const records = recordsByTrack(filtered);
-        const existingKeys = new Set(records.map((r) => normTrackKey(r.track)));
-        const uniqueCustomMap = new Map<string, CatalogEntry>();
-        for (const t of customTracks) {
-          const key = normTrackKey(t.name);
-          if (!existingKeys.has(key) && !uniqueCustomMap.has(key)) {
-            uniqueCustomMap.set(key, t);
-          }
-        }
-        const emptyRecords = Array.from(uniqueCustomMap.values()).map((t) => ({
-          track: t.name,
-          lap: null as any,
-          count: 0,
-        }));
-        return [...records, ...emptyRecords];
-      }
+      case 'byTrack':
+        return recordsByTrack(filtered);
       case 'bestPerDriver':
         return bestPerDriver(filtered);
       case 'byTime':
