@@ -425,7 +425,7 @@ async function handleTrackFiles(fileList) {
     return;
   }
 
-  setStatus($('tracks-status'), `Escanenado ${outlineFiles.length} trazado(s)…`);
+  setStatus($('tracks-status'), `Escaneando ${outlineFiles.length} trazado(s)…`);
 
   // Crear mapa de JSONs leídos key: relativePath (lowercase) -> object
   const jsonMap = new Map();
@@ -447,49 +447,66 @@ async function handleTrackFiles(fileList) {
     const pathParts = relPath.split('/');
     const tracksIdx = pathParts.findIndex(p => p === 'tracks');
     
-    // Carpeta principal del circuito (ej: "ks_silverstone" o "imola")
-    const trackFolder = (tracksIdx !== -1 && pathParts[tracksIdx + 1]) ? pathParts[tracksIdx + 1] : pathParts[0];
+    let trackFolderName = '';
+    let trackPrefix = '';
 
-    // Buscar layoutFolder: cualquier subcarpeta entre trackFolder y outline.png que no sea "ui"
-    const subParts = pathParts.slice(tracksIdx !== -1 ? tracksIdx + 2 : 1, pathParts.length - 1);
-    const layoutFolder = subParts.filter(p => p !== 'ui').join(' ');
+    if (tracksIdx === -1 || tracksIdx + 1 >= pathParts.length) {
+      trackFolderName = pathParts[0];
+      trackPrefix = trackFolderName;
+    } else {
+      trackFolderName = pathParts[tracksIdx + 1];
+      trackPrefix = pathParts.slice(0, tracksIdx + 2).join('/');
+    }
 
-    // 1) Nombre bonito derivado de carpetas (Fallback siempre único por circuito/layout)
-    const prettyTrack = prettify(trackFolder);
-    const prettyLayout = layoutFolder ? prettify(layoutFolder) : '';
+    const subFolders = pathParts
+      .slice(tracksIdx !== -1 ? tracksIdx + 2 : 1, pathParts.length - 1)
+      .filter(p => p !== 'ui');
+    const layoutFolderName = subFolders.join(' ');
+
+    const prettyTrack = prettify(trackFolderName);
+    const prettyLayout = layoutFolderName ? prettify(layoutFolderName) : '';
     let name = prettyLayout ? `${prettyTrack} · ${prettyLayout}` : prettyTrack;
 
-    // 2) Intentar afinar con el name de ui_track.json / ui_subtrack.json del directorio específico
     const dirPath = relPath.substring(0, relPath.lastIndexOf('/'));
-    
-    // Buscar en jsonMap un JSON que esté dentro del mismo dirPath o carpeta padre directa
     let jsonMatch = null;
+
+    // Buscar JSON estrictamente en la misma subcarpeta
     for (const [jPath, jObj] of jsonMap.entries()) {
-      if (jObj.name && jPath.startsWith(dirPath)) {
+      if (jObj && jObj.name && jPath.startsWith(dirPath)) {
         jsonMatch = jObj;
         break;
       }
     }
+
+    // Buscar dentro del prefijo exclusivo del circuito (SIN salirse de la carpeta de este circuito)
     if (!jsonMatch) {
-      const parentDir = dirPath.substring(0, dirPath.lastIndexOf('/'));
       for (const [jPath, jObj] of jsonMap.entries()) {
-        if (jObj.name && jPath.startsWith(parentDir)) {
-          jsonMatch = jObj;
-          break;
+        if (jObj && jObj.name && jPath.startsWith(trackPrefix + '/')) {
+          if (layoutFolderName) {
+            if (jPath.includes(layoutFolderName.toLowerCase()) || jPath.includes('subtrack')) {
+              jsonMatch = jObj;
+              break;
+            }
+          } else {
+            jsonMatch = jObj;
+            break;
+          }
         }
       }
     }
 
     if (jsonMatch && jsonMatch.name) {
-      name = jsonMatch.name;
+      const jsonName = String(jsonMatch.name).trim();
+      if (jsonName) {
+        name = jsonName;
+      }
     }
 
-    // Procesar la imagen outline.png con Canvas para quitar fondo y volverla silueta neón
     const dataUrl = await processOutlineImage(file);
 
     detected.push({
-      trackFolder,
-      layoutFolder,
+      trackFolder: trackFolderName,
+      layoutFolder: layoutFolderName,
       name,
       outlineDataUrl: dataUrl,
       selected: true,
