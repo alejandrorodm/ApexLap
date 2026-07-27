@@ -49,7 +49,17 @@ function Gate() {
   if (!userId) return <AuthScreen />;
 
   const hasName = (profile?.driverName ?? '').trim().length > 0;
-  if (!hasName || !league) return <OnboardingScreen />;
+  if (!hasName) return <OnboardingScreen />;
+
+  // Si tiene liga asignada en el perfil pero los datos aún se están descargando de Firestore
+  if (profile?.leagueId && !league) {
+    return <Splash message="Cargando tu liga…" />;
+  }
+
+  // Si no tiene liga en el perfil y tampoco hay liga cargada
+  if (!profile?.leagueId && !league) {
+    return <OnboardingScreen />;
+  }
 
   return <RootNavigator />;
 }

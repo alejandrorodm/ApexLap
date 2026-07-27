@@ -248,13 +248,16 @@ export default function LapsScreen() {
             <TrackRecordRow
               record={item as TrackRecord}
               grid={gridCols > 1}
-              isMine={(item as TrackRecord).lap.userId === userId}
+              isMine={!!(item as TrackRecord).lap && (item as TrackRecord).lap?.userId === userId}
               onPress={() =>
                 navigation.navigate('Track', {
                   track: (item as TrackRecord).track,
                 })
               }
-              onLongPress={() => confirmDelete((item as TrackRecord).lap)}
+              onLongPress={() => {
+                const l = (item as TrackRecord).lap;
+                if (l) confirmDelete(l);
+              }}
             />
           ) : (
             <LapRow
@@ -443,11 +446,15 @@ function TrackRecordRow({
   onPress: () => void;
   onLongPress: () => void;
 }) {
-  const { lap, count } = record;
+  const { customTracks } = useApp();
+  const { lap, count, track } = record;
+  const trackName = track || lap?.track || 'Circuito';
+  const customTrackObj = customTracks.find((t) => t.name === trackName);
+
   return (
     <Pressable
       onPress={onPress}
-      onLongPress={onLongPress}
+      onLongPress={lap ? onLongPress : undefined}
       delayLongPress={350}
       style={[
         styles.trackCard,
@@ -457,39 +464,55 @@ function TrackRecordRow({
       {...({ dataSet: { anim: 'rise' } } as any)}
     >
       <View style={styles.trackHeader}>
-        <Text style={styles.trackName} numberOfLines={1}>
-          📍 {lap.track}
-        </Text>
-        <Text style={styles.trackCount}>
-          {count} {count === 1 ? 'vuelta' : 'vueltas'} ›
-        </Text>
-      </View>
-
-      <Text style={styles.trackTime}>{formatTime(lap.timeMs)}</Text>
-
-      <View style={styles.trackFoot}>
-        <Text style={styles.trackCar} numberOfLines={1}>
-          🚗 {lap.car}
-        </Text>
-        <Text style={styles.trackDriver} numberOfLines={1}>
-          👑 {lap.driverName || 'Anónimo'}
-          {isMine ? ' · tú' : ''}
-        </Text>
-      </View>
-
-      <View style={styles.badges}>
-        {lap.assists ? (
-          <Badge text="ayudas" color={colors.textFaint} />
-        ) : (
-          <Badge text="sin ayudas" color={colors.green} />
-        )}
-        {lap.conditions === 'wet' ? (
-          <Badge text="mojado" color={colors.blue} />
-        ) : lap.conditions === 'mixed' ? (
-          <Badge text="mixto" color={colors.blue} />
+        {customTrackObj?.url ? (
+          <TrackMap track={trackName} imageUrl={customTrackObj.url} size={60} />
         ) : null}
-        <AbsTcBadges lap={lap} />
+        <View style={{ flex: 1, marginLeft: customTrackObj?.url ? spacing.sm : 0 }}>
+          <Text style={styles.trackName} numberOfLines={1}>
+            📍 {trackName}
+          </Text>
+          <Text style={styles.trackCount}>
+            {count} {count === 1 ? 'vuelta' : 'vueltas'} ›
+          </Text>
+        </View>
       </View>
+
+      {lap ? (
+        <>
+          <Text style={styles.trackTime}>{formatTime(lap.timeMs)}</Text>
+          <View style={styles.trackFoot}>
+            <Text style={styles.trackCar} numberOfLines={1}>
+              🚗 {lap.car}
+            </Text>
+            <Text style={styles.trackDriver} numberOfLines={1}>
+              👑 {lap.driverName || 'Anónimo'}
+              {isMine ? ' · tú' : ''}
+            </Text>
+          </View>
+          <View style={styles.badges}>
+            {lap.assists ? (
+              <Badge text="ayudas" color={colors.textFaint} />
+            ) : (
+              <Badge text="sin ayudas" color={colors.green} />
+            )}
+            {lap.conditions === 'wet' ? (
+              <Badge text="mojado" color={colors.blue} />
+            ) : lap.conditions === 'mixed' ? (
+              <Badge text="mixto" color={colors.blue} />
+            ) : null}
+            <AbsTcBadges lap={lap} />
+          </View>
+        </>
+      ) : (
+        <View style={{ marginTop: spacing.sm }}>
+          <Text style={{ color: colors.textDim, fontSize: 13, fontStyle: 'italic' }}>
+            Sin vueltas registradas aún
+          </Text>
+          <View style={{ marginTop: spacing.xs, flexDirection: 'row' }}>
+            <Badge text="MOD / CUSTOM" color={colors.accent} />
+          </View>
+        </View>
+      )}
     </Pressable>
   );
 }
