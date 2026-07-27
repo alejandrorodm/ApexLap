@@ -496,7 +496,13 @@ async function handleTrackFiles(fileList) {
     if (foundJsonObj && foundJsonObj.name) {
       const rawJsonName = String(foundJsonObj.name).trim();
       if (rawJsonName) {
-        name = rawJsonName;
+        const normPretty = normName(prettyTrack);
+        const normJson = normName(rawJsonName);
+        if (normJson.includes(normPretty) || !layoutFolderName) {
+          name = rawJsonName;
+        } else {
+          name = `${prettyTrack} · ${rawJsonName}`;
+        }
       }
     }
 
