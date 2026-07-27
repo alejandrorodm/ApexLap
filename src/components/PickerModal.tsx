@@ -16,6 +16,7 @@ import {
 import { colors, radius, spacing } from '../theme';
 import { CatalogKind, CATALOG_KIND_LABEL } from '../types';
 import { confirmAction } from '../utils/alerts';
+import { ImageDropzone } from './ImageDropzone';
 
 // Un item del selector: o un texto suelto, o un coche/circuito con metadatos.
 export type PickerItem =
@@ -197,15 +198,10 @@ export function PickerModal({
                 })}
               </View>
               {addKind === 'mod' ? (
-                <TextInput
+                <ImageDropzone
                   value={addUrl}
-                  onChangeText={setAddUrl}
-                  placeholder="URL del mod o foto del mapa (opcional)"
-                  placeholderTextColor={colors.textFaint}
-                  style={styles.urlInput}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="url"
+                  onChange={setAddUrl}
+                  placeholder="URL del mod o pega/arrastra la foto del mapa"
                 />
               ) : null}
               <Pressable

@@ -27,6 +27,7 @@ import { colors, spacing, radius, font } from '../theme';
 import { useGridColumns } from '../responsive';
 import { Chip, EmptyState } from '../components/ui';
 import TrackMap from '../components/TrackMap';
+import { ImageDropzone } from '../components/ImageDropzone';
 import { useApp } from '../context/AppContext';
 import {
   lapsForTrack,
@@ -320,16 +321,12 @@ export default function TrackDetailScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>📷 Foto / Imagen del mapa</Text>
             <Text style={styles.modalSub}>
-              Pega la URL de la foto o imagen del circuito para {track}.
+              Arrastra una imagen, pega con Ctrl + V, busca en tu equipo o pega una URL para el circuito {track}.
             </Text>
-            <TextInput
+            <ImageDropzone
               value={photoUrlInput}
-              onChangeText={setPhotoUrlInput}
-              placeholder="https://.../mapa.png"
-              placeholderTextColor={colors.textFaint}
-              style={styles.modalInput}
-              autoCapitalize="none"
-              autoCorrect={false}
+              onChange={setPhotoUrlInput}
+              placeholder="https://... o pega/arrastra una imagen"
             />
             <View style={styles.modalBtnRow}>
               <Pressable
