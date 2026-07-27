@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ApexLap · Importar histórico de Content Manager</title>
+  <title>ApexLap · Importador Web (Vueltas y Circuitos)</title>
   <style>
     :root {
       --red: #e10600;
@@ -28,10 +28,11 @@
     }
     a { color: var(--yel); }
     header {
-      padding: 28px 24px 12px;
+      padding: 24px 24px 12px;
       border-bottom: 1px solid var(--line);
-      display: flex; align-items: baseline; gap: 14px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;
     }
+    .brand { display: flex; align-items: baseline; gap: 14px; }
     h1 { margin: 0; font-size: 28px; letter-spacing: -0.02em; }
     h1 .apex { color: var(--text); }
     h1 .lap   { color: var(--red); }
@@ -43,7 +44,20 @@
     .stripe .a { background: var(--red); width: 32px; }
     .stripe .b { background: var(--yel); }
     .stripe .c { background: var(--text); width: 14px; }
-    main { max-width: 920px; margin: 0 auto; padding: 24px; }
+
+    /* Pestañas principales */
+    .tab-bar {
+      display: flex; gap: 8px; margin-top: 10px;
+    }
+    .tab-btn {
+      padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 14px;
+      background: var(--surf); color: var(--dim); border: 1px solid var(--line);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .tab-btn:hover { color: var(--text); background: var(--surf-h); }
+    .tab-btn.active { background: var(--red); color: white; border-color: var(--red); }
+
+    main { max-width: 960px; margin: 0 auto; padding: 24px; }
     .card {
       background: var(--surf);
       border: 1px solid var(--line);
@@ -71,6 +85,7 @@
     button:active:not(:disabled) { transform: translateY(1px); }
     .btn-primary { background: var(--red); color: white; }
     .btn-primary:hover:not(:disabled) { background: var(--red-h); }
+    .btn-accent { background: var(--yel); color: var(--bg); font-weight: 800; }
     .btn-ghost { background: var(--surf-h); color: var(--dim); }
     .btn-ghost:hover:not(:disabled) { color: var(--text); }
     .pilot {
@@ -94,46 +109,24 @@
     .status { color: var(--dim); font-size: 14px; min-height: 1.5em; }
     .status.ok { color: var(--green); }
     .status.err { color: var(--red); }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; }
-    th { color: var(--faint); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
-    td.time { font-variant-numeric: tabular-nums; color: var(--yel); font-weight: 600; }
-    td.dup { color: var(--faint); }
-    td.dup .badge { color: var(--faint); }
-    .badge {
-      display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 4px;
-      background: var(--surf-h); color: var(--dim);
-    }
-    .badge.new { background: rgba(56, 210, 88, 0.16); color: var(--green); }
-    .badge.sectors { background: rgba(255, 214, 10, 0.16); color: var(--yel); }
-    .sectors-line { font-size: 11px; color: var(--faint); margin-top: 2px; }
-    .summary { display: flex; gap: 22px; flex-wrap: wrap; margin-bottom: 14px; }
-    .summary .stat { display: flex; flex-direction: column; }
-    .summary .num { font-size: 26px; font-weight: 700; line-height: 1; }
-    .summary .num.new { color: var(--green); }
-    .summary .num.dup { color: var(--dim); }
-    .summary .num.skip { color: var(--faint); }
-    .summary .lbl { font-size: 11px; letter-spacing: 0.06em; color: var(--faint); text-transform: uppercase; margin-top: 4px; }
-    footer { text-align: center; padding: 30px 20px; color: var(--faint); font-size: 12px; }
-    .hide { display: none !important; }
-    details { margin-top: 12px; }
-    details summary { cursor: pointer; color: var(--dim); font-size: 13px; }
-    .scroll { max-height: 440px; overflow-y: auto; border-radius: 8px; padding-right: 4px; }
 
-    /* Agrupación por circuito en la vista previa */
-    .track-group { margin-bottom: 18px; }
-    .track-group:last-child { margin-bottom: 0; }
-    .track-head {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 10px; margin: 0;
-      background: var(--surf-h); border-radius: 8px 8px 0 0;
-      border: 1px solid var(--line); border-bottom: 0;
+    /* Grid de mapas para la importación de circuitos */
+    .tracks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px; margin-top: 16px; max-height: 520px; overflow-y: auto; padding: 4px;
     }
-    .track-head .track-name { font-weight: 700; font-size: 14px; color: var(--text); }
-    .track-head .track-meta { font-size: 11px; color: var(--faint); letter-spacing: 0.04em; text-transform: uppercase; }
-    .track-group table { border-radius: 0 0 8px 8px; overflow: hidden; }
-    .track-group table tbody tr:last-child td { border-bottom: 1px solid var(--line); }
-    .track-group table tbody tr:first-child td { border-top: 1px solid var(--line); }
+    .track-card {
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .track-card.selected { border-color: var(--yel); }
+    .track-preview {
+      width: 100%; height: 110px; background: rgba(20, 24, 33, 0.8);
+      border-radius: 6px; border: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    .track-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
     /* Modal de éxito */
     .modal-backdrop {
@@ -164,24 +157,30 @@
     .modal h3 { margin: 0 0 8px; font-size: 22px; }
     .modal p { margin: 0 0 20px; color: var(--dim); font-size: 14px; }
     .modal .big { color: var(--yel); font-weight: 900; }
+    .hide { display: none !important; }
   </style>
 </head>
 <body>
   <header>
-    <h1>
-      <span class="apex">Apex</span><span class="lap">Lap</span>
-    </h1>
-    <span class="stripe"><span class="a"></span><span class="b"></span><span class="c"></span></span>
-    <span style="color: var(--faint); font-size: 14px;">Importar histórico de Content Manager</span>
+    <div>
+      <div class="brand">
+        <h1><span class="apex">Apex</span><span class="lap">Lap</span></h1>
+        <span class="stripe"><span class="a"></span><span class="b"></span><span class="c"></span></span>
+        <span style="color: var(--faint); font-size: 14px;">Importador Web</span>
+      </div>
+      <div class="tab-bar">
+        <button id="tab-laps" class="tab-btn active">⏱️ 1. Importar Vueltas (Sessions)</button>
+        <button id="tab-tracks" class="tab-btn">🗺️ 2. Importar Circuitos (content/tracks)</button>
+      </div>
+    </div>
   </header>
 
   <main>
     <!-- 1. Login -->
     <section id="auth" class="card">
-      <h2>1 · Iniciar sesión</h2>
+      <h2>Inicia sesión en tu liga</h2>
       <p style="margin: 0 0 14px; color: var(--dim); font-size: 14px;">
-        Con tu cuenta de ApexLap (la misma que en la app móvil). Tus credenciales
-        viajan solo hasta Firebase para autenticarte; no las guardamos.
+        Introduce tu cuenta de ApexLap para sincronizar tus datos directamente con tu liga.
       </p>
       <div class="row">
         <div>
@@ -199,9 +198,8 @@
       </div>
     </section>
 
-    <!-- 2. Folder picker -->
-    <section id="step-files" class="card hide">
-      <h2>2 · Carpeta Progress\Sessions</h2>
+    <!-- Contenido del usuario tras autenticarse -->
+    <div id="user-area" class="hide">
       <div class="pilot">
         <div><div class="label">Piloto</div><div class="val" id="pilot-name">—</div></div>
         <div><div class="label">Liga</div><div class="val" id="pilot-league">—</div></div>
@@ -209,147 +207,136 @@
           <button id="btn-logout" class="btn-ghost">Cerrar sesión</button>
         </div>
       </div>
-      <p style="margin: 0 0 12px; color: var(--dim); font-size: 14px;">
-        Suele estar en <code style="color: var(--text);">%LOCALAPPDATA%\AcTools Content Manager\Progress\Sessions</code>.
-        Arrastra la carpeta entera o pulsa para elegirla. Los <code>.json</code> se leen
-        en tu navegador — nada se sube a ningún servidor hasta que pulses <b>Subir PBs</b>.
-      </p>
-      <div class="picker" id="picker" tabindex="0" role="button" aria-label="Elegir carpeta Sessions">
-        <input type="file" id="files" webkitdirectory multiple />
-        <p style="font-size: 16px;">📁 Suelta aquí tu carpeta <b>Sessions</b></p>
-        <p class="hint">o pulsa para elegirla</p>
-      </div>
-      <div id="files-status" class="status" style="margin-top: 12px;"></div>
-    </section>
 
-    <!-- 3. Filter player + condiciones -->
-    <section id="step-filter" class="card hide">
-      <h2>3 · Tu nombre en el juego</h2>
-      <p style="margin: 0 0 14px; color: var(--dim); font-size: 14px;">
-        En sesiones online aparecen varios pilotos por fichero. Elige tu nombre para
-        coger solo tus vueltas.
-      </p>
-      <div class="row">
-        <div>
-          <label for="player">Nombre del piloto en AC</label>
-          <select id="player"></select>
-        </div>
-        <div>
-          <label for="conditions">Condiciones por defecto</label>
-          <select id="conditions">
-            <option value="dry">Seco</option>
-            <option value="wet">Mojado</option>
-            <option value="mixed">Mixto</option>
-          </select>
-        </div>
-      </div>
-    </section>
+      <!-- ================= PESTAÑA 1: VUELTAS (SESSIONS) ================= -->
+      <div id="view-laps">
+        <!-- 2. Folder picker -->
+        <section id="step-files" class="card">
+          <h2>2 · Carpeta Progress\Sessions</h2>
+          <p style="margin: 0 0 12px; color: var(--dim); font-size: 14px;">
+            Suele estar en <code style="color: var(--text);">%LOCALAPPDATA%\AcTools Content Manager\Progress\Sessions</code>.
+            Arrastra la carpeta entera o pulsa para elegirla.
+          </p>
+          <div class="picker" id="picker" tabindex="0" role="button">
+            <input type="file" id="files" webkitdirectory multiple />
+            <p style="font-size: 16px;">📁 Suelta aquí tu carpeta <b>Sessions</b></p>
+            <p class="hint">o pulsa para elegirla</p>
+          </div>
+          <div id="files-status" class="status" style="margin-top: 12px;"></div>
+        </section>
 
-    <!-- 4. Preview -->
-    <section id="step-preview" class="card hide">
-      <h2>4 · Vista previa</h2>
-      <div class="summary">
-        <div class="stat"><div class="num new" id="num-new">0</div><div class="lbl">PBs nuevos</div></div>
-        <div class="stat"><div class="num dup" id="num-dup">0</div><div class="lbl">Ya estaban en la liga</div></div>
-        <div class="stat"><div class="num" id="num-sectors" style="color: var(--yel);">0</div><div class="lbl">Se les añadirán sectores</div></div>
-        <div class="stat"><div class="num skip" id="num-skip">0</div><div class="lbl">Vueltas descartadas (cortes/tiempos raros)</div></div>
+        <!-- 3. Filter player + condiciones -->
+        <section id="step-filter" class="card hide">
+          <h2>3 · Tu nombre en el juego</h2>
+          <div class="row">
+            <div>
+              <label for="player">Nombre del piloto en AC</label>
+              <select id="player"></select>
+            </div>
+            <div>
+              <label for="conditions">Condiciones por defecto</label>
+              <select id="conditions">
+                <option value="dry">Seco</option>
+                <option value="wet">Mojado</option>
+                <option value="mixed">Mixto</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. Preview -->
+        <section id="step-preview" class="card hide">
+          <h2>4 · Vista previa</h2>
+          <div class="summary">
+            <div class="stat"><div class="num new" id="num-new">0</div><div class="lbl">PBs nuevos</div></div>
+            <div class="stat"><div class="num dup" id="num-dup">0</div><div class="lbl">Ya estaban en la liga</div></div>
+            <div class="stat"><div class="num" id="num-sectors" style="color: var(--yel);">0</div><div class="lbl">Se les añadirán sectores</div></div>
+            <div class="stat"><div class="num skip" id="num-skip">0</div><div class="lbl">Vueltas descartadas</div></div>
+          </div>
+          <div class="scroll" id="preview-groups"></div>
+          <div style="margin-top: 16px; display: flex; gap: 10px; align-items: center;">
+            <button id="btn-upload" class="btn-primary">Subir PBs nuevos</button>
+            <button id="btn-reset" class="btn-ghost">Volver a empezar</button>
+            <span id="upload-status" class="status" style="margin-left: 8px;"></span>
+          </div>
+        </section>
       </div>
-      <div class="scroll" id="preview-groups"></div>
-      <div style="margin-top: 16px; display: flex; gap: 10px; align-items: center;">
-        <button id="btn-upload" class="btn-primary">Subir PBs nuevos</button>
-        <button id="btn-reset" class="btn-ghost">Volver a empezar</button>
-        <span id="upload-status" class="status" style="margin-left: 8px;"></span>
+
+      <!-- ================= PESTAÑA 2: CIRCUITOS (CONTENT/TRACKS) ================= -->
+      <div id="view-tracks" class="hide">
+        <section class="card">
+          <h2>2 · Carpeta content\tracks</h2>
+          <p style="margin: 0 0 12px; color: var(--dim); font-size: 14px;">
+            Arrastra tu carpeta <code style="color: var(--text);">content\tracks</code> de Assetto Corsa
+            (ej. <code style="color: var(--text);">C:\Program Files (x86)\Steam\steamapps\common\assettocorsa\content\tracks</code>).
+            Se escanearán automáticamente todas las variantes con su mapa silueta (<code>outline.png</code>) e información de trazado.
+          </p>
+          <div class="picker" id="tracks-picker" tabindex="0" role="button">
+            <input type="file" id="tracks-files" webkitdirectory multiple />
+            <p style="font-size: 16px;">🏁 Suelta aquí tu carpeta <b>tracks</b></p>
+            <p class="hint">o pulsa para elegirla</p>
+          </div>
+          <div id="tracks-status" class="status" style="margin-top: 12px;"></div>
+        </section>
+
+        <!-- Preview grid de circuitos detectados -->
+        <section id="step-tracks-preview" class="card hide">
+          <h2>Circuitos y trazados detectados</h2>
+          <p style="margin: 0 0 12px; color: var(--dim); font-size: 13px;">
+            Revisa los nombres de cada trazado. Las imágenes con fondo claro se han recortado automáticamente a una silueta neón transparente.
+          </p>
+
+          <div id="tracks-grid" class="tracks-grid"></div>
+
+          <div style="margin-top: 18px; display: flex; gap: 12px; align-items: center;">
+            <button id="btn-upload-tracks" class="btn-accent">🚀 Subir Circuitos a mi Liga</button>
+            <span id="tracks-upload-status" class="status"></span>
+          </div>
+        </section>
       </div>
-    </section>
+    </div>
   </main>
-
-  <footer>
-    🏁 ApexLap · Importador web · Solo lee los <code>.json</code> de CM en tu navegador
-  </footer>
 
   <!-- Modal de éxito de subida -->
   <div id="success-modal" class="modal-backdrop hide">
-    <div class="modal" role="dialog" aria-labelledby="success-title" aria-modal="true">
+    <div class="modal" role="dialog" aria-labelledby="success-title">
       <div class="checkmark">✓</div>
-      <h3 id="success-title">¡Tiempos subidos!</h3>
-      <p id="success-new">Has añadido <span class="big" id="success-count">0</span> récords nuevos a tu liga. Ya aparecen para tus colegas en la app.</p>
-      <p id="success-sectors" class="hide">Y se añadieron sectores a <span class="big" id="success-sectors-count">0</span> vueltas que ya estaban.</p>
+      <h3 id="success-title">¡Completado!</h3>
+      <p id="success-msg">Se han sincronizado correctamente los datos con tu liga.</p>
       <button id="success-ok" class="btn-primary" style="min-width: 140px;">Genial</button>
     </div>
   </div>
 
 <script>
-// ─── Config Firebase (cliente, valores PÚBLICOS) ─────────────────────────────
+// ─── Config Firebase ─────────────────────────────────────────────────────────
 const API_KEY = 'AIzaSyB-AKkJn0ZQ0jRn332Fx82g2X5KDwlV82k';
 const PROJECT = 'apexlap';
 const IDENTITY = 'https://identitytoolkit.googleapis.com/v1';
 const FIRESTORE = 'https://firestore.googleapis.com/v1';
 const FS_BASE = `projects/${PROJECT}/databases/(default)/documents`;
 
-// Vueltas por debajo de esto se ignoran (vueltas de salida / basura).
 const MIN_LAP_MS = 15000;
 const MAX_LAP_MS = 3_600_000;
-
-// Mismos prefijos que el subidor Python para limpiar ids internos de AC.
 const PREFIXES = ['ks_', 'rss_', 'tatuusfa1_', 'abarth500_', 'abarth500s_'];
 
-// Catálogo vanilla — debe seguir a src/data/cars.ts y src/data/tracks.ts.
-// Se guardan NORMALIZADOS (lower, sin separador "·") para detectar que un
-// nombre subido es ya vanilla aunque el formato no coincida exactamente
-// (p.ej. "Silverstone · Gp" vs "Silverstone · GP").
 function normName(s) {
-  return String(s || '')
-    .toLowerCase()
-    .replace(/\s*·\s*/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return String(s || '').toLowerCase().replace(/\s*·\s*/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-const VANILLA_CARS_NORM = new Set([
-  'Abarth 500 EsseEsse', 'Abarth 500 EsseEsse Step 1',
-  'Alfa Romeo Giulietta QV', 'Alfa Romeo MiTo QV', 'Audi R8 V10 plus',
-  'BMW 1M', 'BMW 1M Stage 3', 'BMW M3 E92', 'BMW Z4',
-  'Ferrari 458 Italia', 'Ferrari F40', 'KTM X-Bow R',
-  'Lotus Elise SC', 'Lotus Evora S', 'Lotus Exige S', 'Lotus Exige S Roadster',
-  'McLaren MP4-12C', 'Mercedes-Benz SLS AMG', 'Shelby Cobra 427 S/C', 'Toyota GT86',
-  'Ferrari LaFerrari', 'Ferrari 599XX EVO', 'McLaren P1', 'Pagani Huayra', 'Pagani Zonda R',
-  'BMW M3 GT2', 'BMW Z4 GT3', 'Ferrari 458 Italia GT2', 'Lotus Evora GTC', 'Lotus Evora GTE',
-  'McLaren MP4-12C GT3', 'Mercedes-Benz SLS AMG GT3',
-  'Lotus 2-Eleven', 'Lotus 2-Eleven GT4', 'Lotus Evora GX', 'Lotus Evora GT4',
-  'Lotus Exige 240R', 'Lotus Exige Scura', 'Lotus Exige V6 Cup',
-  'BMW M3 E30', 'BMW M3 E30 Group A', 'BMW M3 E30 Drift',
-  'Classic Team Lotus Type 49', 'Lotus 98T',
-  'Lotus Exos 125', 'Lotus Exos 125 S1', 'Tatuus FA01 (Formula Abarth)',
-].map(normName));
-
-const VANILLA_TRACKS_NORM = new Set([
-  'Monza · GP', 'Monza · Junior', 'Monza · 1966 (sin chicanes)',
-  'Spa-Francorchamps · GP', 'Nürburgring · GP', 'Nürburgring · Sprint',
-  'Silverstone · GP', 'Silverstone · International', 'Silverstone · National', 'Silverstone · 1967',
-  'Brands Hatch · GP', 'Brands Hatch · Indy',
-  'Barcelona-Catalunya · GP', 'Barcelona-Catalunya · Moto',
-  'Red Bull Ring · GP', 'Red Bull Ring · National',
-  'Imola · GP', 'Mugello · GP',
-  'Vallelunga · GP', 'Vallelunga · Club', 'Vallelunga · Sin chicane',
-  'Magione · Full', 'Zandvoort · GP', 'Laguna Seca · Full',
-  'Highlands · Long', 'Highlands · Short', 'Highlands · Drift',
-  'Black Cat County · Long', 'Black Cat County · Short',
-  'Trento-Bondone · Hillclimb', 'Drift · Track', 'Fiorano · Full',
-].map(normName));
-
-// ─── Estado ──────────────────────────────────────────────────────────────────
+// Estado global
 const S = {
   idToken: null,
   uid: null,
   leagueId: null,
   driverName: null,
-  detectedPlayers: [],   // nombres encontrados en los ficheros
-  filesAggregated: null, // { byCombo: Map<combo, {car, track, timeMs, driverName, fileCount}>, skipped: number }
-  existing: null,        // Map<`${track}|${car}|${timeMs}`, {docId, hasSectors}> de la liga
-  preview: null,         // [{car, track, timeMs, sectors, isNew, needsSectors, docId}]
+  detectedPlayers: [],
+  filesAggregated: null,
+  existing: null,
+  preview: null,
+  detectedTracks: [], // [{ trackId, layoutId, name, outlineDataUrl }]
 };
 
-// ─── Utilidades HTTP ─────────────────────────────────────────────────────────
+// HTTP
 async function postJson(url, body, headers = {}) {
   const r = await fetch(url, {
     method: 'POST',
@@ -368,7 +355,6 @@ async function getJson(url, headers = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-// ─── Formato y prettify ──────────────────────────────────────────────────────
 function fmtMs(ms) {
   const m = Math.floor(ms / 60000);
   const s = Math.floor((ms % 60000) / 1000);
@@ -386,7 +372,7 @@ function prettify(raw) {
   return name.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
-// ─── Auth ────────────────────────────────────────────────────────────────────
+// Auth
 async function login(email, password) {
   const res = await postJson(
     `${IDENTITY}/accounts:signInWithPassword?key=${API_KEY}`,
@@ -404,264 +390,6 @@ async function fetchProfile() {
   S.driverName = f.driverName?.stringValue || null;
 }
 
-// ─── Leer existentes de la liga ──────────────────────────────────────────────
-// Devuelve un Map clave→{docId, hasSectors}: nos sirve para (a) no duplicar y
-// (b) detectar vueltas ya registradas SIN sectores, para añadírselos luego.
-async function fetchExisting() {
-  const url = `${FIRESTORE}/${FS_BASE}/leagues/${S.leagueId}:runQuery`;
-  const body = {
-    structuredQuery: {
-      from: [{ collectionId: 'laps' }],
-      where: {
-        fieldFilter: {
-          field: { fieldPath: 'userId' },
-          op: 'EQUAL',
-          value: { stringValue: S.uid },
-        },
-      },
-    },
-  };
-  const rows = await postJson(url, body, { Authorization: `Bearer ${S.idToken}` });
-  const map = new Map();
-  for (const row of rows || []) {
-    if (!row.document) continue;
-    const f = row.document.fields || {};
-    const car = f.car?.stringValue || '';
-    const track = f.track?.stringValue || '';
-    const timeMs = parseInt(f.timeMs?.integerValue || '0', 10);
-    if (!(car && track && timeMs)) continue;
-    const key = `${track}|${car}|${timeMs}`;
-    const docId = String(row.document.name || '').match(/[^/]+$/)?.[0] || null;
-    const hasSectors = (f.sectors?.arrayValue?.values?.length || 0) > 0;
-    map.set(key, { docId, hasSectors });
-  }
-  return map;
-}
-
-// ─── Parseo de ficheros de CM ────────────────────────────────────────────────
-// Cada fichero de Progress\Sessions tiene esta forma (mismo que race_out.json):
-//   { track, players: [{name, car, ...}], sessions: [{ laps: [{car, time, cuts, sectors}], ... }] }
-// `sectors` es un array de tiempos por sector en ms (S1, S2, S3…); puede faltar.
-// Devuelve un agregado best-por-(carId, trackId) de TODOS los ficheros para el
-// playerName seleccionado, además del set de nombres detectados.
-function aggregateFiles(jsonDocs, playerName) {
-  const byCombo = new Map(); // key = `${trackId}|${carId}` → mejor vuelta
-  const detectedSet = new Set();
-  let skipped = 0;
-  const wanted = (playerName || '').trim().toLowerCase();
-
-  for (const data of jsonDocs) {
-    if (!data || typeof data !== 'object') continue;
-    const players = data.players || [];
-    for (const p of players) if (p?.name) detectedSet.add(p.name);
-
-    let trackId = data.track || data.trackName || '';
-    const trackCfg = data.trackConfig || data.track_config || '';
-    if (trackCfg && !trackId.includes(trackCfg)) {
-      trackId = `${trackId} ${trackCfg}`.trim();
-    }
-    if (!trackId) continue;
-
-    for (const sess of data.sessions || []) {
-      for (const lap of sess.laps || []) {
-        const cuts = parseInt(lap.cuts ?? 0, 10);
-        const t = parseInt(lap.time ?? 0, 10);
-        if (cuts !== 0 || t <= 0 || t >= MAX_LAP_MS || t < MIN_LAP_MS) {
-          skipped++;
-          continue;
-        }
-        const idx = parseInt(lap.car ?? 0, 10);
-        if (idx < 0 || idx >= players.length) continue;
-        const player = players[idx];
-        const pname = (player?.name || '').trim();
-        if (wanted && pname.toLowerCase() !== wanted) continue;
-        const carId = player?.car || '';
-        if (!carId) continue;
-
-        // Sectores: solo si AC los trae como array de tiempos positivos. En
-        // pistas de 1 solo sector ese tiempo == la vuelta entera, así que no
-        // aporta nada: lo descartamos (solo guardamos cuando hay 2+).
-        let sectors = Array.isArray(lap.sectors)
-          ? lap.sectors.map(s => parseInt(s ?? 0, 10)).filter(s => s > 0)
-          : [];
-        if (sectors.length < 2) sectors = [];
-
-        const combo = `${trackId}|${carId}`;
-        const prev = byCombo.get(combo);
-        if (!prev || t < prev.timeMs) {
-          byCombo.set(combo, {
-            carId, trackId, timeMs: t,
-            sectors,
-            driverNameAc: pname,
-          });
-        }
-      }
-    }
-  }
-
-  return {
-    byCombo,
-    skipped,
-    detectedPlayers: [...detectedSet].sort((a, b) => a.localeCompare(b)),
-  };
-}
-
-// ─── Construir preview (con prettify + dedup vs liga) ────────────────────────
-function buildPreview(agg, existing) {
-  const rows = [];
-  for (const { carId, trackId, timeMs, sectors } of agg.byCombo.values()) {
-    const car = prettify(carId);
-    const track = prettify(trackId);
-    const key = `${track}|${car}|${timeMs}`;
-    const ex = existing.get(key);
-    const hasSectors = !!(sectors && sectors.length);
-    // Ya en la liga pero sin sectores guardados, y nosotros sí los tenemos →
-    // se puede actualizar esa vuelta para añadírselos (sin duplicar).
-    const needsSectors = !!ex && !ex.hasSectors && hasSectors;
-    rows.push({
-      car, track, timeMs, sectors,
-      isNew: !ex,
-      needsSectors,
-      docId: ex?.docId || null,
-    });
-  }
-  rows.sort((a, b) => {
-    if (a.isNew !== b.isNew) return a.isNew ? -1 : 1;
-    return a.track.localeCompare(b.track) || a.car.localeCompare(b.car);
-  });
-  return rows;
-}
-
-// ─── Catálogo de coches/circuitos personalizados ─────────────────────────────
-// Cuando subimos vueltas con un coche o circuito que NO es vanilla, también las
-// metemos en leagues/{id}/cars|tracks con kind:'mod', para que aparezcan en el
-// selector del móvil. Idempotente: se filtra contra vanilla y contra lo que ya
-// había en la liga.
-async function fetchExistingCatalog(kind) {
-  const url = `${FIRESTORE}/${FS_BASE}/leagues/${S.leagueId}:runQuery`;
-  const body = { structuredQuery: { from: [{ collectionId: kind }] } };
-  const rows = await postJson(url, body, { Authorization: `Bearer ${S.idToken}` });
-  const set = new Set();
-  for (const row of rows || []) {
-    if (!row.document) continue;
-    const name = row.document.fields?.name?.stringValue;
-    if (name) set.add(normName(name));
-  }
-  return set;
-}
-
-async function ensureCatalogEntries(kind, names, existingNorm) {
-  const vanilla = kind === 'cars' ? VANILLA_CARS_NORM : VANILLA_TRACKS_NORM;
-  const writes = [];
-  for (const name of names) {
-    const n = normName(name);
-    if (!n || vanilla.has(n) || existingNorm.has(n)) continue;
-    existingNorm.add(n);
-    writes.push({
-      update: {
-        name: `${FS_BASE}/leagues/${S.leagueId}/${kind}/${genDocId()}`,
-        fields: {
-          name: { stringValue: name },
-          kind: { stringValue: 'mod' },
-          createdBy: { stringValue: S.uid },
-          createdByName: { stringValue: S.driverName || 'Piloto' },
-          createdAt: { integerValue: String(Date.now()) },
-        },
-      },
-    });
-  }
-  if (!writes.length) return 0;
-  await postJson(
-    `${FIRESTORE}/${FS_BASE}:commit`,
-    { writes },
-    { Authorization: `Bearer ${S.idToken}` },
-  );
-  return writes.length;
-}
-
-// ─── Subida ──────────────────────────────────────────────────────────────────
-const ID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-function genDocId() {
-  let out = '';
-  const arr = crypto.getRandomValues(new Uint32Array(20));
-  for (let i = 0; i < 20; i++) out += ID_ALPHABET[arr[i] % ID_ALPHABET.length];
-  return out;
-}
-
-function encodeLap(lap, conditions) {
-  return {
-    userId: { stringValue: S.uid },
-    driverName: { stringValue: S.driverName || 'Piloto' },
-    car: { stringValue: lap.car },
-    track: { stringValue: lap.track },
-    timeMs: { integerValue: String(lap.timeMs) },
-    ...(lap.sectors && lap.sectors.length
-      ? {
-          sectors: {
-            arrayValue: {
-              values: lap.sectors.map(s => ({ integerValue: String(s) })),
-            },
-          },
-        }
-      : {}),
-    conditions: { stringValue: conditions },
-    assists: { booleanValue: false },
-    gearbox: { stringValue: 'manual' },
-    source: { stringValue: 'auto' },
-    status: { stringValue: 'verified' },
-    createdAt: { integerValue: String(Date.now()) },
-  };
-}
-
-async function uploadNewLaps(rows, conditions) {
-  if (!rows.length) return;
-  // Firestore :commit acepta hasta ~500 writes por llamada. Lo partimos por si acaso.
-  const CHUNK = 400;
-  for (let i = 0; i < rows.length; i += CHUNK) {
-    const slice = rows.slice(i, i + CHUNK);
-    const writes = slice.map(lap => ({
-      update: {
-        name: `${FS_BASE}/leagues/${S.leagueId}/laps/${genDocId()}`,
-        fields: encodeLap(lap, conditions),
-      },
-    }));
-    await postJson(
-      `${FIRESTORE}/${FS_BASE}:commit`,
-      { writes },
-      { Authorization: `Bearer ${S.idToken}` },
-    );
-  }
-}
-
-// Añade `sectors` a vueltas YA existentes sin tocar el resto de campos. Usa
-// :commit con updateMask=['sectors'] (solo escribe ese campo) y exists=true
-// (no crea nada si la vuelta hubiera desaparecido). Así no duplica.
-async function patchExistingSectors(rows) {
-  if (!rows.length) return;
-  const CHUNK = 400;
-  for (let i = 0; i < rows.length; i += CHUNK) {
-    const slice = rows.slice(i, i + CHUNK);
-    const writes = slice.map(r => ({
-      update: {
-        name: `${FS_BASE}/leagues/${S.leagueId}/laps/${r.docId}`,
-        fields: {
-          sectors: {
-            arrayValue: { values: r.sectors.map(s => ({ integerValue: String(s) })) },
-          },
-        },
-      },
-      updateMask: { fieldPaths: ['sectors'] },
-      currentDocument: { exists: true },
-    }));
-    await postJson(
-      `${FIRESTORE}/${FS_BASE}:commit`,
-      { writes },
-      { Authorization: `Bearer ${S.idToken}` },
-    );
-  }
-}
-
-// ─── UI helpers ──────────────────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
 function setStatus(el, msg, kind = '') {
   el.className = 'status ' + kind;
@@ -670,7 +398,252 @@ function setStatus(el, msg, kind = '') {
 function show(id) { $(id).classList.remove('hide'); }
 function hide(id) { $(id).classList.add('hide'); }
 
-// ─── Flujo ───────────────────────────────────────────────────────────────────
+// Conmutación de Pestañas
+function setupTabs() {
+  $('tab-laps').addEventListener('click', () => {
+    $('tab-laps').classList.add('active');
+    $('tab-tracks').classList.remove('active');
+    show('view-laps');
+    hide('view-tracks');
+  });
+  $('tab-tracks').addEventListener('click', () => {
+    $('tab-tracks').classList.add('active');
+    $('tab-laps').classList.remove('active');
+    show('view-tracks');
+    hide('view-laps');
+  });
+}
+
+// ===================== PROCESADOR DE CIRCUITOS (tracks) =====================
+async function handleTrackFiles(fileList) {
+  const filesArr = [...fileList];
+  const outlineFiles = filesArr.filter(f => f.name.toLowerCase() === 'outline.png');
+  const jsonFiles = filesArr.filter(f => f.name.toLowerCase().endsWith('.json'));
+
+  if (!outlineFiles.length) {
+    setStatus($('tracks-status'), 'No se encontraron archivos outline.png en la carpeta.', 'err');
+    return;
+  }
+
+  setStatus($('tracks-status'), `Escanenado ${outlineFiles.length} trazado(s)…`);
+
+  // Crear mapa de JSONs leídos
+  const jsonMap = new Map();
+  for (const jf of jsonFiles) {
+    try {
+      const txt = await jf.text();
+      jsonMap.set(jf.webkitRelativePath.toLowerCase(), JSON.parse(txt));
+    } catch {}
+  }
+
+  const detected = [];
+
+  for (const file of outlineFiles) {
+    // webkitRelativePath ej: "tracks/ks_silverstone/ui/gp/outline.png" o "tracks/ks_silverstone/ui/outline.png"
+    const pathParts = file.webkitRelativePath.split('/');
+    const tracksIdx = pathParts.findIndex(p => p.toLowerCase() === 'tracks');
+    const trackFolder = tracksIdx !== -1 && pathParts[tracksIdx + 1] ? pathParts[tracksIdx + 1] : pathParts[0];
+
+    // Buscar si hay layout especificado en la ruta
+    let layoutFolder = '';
+    const uiIdx = pathParts.findIndex(p => p.toLowerCase() === 'ui');
+    if (uiIdx !== -1 && pathParts[uiIdx + 1] && pathParts[uiIdx + 1].toLowerCase() !== 'outline.png') {
+      layoutFolder = pathParts[uiIdx + 1];
+    } else if (uiIdx > 0 && pathParts[uiIdx - 1] !== trackFolder) {
+      layoutFolder = pathParts[uiIdx - 1];
+    }
+
+    // Intentar leer nombre desde ui_track.json o ui_subtrack.json
+    let name = '';
+    const jsonPath = file.webkitRelativePath.toLowerCase().replace('outline.png', 'ui_track.json');
+    const subJsonPath = file.webkitRelativePath.toLowerCase().replace('outline.png', 'ui_subtrack.json');
+
+    const jsonDoc = jsonMap.get(jsonPath) || jsonMap.get(subJsonPath);
+    if (jsonDoc && jsonDoc.name) {
+      name = jsonDoc.name;
+    } else {
+      const prettyTrack = prettify(trackFolder);
+      const prettyLayout = layoutFolder ? prettify(layoutFolder) : '';
+      name = prettyLayout ? `${prettyTrack} · ${prettyLayout}` : prettyTrack;
+    }
+
+    // Procesar la imagen outline.png con Canvas para quitar fondo y volverla silueta neón
+    const dataUrl = await processOutlineImage(file);
+
+    detected.push({
+      trackFolder,
+      layoutFolder,
+      name,
+      outlineDataUrl: dataUrl,
+      selected: true,
+    });
+  }
+
+  S.detectedTracks = detected;
+  setStatus($('tracks-status'), `Detectados ${detected.length} trazados.`, 'ok');
+  renderTracksPreview();
+}
+
+function processOutlineImage(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const src = e.target.result;
+      const img = new Image();
+      img.src = src;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const w = img.naturalWidth || 300;
+        const h = img.naturalHeight || 225;
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const data = imgData.data;
+
+        // Fondo claro vs oscuro
+        const cornerL = 0.299 * data[0] + 0.587 * data[1] + 0.114 * data[2];
+        const isLightBg = cornerL > 110;
+
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+          if (isLightBg) {
+            if (lum > 175) {
+              data[i + 3] = 0;
+            } else {
+              data[i] = 255; data[i + 1] = 214; data[i + 2] = 10;
+              data[i + 3] = Math.min(255, (255 - lum) * 1.5);
+            }
+          } else {
+            if (lum < 45) {
+              data[i + 3] = 0;
+            } else {
+              data[i] = 255; data[i + 1] = 214; data[i + 2] = 10;
+              data[i + 3] = 255;
+            }
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => resolve(src);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderTracksPreview() {
+  const grid = $('tracks-grid');
+  grid.innerHTML = '';
+  show('step-tracks-preview');
+
+  S.detectedTracks.forEach((item, idx) => {
+    const card = document.createElement('div');
+    card.className = `track-card ${item.selected ? 'selected' : ''}`;
+    card.innerHTML = `
+      <div class="track-preview">
+        <img src="${item.outlineDataUrl}" alt="${item.name}" />
+      </div>
+      <input type="text" value="${item.name}" data-idx="${idx}" class="track-name-input" />
+      <label style="display:flex; align-items:center; gap:6px; cursor:pointer; margin:0;">
+        <input type="checkbox" ${item.selected ? 'checked' : ''} data-idx="${idx}" class="track-check" />
+        <span style="font-size:12px; color:var(--dim);">Incluir en la liga</span>
+      </label>
+    `;
+    grid.appendChild(card);
+  });
+
+  // Listeners de edición de nombre y checkbox
+  document.querySelectorAll('.track-name-input').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const idx = parseInt(e.target.dataset.idx, 10);
+      S.detectedTracks[idx].name = e.target.value;
+    });
+  });
+
+  document.querySelectorAll('.track-check').forEach(chk => {
+    chk.addEventListener('change', e => {
+      const idx = parseInt(e.target.dataset.idx, 10);
+      S.detectedTracks[idx].selected = e.target.checked;
+      chk.closest('.track-card').classList.toggle('selected', e.target.checked);
+    });
+  });
+}
+
+async function uploadSelectedTracks() {
+  const toUpload = S.detectedTracks.filter(t => t.selected && t.name.trim());
+  if (!toUpload.length) {
+    setStatus($('tracks-upload-status'), 'Selecciona al menos un circuito.', 'err');
+    return;
+  }
+
+  $('btn-upload-tracks').disabled = true;
+  setStatus($('tracks-upload-status'), `Subiendo ${toUpload.length} circuitos a tu liga…`);
+
+  try {
+    const ID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    function genId() {
+      let out = '';
+      const arr = crypto.getRandomValues(new Uint32Array(20));
+      for (let i = 0; i < 20; i++) out += ID_ALPHABET[arr[i] % ID_ALPHABET.length];
+      return out;
+    }
+
+    const writes = toUpload.map(item => ({
+      update: {
+        name: `${FS_BASE}/leagues/${S.leagueId}/tracks/${genId()}`,
+        fields: {
+          name: { stringValue: item.name.trim() },
+          kind: { stringValue: 'mod' },
+          url: { stringValue: item.outlineDataUrl },
+          createdBy: { stringValue: S.uid },
+          createdByName: { stringValue: S.driverName || 'Piloto' },
+          createdAt: { integerValue: String(Date.now()) },
+        },
+      },
+    }));
+
+    await postJson(
+      `${FIRESTORE}/${FS_BASE}:commit`,
+      { writes },
+      { Authorization: `Bearer ${S.idToken}` },
+    );
+
+    setStatus($('tracks-upload-status'), `Subidos ${toUpload.length} circuitos correctamente ✓`, 'ok');
+    $('success-msg').textContent = `Se han subido y actualizado ${toUpload.length} mapas de circuitos a tu liga.`;
+    show('success-modal');
+  } catch (e) {
+    setStatus($('tracks-upload-status'), 'Error subiendo circuitos: ' + e.message, 'err');
+  } finally {
+    $('btn-upload-tracks').disabled = false;
+  }
+}
+
+function wireTracksPicker() {
+  const picker = $('tracks-picker');
+  const input = $('tracks-files');
+  picker.addEventListener('click', () => input.click());
+  input.addEventListener('change', e => handleTrackFiles(e.target.files));
+  ['dragenter', 'dragover'].forEach(ev => picker.addEventListener(ev, e => {
+    e.preventDefault(); picker.classList.add('drag');
+  }));
+  ['dragleave', 'drop'].forEach(ev => picker.addEventListener(ev, e => {
+    e.preventDefault(); picker.classList.remove('drag');
+  }));
+  picker.addEventListener('drop', async e => {
+    const items = e.dataTransfer?.items;
+    if (!items) return;
+    const files = await collectFilesFromDrop(items);
+    handleTrackFiles(files);
+  });
+}
+
+// Auth handlers & UI Init
 async function handleLogin() {
   const email = $('email').value.trim();
   const password = $('password').value;
@@ -692,7 +665,7 @@ async function handleLogin() {
     $('pilot-league').textContent = S.leagueId;
     setStatus($('auth-status'), '');
     hide('auth');
-    show('step-files');
+    show('user-area');
   } catch (e) {
     setStatus($('auth-status'), 'Error de login: revisa email/contraseña.', 'err');
     $('btn-login').disabled = false;
@@ -701,238 +674,44 @@ async function handleLogin() {
 
 function handleLogout() {
   S.idToken = null; S.uid = null; S.leagueId = null; S.driverName = null;
-  S.filesAggregated = null; S.existing = null; S.preview = null;
-  S.catalogCars = null; S.catalogTracks = null;
-  hide('step-files'); hide('step-filter'); hide('step-preview');
+  hide('user-area');
   $('btn-login').disabled = false;
-  $('files').value = '';
-  setStatus($('files-status'), '');
-  setStatus($('upload-status'), '');
   show('auth');
 }
 
-async function handleFiles(fileList) {
-  const jsons = [...fileList].filter(f => f.name.toLowerCase().endsWith('.json'));
-  if (!jsons.length) {
-    setStatus($('files-status'), 'No hay ningún .json en la carpeta.', 'err');
-    return;
+async function collectFilesFromDrop(items) {
+  const out = [];
+  const entries = [];
+  for (const item of items) {
+    const entry = item.webkitGetAsEntry?.();
+    if (entry) entries.push(entry);
   }
-  setStatus($('files-status'), `Leyendo ${jsons.length} fichero(s)…`);
-
-  const docs = [];
-  let unread = 0;
-  for (const f of jsons) {
-    try {
-      const text = await f.text();
-      docs.push(JSON.parse(text));
-    } catch {
-      unread++;
+  async function walk(entry) {
+    if (entry.isFile) {
+      const file = await new Promise((res, rej) => entry.file(res, rej));
+      out.push(file);
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      let batch;
+      do {
+        batch = await new Promise((res, rej) => reader.readEntries(res, rej));
+        for (const e of batch) await walk(e);
+      } while (batch.length);
     }
   }
-  // Primer paso: agregamos SIN filtro para detectar todos los nombres que aparecen.
-  const probe = aggregateFiles(docs, '');
-  S.detectedPlayers = probe.detectedPlayers;
-  S._docs = docs; // lo guardamos para re-agregar tras elegir nombre
-
-  // Rellena el selector: prefiere driverName del perfil si está en la lista.
-  const sel = $('player');
-  sel.innerHTML = '';
-  for (const name of S.detectedPlayers) {
-    const opt = document.createElement('option');
-    opt.value = name; opt.textContent = name;
-    if (S.driverName && name.toLowerCase() === S.driverName.toLowerCase()) {
-      opt.selected = true;
-    }
-    sel.appendChild(opt);
-  }
-  if (!S.detectedPlayers.length) {
-    setStatus($('files-status'), 'No encontré jugadores en esos ficheros.', 'err');
-    return;
-  }
-
-  setStatus(
-    $('files-status'),
-    `${jsons.length} ficheros leídos${unread ? ` (${unread} ilegibles)` : ''}, ${S.detectedPlayers.length} piloto(s) detectado(s).`,
-    'ok'
-  );
-  show('step-filter');
-  await refreshPreview();
+  for (const e of entries) await walk(e);
+  return out;
 }
 
-async function refreshPreview() {
-  const playerName = $('player').value;
-  const conditions = $('conditions').value;
-  if (!S._docs || !playerName) return;
-
-  const agg = aggregateFiles(S._docs, playerName);
-  S.filesAggregated = agg;
-
-  if (!S.existing) {
-    setStatus($('upload-status'), 'Comprobando lo que ya hay en tu liga…');
-    try {
-      S.existing = await fetchExisting();
-    } catch (e) {
-      setStatus($('upload-status'), 'No pude leer tus vueltas existentes: ' + e.message, 'err');
-      return;
-    }
-  }
-
-  const rows = buildPreview(agg, S.existing);
-  S.preview = rows;
-  const news = rows.filter(r => r.isNew).length;
-  const patches = rows.filter(r => r.needsSectors).length;
-  const dups = rows.length - news;
-
-  $('num-new').textContent = String(news);
-  $('num-dup').textContent = String(dups);
-  $('num-skip').textContent = String(agg.skipped);
-  $('num-sectors').textContent = String(patches);
-
-  // Agrupar por circuito: un tiempo solo se entiende dentro de su trazado
-  // (6 min en Nürburgring vs en otra pista no son comparables).
-  renderGroupedPreview(rows);
-
-  $('btn-upload').disabled = news === 0 && patches === 0;
-  $('btn-upload').textContent =
-    news === 0 && patches === 0 ? 'Nada que subir'
-    : news > 0 && patches > 0 ? `Subir ${news} y añadir sectores a ${patches}`
-    : news > 0 ? `Subir ${news} PB${news === 1 ? '' : 's'} nuevos`
-    : `Añadir sectores a ${patches} vuelta${patches === 1 ? '' : 's'}`;
-
-  setStatus($('upload-status'), '');
-  show('step-preview');
-}
-
-async function handleUpload() {
-  if (!S.preview) return;
-  const news = S.preview.filter(r => r.isNew);
-  const patches = S.preview.filter(r => r.needsSectors && r.docId);
-  if (!news.length && !patches.length) return;
-  const conditions = $('conditions').value;
-
-  $('btn-upload').disabled = true;
-  const doing = [
-    news.length ? `subiendo ${news.length}` : null,
-    patches.length ? `añadiendo sectores a ${patches.length}` : null,
-  ].filter(Boolean).join(' y ');
-  setStatus($('upload-status'), `${doing.charAt(0).toUpperCase()}${doing.slice(1)}…`);
-  try {
-    await uploadNewLaps(news, conditions);
-    await patchExistingSectors(patches);
-    const count = news.length;
-    // Actualiza el estado local para que el preview se refresque bien:
-    // las nuevas pasan a existir (con sectores) y las parcheadas ya los tienen.
-    for (const r of news) {
-      S.existing.set(`${r.track}|${r.car}|${r.timeMs}`, { docId: null, hasSectors: !!(r.sectors && r.sectors.length) });
-    }
-    for (const r of patches) {
-      const e = S.existing.get(`${r.track}|${r.car}|${r.timeMs}`);
-      if (e) e.hasSectors = true;
-    }
-
-    // Tras subir las vueltas, garantiza que sus coches/circuitos no-vanilla
-    // están en el catálogo de la liga (etiqueta MOD), para que aparezcan en el
-    // selector. Se hace best-effort: si falla, no rompe la subida.
-    try {
-      if (!S.catalogCars) S.catalogCars = await fetchExistingCatalog('cars');
-      if (!S.catalogTracks) S.catalogTracks = await fetchExistingCatalog('tracks');
-      const carNames = [...new Set(news.map(r => r.car))];
-      const trackNames = [...new Set(news.map(r => r.track))];
-      await ensureCatalogEntries('cars', carNames, S.catalogCars);
-      await ensureCatalogEntries('tracks', trackNames, S.catalogTracks);
-    } catch (e) {
-      // El catálogo es secundario: solo lo logueamos.
-      console.warn('No pude actualizar el catálogo:', e);
-    }
-
-    const done = [
-      count ? `Subidas ${count} vueltas` : null,
-      patches.length ? `sectores añadidos a ${patches.length}` : null,
-    ].filter(Boolean).join(' · ');
-    setStatus($('upload-status'), `${done} ✓`, 'ok');
-    await refreshPreview();
-    showSuccessModal(count, patches.length);
-  } catch (e) {
-    setStatus($('upload-status'), 'Error subiendo: ' + e.message, 'err');
-    $('btn-upload').disabled = false;
-  }
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  })[c]);
-}
-
-// Renderiza el preview agrupado por circuito. Dentro de cada grupo, las filas
-// van por tiempo asc (mejor primero), así se lee como un mini-leaderboard por
-// pista en vez de una lista plana donde no se sabe si 6 min son buenos o no.
-function renderGroupedPreview(rows) {
-  const groups = new Map(); // track -> rows[]
-  for (const r of rows) {
-    if (!groups.has(r.track)) groups.set(r.track, []);
-    groups.get(r.track).push(r);
-  }
-  const sortedTracks = [...groups.keys()].sort((a, b) => a.localeCompare(b));
-
-  const container = $('preview-groups');
-  container.innerHTML = '';
-  for (const track of sortedTracks) {
-    const grp = groups.get(track);
-    grp.sort((a, b) => a.timeMs - b.timeMs);
-    const news = grp.filter(r => r.isNew).length;
-
-    const block = document.createElement('div');
-    block.className = 'track-group';
-    const meta = news === grp.length
-      ? `${grp.length} ${grp.length === 1 ? 'récord' : 'récords'} · todo nuevo`
-      : news === 0
-        ? `${grp.length} ${grp.length === 1 ? 'récord' : 'récords'} · ya en la liga`
-        : `${news} nuevo${news === 1 ? '' : 's'} · ${grp.length - news} ya en la liga`;
-    block.innerHTML =
-      `<div class="track-head">` +
-        `<span class="track-name">📍 ${escapeHtml(track)}</span>` +
-        `<span class="track-meta">${meta}</span>` +
-      `</div>` +
-      `<table><tbody></tbody></table>`;
-
-    const tbody = block.querySelector('tbody');
-    for (const r of grp) {
-      const tr = document.createElement('tr');
-      const badge = r.isNew
-        ? '<span class="badge new">NUEVO</span>'
-        : r.needsSectors
-          ? '<span class="badge sectors">+ SECTORES</span>'
-          : '<span class="badge">YA EN LIGA</span>';
-      const cls = r.isNew ? 'time' : 'time dup';
-      // Línea de sectores (S1/S2/S3) si la vuelta los trae.
-      const secLine = (r.sectors && r.sectors.length)
-        ? `<div class="sectors-line">${r.sectors.map((s, i) => `S${i + 1} ${fmtMs(s)}`).join(' · ')}</div>`
-        : '';
-      tr.innerHTML =
-        `<td style="width: 110px;">${badge}</td>` +
-        `<td${r.isNew ? '' : ' class="dup"'}>${escapeHtml(r.car)}${secLine}</td>` +
-        `<td class="${cls}" style="text-align: right;">${fmtMs(r.timeMs)}</td>`;
-      tbody.appendChild(tr);
-    }
-    container.appendChild(block);
-  }
-}
-
-// Modal de éxito tras subir
-function showSuccessModal(count, patched = 0) {
-  $('success-count').textContent = String(count);
-  $('success-new').classList.toggle('hide', count === 0);
-  $('success-sectors-count').textContent = String(patched);
-  $('success-sectors').classList.toggle('hide', patched === 0);
-  $('success-modal').classList.remove('hide');
-}
-function hideSuccessModal() {
-  $('success-modal').classList.add('hide');
-}
-
-// ─── Drag & drop sobre el picker ─────────────────────────────────────────────
-function wirePicker() {
+document.addEventListener('DOMContentLoaded', () => {
+  setupTabs();
+  $('btn-login').addEventListener('click', handleLogin);
+  $('password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+  $('btn-logout').addEventListener('click', handleLogout);
+  $('btn-upload-tracks').addEventListener('click', uploadSelectedTracks);
+  $('success-ok').addEventListener('click', () => hide('success-modal'));
+  
+  // Wire drag and drop on Sessions and Tracks
   const picker = $('picker');
   const input = $('files');
   picker.addEventListener('click', () => input.click());
@@ -949,59 +728,8 @@ function wirePicker() {
     const files = await collectFilesFromDrop(items);
     handleFiles(files);
   });
-}
 
-// El input webkitdirectory funciona al hacer clic, pero el drop trae DataTransferItems.
-// Recorremos directorios recursivamente con la File System API antigua de Chrome.
-async function collectFilesFromDrop(items) {
-  const out = [];
-  const entries = [];
-  for (const item of items) {
-    const entry = item.webkitGetAsEntry?.();
-    if (entry) entries.push(entry);
-  }
-  async function walk(entry) {
-    if (entry.isFile) {
-      const file = await new Promise((res, rej) => entry.file(res, rej));
-      out.push(file);
-    } else if (entry.isDirectory) {
-      const reader = entry.createReader();
-      // readEntries devuelve por lotes, hay que llamar hasta que dé vacío.
-      let batch;
-      do {
-        batch = await new Promise((res, rej) => reader.readEntries(res, rej));
-        for (const e of batch) await walk(e);
-      } while (batch.length);
-    }
-  }
-  for (const e of entries) await walk(e);
-  return out;
-}
-
-// ─── Init ────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  $('btn-login').addEventListener('click', handleLogin);
-  $('password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
-  $('btn-logout').addEventListener('click', handleLogout);
-  $('btn-upload').addEventListener('click', handleUpload);
-  $('btn-reset').addEventListener('click', () => {
-    S.filesAggregated = null; S.preview = null;
-    $('files').value = '';
-    hide('step-filter'); hide('step-preview');
-    setStatus($('files-status'), '');
-  });
-  $('player').addEventListener('change', refreshPreview);
-  $('conditions').addEventListener('change', refreshPreview);
-  $('success-ok').addEventListener('click', hideSuccessModal);
-  $('success-modal').addEventListener('click', e => {
-    if (e.target.id === 'success-modal') hideSuccessModal();
-  });
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !$('success-modal').classList.contains('hide')) {
-      hideSuccessModal();
-    }
-  });
-  wirePicker();
+  wireTracksPicker();
 });
 </script>
 </body>

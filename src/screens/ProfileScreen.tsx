@@ -417,6 +417,21 @@ export default function ProfileScreen() {
           />
         </Card>
 
+        {/* Importador Web de vueltas y circuitos */}
+        <Card style={{ marginTop: spacing.lg }}>
+          <SectionTitle>Importador Web (Vueltas y Circuitos)</SectionTitle>
+          <Text style={styles.hint}>
+            Importa tu histórico de vueltas de Content Manager o sube todos tus circuitos arrastrando tu carpeta{' '}
+            <Text style={{ color: colors.text, fontWeight: '800' }}>content/tracks</Text> de Assetto Corsa.
+          </Text>
+          <Button
+            title="📥 Abrir importador web (/import)"
+            variant="secondary"
+            onPress={() => Linking.openURL('/import').catch(() => {})}
+            style={{ marginTop: spacing.md }}
+          />
+        </Card>
+
         {/* App de Android */}
         <Card style={{ marginTop: spacing.lg }}>
           <SectionTitle>App para Android</SectionTitle>
