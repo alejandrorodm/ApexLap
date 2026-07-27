@@ -333,7 +333,7 @@ const S = {
   filesAggregated: null,
   existing: null,
   preview: null,
-  detectedTracks: [], // [{ trackId, layoutId, name, outlineDataUrl }]
+  detectedTracks: [], // [{ trackFolder, layoutFolder, name, outlineDataUrl, selected }]
 };
 
 // HTTP
@@ -427,44 +427,61 @@ async function handleTrackFiles(fileList) {
 
   setStatus($('tracks-status'), `Escanenado ${outlineFiles.length} trazado(s)…`);
 
-  // Crear mapa de JSONs leídos
+  // Crear mapa de JSONs leídos key: relativePath (lowercase) -> object
   const jsonMap = new Map();
   for (const jf of jsonFiles) {
     try {
       const txt = await jf.text();
-      jsonMap.set(jf.webkitRelativePath.toLowerCase(), JSON.parse(txt));
+      const obj = JSON.parse(txt);
+      if (obj && typeof obj === 'object') {
+        const normPath = jf.webkitRelativePath.toLowerCase().replace(/\\/g, '/');
+        jsonMap.set(normPath, obj);
+      }
     } catch {}
   }
 
   const detected = [];
 
   for (const file of outlineFiles) {
-    // webkitRelativePath ej: "tracks/ks_silverstone/ui/gp/outline.png" o "tracks/ks_silverstone/ui/outline.png"
-    const pathParts = file.webkitRelativePath.split('/');
-    const tracksIdx = pathParts.findIndex(p => p.toLowerCase() === 'tracks');
-    const trackFolder = tracksIdx !== -1 && pathParts[tracksIdx + 1] ? pathParts[tracksIdx + 1] : pathParts[0];
+    const relPath = file.webkitRelativePath.toLowerCase().replace(/\\/g, '/');
+    const pathParts = relPath.split('/');
+    const tracksIdx = pathParts.findIndex(p => p === 'tracks');
+    
+    // Carpeta principal del circuito (ej: "ks_silverstone" o "imola")
+    const trackFolder = (tracksIdx !== -1 && pathParts[tracksIdx + 1]) ? pathParts[tracksIdx + 1] : pathParts[0];
 
-    // Buscar si hay layout especificado en la ruta
-    let layoutFolder = '';
-    const uiIdx = pathParts.findIndex(p => p.toLowerCase() === 'ui');
-    if (uiIdx !== -1 && pathParts[uiIdx + 1] && pathParts[uiIdx + 1].toLowerCase() !== 'outline.png') {
-      layoutFolder = pathParts[uiIdx + 1];
-    } else if (uiIdx > 0 && pathParts[uiIdx - 1] !== trackFolder) {
-      layoutFolder = pathParts[uiIdx - 1];
+    // Buscar layoutFolder: cualquier subcarpeta entre trackFolder y outline.png que no sea "ui"
+    const subParts = pathParts.slice(tracksIdx !== -1 ? tracksIdx + 2 : 1, pathParts.length - 1);
+    const layoutFolder = subParts.filter(p => p !== 'ui').join(' ');
+
+    // 1) Nombre bonito derivado de carpetas (Fallback siempre único por circuito/layout)
+    const prettyTrack = prettify(trackFolder);
+    const prettyLayout = layoutFolder ? prettify(layoutFolder) : '';
+    let name = prettyLayout ? `${prettyTrack} · ${prettyLayout}` : prettyTrack;
+
+    // 2) Intentar afinar con el name de ui_track.json / ui_subtrack.json del directorio específico
+    const dirPath = relPath.substring(0, relPath.lastIndexOf('/'));
+    
+    // Buscar en jsonMap un JSON que esté dentro del mismo dirPath o carpeta padre directa
+    let jsonMatch = null;
+    for (const [jPath, jObj] of jsonMap.entries()) {
+      if (jObj.name && jPath.startsWith(dirPath)) {
+        jsonMatch = jObj;
+        break;
+      }
+    }
+    if (!jsonMatch) {
+      const parentDir = dirPath.substring(0, dirPath.lastIndexOf('/'));
+      for (const [jPath, jObj] of jsonMap.entries()) {
+        if (jObj.name && jPath.startsWith(parentDir)) {
+          jsonMatch = jObj;
+          break;
+        }
+      }
     }
 
-    // Intentar leer nombre desde ui_track.json o ui_subtrack.json
-    let name = '';
-    const jsonPath = file.webkitRelativePath.toLowerCase().replace('outline.png', 'ui_track.json');
-    const subJsonPath = file.webkitRelativePath.toLowerCase().replace('outline.png', 'ui_subtrack.json');
-
-    const jsonDoc = jsonMap.get(jsonPath) || jsonMap.get(subJsonPath);
-    if (jsonDoc && jsonDoc.name) {
-      name = jsonDoc.name;
-    } else {
-      const prettyTrack = prettify(trackFolder);
-      const prettyLayout = layoutFolder ? prettify(layoutFolder) : '';
-      name = prettyLayout ? `${prettyTrack} · ${prettyLayout}` : prettyTrack;
+    if (jsonMatch && jsonMatch.name) {
+      name = jsonMatch.name;
     }
 
     // Procesar la imagen outline.png con Canvas para quitar fondo y volverla silueta neón
@@ -502,7 +519,6 @@ function processOutlineImage(file) {
         const imgData = ctx.getImageData(0, 0, w, h);
         const data = imgData.data;
 
-        // Fondo claro vs oscuro
         const cornerL = 0.299 * data[0] + 0.587 * data[1] + 0.114 * data[2];
         const isLightBg = cornerL > 110;
 
@@ -558,7 +574,6 @@ function renderTracksPreview() {
     grid.appendChild(card);
   });
 
-  // Listeners de edición de nombre y checkbox
   document.querySelectorAll('.track-name-input').forEach(inp => {
     inp.addEventListener('input', e => {
       const idx = parseInt(e.target.dataset.idx, 10);
@@ -711,7 +726,6 @@ document.addEventListener('DOMContentLoaded', () => {
   $('btn-upload-tracks').addEventListener('click', uploadSelectedTracks);
   $('success-ok').addEventListener('click', () => hide('success-modal'));
   
-  // Wire drag and drop on Sessions and Tracks
   const picker = $('picker');
   const input = $('files');
   picker.addEventListener('click', () => input.click());

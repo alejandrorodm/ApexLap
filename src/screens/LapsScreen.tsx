@@ -30,6 +30,7 @@ import { formatTime, formatDelta, timeAgo } from '../utils/time';
 import { Lap } from '../types';
 import { deleteLap } from '../firebase/db';
 import { RootStackParamList } from '../navigation/types';
+import TrackMap from '../components/TrackMap';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -41,7 +42,7 @@ type ViewMode = 'byTrack' | 'bestPerDriver' | 'byTime' | 'recent';
 export default function LapsScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { laps, league, userId, lapsLoading, approveLap, rejectLap } = useApp();
+  const { laps, league, userId, lapsLoading, approveLap, rejectLap, customTracks } = useApp();
   const [filter, setFilter] = useState<LapFilter>({});
   const [mode, setMode] = useState<ViewMode>('byTrack');
   const [showPending, setShowPending] = useState(false);
@@ -61,27 +62,34 @@ export default function LapsScreen() {
 
   const list = useMemo(() => {
     if (showPending) {
-      // Cola de verificación: pendientes + rechazadas que su autor o el anfitrión
-      // aún pueden ver (las rechazadas ajenas se ocultan al resto).
       return laps.filter(
         (l) =>
           l.status === 'pending' ||
           (l.status === 'rejected' && (isHost || l.userId === userId))
       );
     }
-    // Vistas normales: solo vueltas que cuentan (verificadas o antiguas).
     const filtered = applyFilter(laps.filter(isCounted), filter);
     switch (mode) {
-      case 'byTrack':
-        return recordsByTrack(filtered);
+      case 'byTrack': {
+        const records = recordsByTrack(filtered);
+        const existingNames = new Set(records.map((r) => r.track));
+        const emptyRecords = customTracks
+          .filter((t) => !existingNames.has(t.name))
+          .map((t) => ({
+            track: t.name,
+            lap: null as any,
+            count: 0,
+          }));
+        return [...records, ...emptyRecords];
+      }
       case 'bestPerDriver':
         return bestPerDriver(filtered);
       case 'byTime':
         return byTime(filtered);
       case 'recent':
-        return filtered; // ya viene ordenado por fecha desc
+        return filtered;
     }
-  }, [laps, filter, mode, showPending, isHost, userId]);
+  }, [laps, filter, mode, showPending, isHost, userId, customTracks]);
 
   // Para el delta vs leader: solo cuando hay un ranking real por tiempo dentro
   // del mismo "contexto" (mismo circuito). byTrack mezcla circuitos, así que no.
