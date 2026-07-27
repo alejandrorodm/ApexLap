@@ -24,6 +24,23 @@ export function formatSector(ms: number): string {
   return `${seconds}.${String(millis).padStart(3, '0')}`;
 }
 
+/** Formatea el tiempo total acumulado (tiempo jugado) en h, m, s. */
+export function formatPlayTime(ms: number): string {
+  if (!Number.isFinite(ms) || ms <= 0) return '0m';
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
+}
+
 /** Diferencia con signo respecto a una referencia, p.ej. "+0.482" o "-1.230". */
 export function formatDelta(ms: number, referenceMs: number): string {
   const diff = ms - referenceMs;

@@ -5,12 +5,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, radius, font } from '../theme';
 import { Card, EmptyState, ScreenHeader } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import { getLeagueMembers } from '../firebase/db';
-import { driverStats } from '../utils/leaderboard';
-import { formatTime } from '../utils/time';
+import { driverStats, CarUsage, TrackUsage } from '../utils/leaderboard';
+import { formatPlayTime } from '../utils/time';
 import { notify } from '../utils/alerts';
 import { Profile } from '../types';
 
@@ -20,11 +21,14 @@ interface MemberRow {
   isHost: boolean;
   isMe: boolean;
   totalLaps: number;
+  totalPlayTimeMs: number;
   records: number;
-  bestLapMs?: number;
+  topCars: CarUsage[];
+  topTracks: TrackUsage[];
 }
 
 export default function ParticipantsScreen() {
+  const navigation = useNavigation();
   const { league, laps, userId } = useApp();
   const [members, setMembers] = useState<Profile[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -61,8 +65,10 @@ export default function ParticipantsScreen() {
           isHost: league?.createdBy === p.userId,
           isMe: p.userId === userId,
           totalLaps: s?.totalLaps ?? 0,
+          totalPlayTimeMs: s?.totalPlayTimeMs ?? 0,
           records: s?.records ?? 0,
-          bestLapMs: s?.bestLap?.timeMs,
+          topCars: s?.topCars ?? [],
+          topTracks: s?.topTracks ?? [],
         };
       })
       .sort(
@@ -82,6 +88,9 @@ export default function ParticipantsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
+        <Pressable onPress={() => navigation.goBack()} hitSlop={10} style={styles.backBtn}>
+          <Text style={styles.backText}>‹ Volver</Text>
+        </Pressable>
         <ScreenHeader title="Participantes" subtitle={league?.name ?? ''} />
 
         <Pressable style={styles.codeBox} onPress={copyCode}>
@@ -114,19 +123,28 @@ export default function ParticipantsScreen() {
                 style={[styles.row, i === rows.length - 1 && styles.rowLast]}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {r.driverName}
-                    {r.isMe ? ' · tú' : ''}
-                  </Text>
+                  <View style={styles.rowTitle}>
+                    <Text style={styles.name} numberOfLines={1}>
+                      {r.driverName}
+                      {r.isMe ? ' · tú' : ''}
+                    </Text>
+                    {r.isHost && <Text style={styles.hostTag}>👑 Anfitrión</Text>}
+                  </View>
                   <Text style={styles.meta}>
-                    {r.isHost ? '👑 Anfitrión · ' : ''}
                     {r.totalLaps} {r.totalLaps === 1 ? 'vuelta' : 'vueltas'}
                     {r.records > 0 ? ` · ${r.records} récord${r.records === 1 ? '' : 's'}` : ''}
+                    {r.totalPlayTimeMs > 0 ? ` · ⏱ ${formatPlayTime(r.totalPlayTimeMs)}` : ''}
                   </Text>
+
+                  {/* Top Coche y Circuito favorito */}
+                  {(r.topCars.length > 0 || r.topTracks.length > 0) && (
+                    <Text style={styles.topFavs} numberOfLines={1}>
+                      {r.topCars[0] ? `🚗 ${r.topCars[0].car}` : ''}
+                      {r.topCars[0] && r.topTracks[0] ? ' · ' : ''}
+                      {r.topTracks[0] ? `📍 ${r.topTracks[0].track}` : ''}
+                    </Text>
+                  )}
                 </View>
-                <Text style={styles.best}>
-                  {r.bestLapMs != null ? formatTime(r.bestLapMs) : '—'}
-                </Text>
               </View>
             ))}
           </Card>
@@ -188,6 +206,11 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   rowLast: { borderBottomWidth: 0 },
+  backBtn: { marginBottom: spacing.xs },
+  backText: { color: colors.primary, fontSize: 15, fontWeight: '700' },
+  rowTitle: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  hostTag: { color: colors.gold, fontSize: 11, fontWeight: '800' },
+  topFavs: { color: colors.accent, fontSize: 12, marginTop: 4, fontWeight: '600' },
   name: { color: colors.text, fontSize: 17, fontWeight: '800' },
   meta: { color: colors.textFaint, fontSize: 13, marginTop: 3 },
   best: {

@@ -28,7 +28,7 @@ import {
   Badge,
   Mote,
 } from '../utils/achievements';
-import { formatTime } from '../utils/time';
+import { formatTime, formatPlayTime } from '../utils/time';
 import { shareDriverCard } from '../utils/share';
 import { subscribeChallenges } from '../firebase/db';
 import { Challenge } from '../types';
@@ -243,14 +243,49 @@ export default function ProfileScreen() {
             </View>
           )}
           {myStats ? (
-            <View style={styles.myStats}>
-              <Stat label="Vueltas" value={String(myStats.totalLaps)} />
-              <Stat label="Récords" value={String(myStats.records)} />
-              <Stat
-                label="Mejor"
-                value={myStats.bestLap ? formatTime(myStats.bestLap.timeMs) : '—'}
-              />
-            </View>
+            <>
+              <View style={styles.myStats}>
+                <Stat label="Vueltas" value={String(myStats.totalLaps)} />
+                <Stat label="Récords" value={String(myStats.records)} />
+                <Stat
+                  label="Tiempo Jugado"
+                  value={formatPlayTime(myStats.totalPlayTimeMs)}
+                />
+              </View>
+
+              {(myStats.topCars.length > 0 || myStats.topTracks.length > 0) && (
+                <View style={styles.topUsageSection}>
+                  {myStats.topCars.length > 0 && (
+                    <View style={styles.topCol}>
+                      <Label>🚗 Coches más usados</Label>
+                      {myStats.topCars.map((c, i) => (
+                        <View key={c.car} style={styles.topItemRow}>
+                          <Text style={styles.topRank}>{i + 1}.</Text>
+                          <Text style={styles.topName} numberOfLines={1}>
+                            {c.car}
+                          </Text>
+                          <Text style={styles.topBadge}>{c.laps}v</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  {myStats.topTracks.length > 0 && (
+                    <View style={styles.topCol}>
+                      <Label>📍 Circuitos más usados</Label>
+                      {myStats.topTracks.map((t, i) => (
+                        <View key={t.track} style={styles.topItemRow}>
+                          <Text style={styles.topRank}>{i + 1}.</Text>
+                          <Text style={styles.topName} numberOfLines={1}>
+                            {t.track}
+                          </Text>
+                          <Text style={styles.topBadge}>{t.laps}v</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
+            </>
           ) : null}
           <Button
             title="📈 Mi progreso"
@@ -541,6 +576,33 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   statLabel: { color: colors.textFaint, fontSize: 12, marginTop: 2 },
+  topUsageSection: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.md,
+  },
+  topCol: { flex: 1 },
+  topItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    gap: 6,
+  },
+  topRank: { color: colors.accent, fontWeight: '800', fontSize: 13, width: 16 },
+  topName: { color: colors.text, fontSize: 13, flex: 1, fontWeight: '700' },
+  topBadge: {
+    color: colors.textDim,
+    fontSize: 11,
+    fontWeight: '800',
+    backgroundColor: colors.surfaceAlt,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
   // Mote
   mote: {
     flexDirection: 'row',

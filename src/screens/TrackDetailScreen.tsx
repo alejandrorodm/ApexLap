@@ -24,6 +24,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius, font } from '../theme';
 import { useGridColumns } from '../responsive';
 import { Chip, EmptyState } from '../components/ui';
+import TrackMap from '../components/TrackMap';
 import { useApp } from '../context/AppContext';
 import {
   lapsForTrack,
@@ -45,11 +46,16 @@ export default function TrackDetailScreen() {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'Track'>>();
   const { track } = route.params;
-  const { laps, league, userId } = useApp();
+  const { laps, league, userId, customTracks } = useApp();
   const now = Date.now();
   const [view, setView] = useState<DetailView>('cars');
   const [selectedCar, setSelectedCar] = useState<string | null>(null);
   const cols = useGridColumns();
+
+  const customTrackObj = useMemo(
+    () => customTracks.find((t) => t.name === track),
+    [customTracks, track]
+  );
 
   const trackLaps = useMemo(() => lapsForTrack(laps, track), [laps, track]);
 
@@ -140,14 +146,25 @@ export default function TrackDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Cabecera con back y título grande */}
+      {/* Cabecera con back, mapa del circuito y título grande */}
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()} hitSlop={10}>
           <Text style={styles.back}>‹ Volver</Text>
         </Pressable>
-        <Text style={styles.title} numberOfLines={2}>
-          📍 {track}
-        </Text>
+
+        <View style={styles.headerTitleRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title} numberOfLines={2}>
+              📍 {track}
+            </Text>
+          </View>
+          <TrackMap
+            track={track}
+            imageUrl={customTrackObj?.url}
+            size={110}
+            style={{ marginLeft: spacing.sm }}
+          />
+        </View>
         <View style={styles.headerFoot}>
           <Text style={styles.subtitle}>
             {trackLaps.length} {trackLaps.length === 1 ? 'vuelta' : 'vueltas'}
@@ -505,6 +522,11 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   back: {
     color: colors.primary,

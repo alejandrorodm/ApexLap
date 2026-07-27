@@ -200,7 +200,7 @@ export function PickerModal({
                 <TextInput
                   value={addUrl}
                   onChangeText={setAddUrl}
-                  placeholder="URL del mod (opcional)"
+                  placeholder="URL del mod o foto del mapa (opcional)"
                   placeholderTextColor={colors.textFaint}
                   style={styles.urlInput}
                   autoCapitalize="none"

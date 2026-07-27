@@ -252,15 +252,30 @@ export function recordsByCombo(laps: Lap[]): Record[] {
   );
 }
 
+export interface CarUsage {
+  car: string;
+  laps: number;
+  playTimeMs: number;
+}
+
+export interface TrackUsage {
+  track: string;
+  laps: number;
+  playTimeMs: number;
+}
+
 export interface DriverStats {
   userId: string;
   driverName: string;
   totalLaps: number;
+  totalPlayTimeMs: number;
   records: number; // nº de récords (combos) que ostenta
+  topCars: CarUsage[]; // 3 coches más usados por el piloto
+  topTracks: TrackUsage[]; // 3 circuitos más usados por el piloto
   bestLap?: Lap;
 }
 
-/** Estadísticas por piloto, incluyendo cuántos récords ostenta. */
+/** Estadísticas por piloto, incluyendo tiempo jugado, 3 coches y 3 circuitos más usados. */
 export function driverStats(laps: Lap[]): DriverStats[] {
   const records = recordsByCombo(laps);
   const recordCount = new Map<string, number>();
@@ -268,7 +283,17 @@ export function driverStats(laps: Lap[]): DriverStats[] {
     recordCount.set(r.lap.userId, (recordCount.get(r.lap.userId) ?? 0) + 1);
   }
 
-  const map = new Map<string, DriverStats>();
+  interface TempDriverData {
+    userId: string;
+    driverName: string;
+    totalLaps: number;
+    totalPlayTimeMs: number;
+    bestLap?: Lap;
+    cars: Map<string, { laps: number; playTimeMs: number }>;
+    tracks: Map<string, { laps: number; playTimeMs: number }>;
+  }
+
+  const map = new Map<string, TempDriverData>();
   for (const l of laps.filter(isCounted)) {
     let s = map.get(l.userId);
     if (!s) {
@@ -276,16 +301,56 @@ export function driverStats(laps: Lap[]): DriverStats[] {
         userId: l.userId,
         driverName: l.driverName,
         totalLaps: 0,
-        records: recordCount.get(l.userId) ?? 0,
+        totalPlayTimeMs: 0,
         bestLap: undefined,
+        cars: new Map(),
+        tracks: new Map(),
       };
       map.set(l.userId, s);
     }
     s.totalLaps += 1;
-    s.driverName = l.driverName; // se queda con el nombre más reciente
+    s.totalPlayTimeMs += l.timeMs;
+    s.driverName = l.driverName;
     if (!s.bestLap || l.timeMs < s.bestLap.timeMs) s.bestLap = l;
+
+    // Coches
+    const c = s.cars.get(l.car) ?? { laps: 0, playTimeMs: 0 };
+    c.laps += 1;
+    c.playTimeMs += l.timeMs;
+    s.cars.set(l.car, c);
+
+    // Circuitos
+    const t = s.tracks.get(l.track) ?? { laps: 0, playTimeMs: 0 };
+    t.laps += 1;
+    t.playTimeMs += l.timeMs;
+    s.tracks.set(l.track, t);
   }
-  return [...map.values()].sort(
+
+  const result: DriverStats[] = [];
+  for (const [userId, d] of map) {
+    const topCars: CarUsage[] = [...d.cars.entries()]
+      .map(([car, val]) => ({ car, laps: val.laps, playTimeMs: val.playTimeMs }))
+      .sort((a, b) => b.laps - a.laps || b.playTimeMs - a.playTimeMs)
+      .slice(0, 3);
+
+    const topTracks: TrackUsage[] = [...d.tracks.entries()]
+      .map(([track, val]) => ({ track, laps: val.laps, playTimeMs: val.playTimeMs }))
+      .sort((a, b) => b.laps - a.laps || b.playTimeMs - a.playTimeMs)
+      .slice(0, 3);
+
+    result.push({
+      userId,
+      driverName: d.driverName,
+      totalLaps: d.totalLaps,
+      totalPlayTimeMs: d.totalPlayTimeMs,
+      records: recordCount.get(userId) ?? 0,
+      topCars,
+      topTracks,
+      bestLap: d.bestLap,
+    });
+  }
+
+  return result.sort(
     (a, b) => b.records - a.records || b.totalLaps - a.totalLaps
   );
 }

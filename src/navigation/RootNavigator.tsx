@@ -28,7 +28,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const ICONS: Record<keyof TabParamList, string> = {
   Tiempos: '🏁',
   Records: '👑',
-  Ruleta: '🎰',
+  Ruleta: '🎯',
   Muro: '🔥',
   Liga: '🏆',
   Perfil: '👤',
@@ -67,7 +67,7 @@ function Tabs() {
     >
       <Tab.Screen name="Tiempos" component={LapsScreen} />
       <Tab.Screen name="Records" component={RecordsScreen} options={{ title: 'Récords' }} />
-      <Tab.Screen name="Ruleta" component={RouletteScreen} />
+      <Tab.Screen name="Ruleta" component={RouletteScreen} options={{ title: 'Piques' }} />
       <Tab.Screen name="Muro" component={FeedScreen} />
       <Tab.Screen name="Liga" component={StandingsScreen} />
       <Tab.Screen name="Perfil" component={ProfileScreen} />
