@@ -319,8 +319,18 @@ const MIN_LAP_MS = 15000;
 const MAX_LAP_MS = 3_600_000;
 const PREFIXES = ['ks_', 'rss_', 'tatuusfa1_', 'abarth500_', 'abarth500s_'];
 
-function normName(s) {
-  return String(s || '').toLowerCase().replace(/\s*·\s*/g, ' ').replace(/\s+/g, ' ').trim();
+function getRelPath(f) {
+  return (f.relPath || f.webkitRelativePath || f.name || '').replace(/\\/g, '/').replace(/^\//, '');
+}
+
+function prettify(raw) {
+  if (!raw) return 'Desconocido';
+  let name = raw;
+  for (const p of PREFIXES) {
+    if (name.startsWith(p)) { name = name.slice(p.length); break; }
+  }
+  name = name.replace(/[_-]/g, ' ').trim();
+  return name.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
 // Estado global
@@ -333,7 +343,7 @@ const S = {
   filesAggregated: null,
   existing: null,
   preview: null,
-  detectedTracks: [], // [{ trackFolder, layoutFolder, name, outlineDataUrl, selected }]
+  detectedTracks: [],
 };
 
 // HTTP
@@ -353,23 +363,6 @@ async function getJson(url, headers = {}) {
   const text = await r.text();
   if (!r.ok) throw new Error(`HTTP ${r.status}: ${text.slice(0, 200)}`);
   return text ? JSON.parse(text) : null;
-}
-
-function fmtMs(ms) {
-  const m = Math.floor(ms / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  const mil = ms % 1000;
-  return `${m}:${String(s).padStart(2, '0')}.${String(mil).padStart(3, '0')}`;
-}
-
-function prettify(raw) {
-  if (!raw) return 'Desconocido';
-  let name = raw;
-  for (const p of PREFIXES) {
-    if (name.startsWith(p)) { name = name.slice(p.length); break; }
-  }
-  name = name.replace(/[_-]/g, ' ').trim();
-  return name.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
 // Auth
@@ -418,17 +411,17 @@ function setupTabs() {
 async function handleTrackFiles(fileList) {
   const filesArr = [...fileList];
 
-  // Indexar archivos por su ruta relativa normalizada en minúsculas (con barras /)
+  // Indexar archivos por su relPath normalizada
   const fileMap = new Map();
   filesArr.forEach(f => {
-    const normPath = f.webkitRelativePath.replace(/\\/g, '/').toLowerCase();
+    const normPath = getRelPath(f).toLowerCase();
     fileMap.set(normPath, f);
   });
 
   const outlineFiles = filesArr.filter(f => f.name.toLowerCase() === 'outline.png');
 
   if (!outlineFiles.length) {
-    setStatus($('tracks-status'), 'No se encontraron archivos outline.png en la carpeta.', 'err');
+    setStatus($('tracks-status'), 'No se encontraron archivos outline.png en la carpeta seleccionada.', 'err');
     return;
   }
 
@@ -437,7 +430,7 @@ async function handleTrackFiles(fileList) {
   const detected = [];
 
   for (const file of outlineFiles) {
-    const relPath = file.webkitRelativePath.replace(/\\/g, '/');
+    const relPath = getRelPath(file);
     const pathParts = relPath.split('/');
     
     // Ubicar dónde está la carpeta 'tracks' en la ruta
@@ -662,18 +655,55 @@ async function uploadSelectedTracks() {
   }
 }
 
+async function collectFilesFromDrop(items) {
+  const out = [];
+  const entries = [];
+  for (const item of items) {
+    const entry = item.webkitGetAsEntry?.();
+    if (entry) entries.push(entry);
+  }
+  async function walk(entry) {
+    if (entry.isFile) {
+      const file = await new Promise((res, rej) => entry.file(res, rej));
+      file.relPath = (entry.fullPath || file.webkitRelativePath || file.name).replace(/^\//, '');
+      out.push(file);
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      let batch;
+      do {
+        batch = await new Promise((res, rej) => reader.readEntries(res, rej));
+        for (const e of batch) await walk(e);
+      } while (batch.length);
+    }
+  }
+  for (const e of entries) await walk(e);
+  return out;
+}
+
 function wireTracksPicker() {
   const picker = $('tracks-picker');
   const input = $('tracks-files');
-  picker.addEventListener('click', () => input.click());
-  input.addEventListener('change', e => handleTrackFiles(e.target.files));
+
+  picker.addEventListener('click', (e) => {
+    if (e.target !== input) input.click();
+  });
+  input.addEventListener('click', e => e.stopPropagation());
+
+  input.addEventListener('change', e => {
+    const files = [...e.target.files];
+    files.forEach(f => { f.relPath = f.webkitRelativePath; });
+    handleTrackFiles(files);
+  });
+
   ['dragenter', 'dragover'].forEach(ev => picker.addEventListener(ev, e => {
     e.preventDefault(); picker.classList.add('drag');
   }));
   ['dragleave', 'drop'].forEach(ev => picker.addEventListener(ev, e => {
     e.preventDefault(); picker.classList.remove('drag');
   }));
+
   picker.addEventListener('drop', async e => {
+    e.preventDefault();
     const items = e.dataTransfer?.items;
     if (!items) return;
     const files = await collectFilesFromDrop(items);
@@ -717,30 +747,6 @@ function handleLogout() {
   show('auth');
 }
 
-async function collectFilesFromDrop(items) {
-  const out = [];
-  const entries = [];
-  for (const item of items) {
-    const entry = item.webkitGetAsEntry?.();
-    if (entry) entries.push(entry);
-  }
-  async function walk(entry) {
-    if (entry.isFile) {
-      const file = await new Promise((res, rej) => entry.file(res, rej));
-      out.push(file);
-    } else if (entry.isDirectory) {
-      const reader = entry.createReader();
-      let batch;
-      do {
-        batch = await new Promise((res, rej) => reader.readEntries(res, rej));
-        for (const e of batch) await walk(e);
-      } while (batch.length);
-    }
-  }
-  for (const e of entries) await walk(e);
-  return out;
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   setupTabs();
   $('btn-login').addEventListener('click', handleLogin);
@@ -751,13 +757,26 @@ document.addEventListener('DOMContentLoaded', () => {
   
   const picker = $('picker');
   const input = $('files');
-  picker.addEventListener('click', () => input.click());
-  input.addEventListener('change', e => handleFiles(e.target.files));
+  picker.addEventListener('click', (e) => {
+    if (e.target !== input) input.click();
+  });
+  input.addEventListener('click', e => e.stopPropagation());
+
+  input.addEventListener('change', e => {
+    const files = [...e.target.files];
+    files.forEach(f => { f.relPath = f.webkitRelativePath; });
+    handleFiles(files);
+  });
+
   ['dragenter', 'dragover'].forEach(ev => picker.addEventListener(ev, e => {
     e.preventDefault(); picker.classList.add('drag');
   }));
-  ['dragleave', 'drop'].forEach(ev => picker.preventDefault());
+  ['dragleave', 'drop'].forEach(ev => picker.addEventListener(ev, e => {
+    e.preventDefault(); picker.classList.remove('drag');
+  }));
+
   picker.addEventListener('drop', async e => {
+    e.preventDefault();
     const items = e.dataTransfer?.items;
     if (!items) return;
     const files = await collectFilesFromDrop(items);
