@@ -29,6 +29,7 @@ import { Chip, EmptyState } from '../components/ui';
 import TrackMap from '../components/TrackMap';
 import { ImageDropzone } from '../components/ImageDropzone';
 import { useApp } from '../context/AppContext';
+import { findCustomTrack } from '../utils/trackMatching';
 import {
   lapsForTrack,
   bestPerCarOnTrack,
@@ -58,7 +59,7 @@ export default function TrackDetailScreen() {
   const cols = useGridColumns();
 
   const customTrackObj = useMemo(
-    () => customTracks.find((t) => t.name === track),
+    () => findCustomTrack(customTracks, track),
     [customTracks, track]
   );
 

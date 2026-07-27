@@ -31,6 +31,7 @@ import { Lap } from '../types';
 import { deleteLap } from '../firebase/db';
 import { RootStackParamList } from '../navigation/types';
 import TrackMap from '../components/TrackMap';
+import { findCustomTrack } from '../utils/trackMatching';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -449,7 +450,7 @@ function TrackRecordRow({
   const { customTracks } = useApp();
   const { lap, count, track } = record;
   const trackName = track || lap?.track || 'Circuito';
-  const customTrackObj = customTracks.find((t) => t.name === trackName);
+  const customTrackObj = findCustomTrack(customTracks, trackName);
 
   return (
     <Pressable
