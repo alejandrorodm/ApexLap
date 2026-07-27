@@ -13,6 +13,8 @@ import {
   FlatList,
   Pressable,
   Alert,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -46,16 +48,32 @@ export default function TrackDetailScreen() {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'Track'>>();
   const { track } = route.params;
-  const { laps, league, userId, customTracks } = useApp();
+  const { laps, league, userId, customTracks, addCustom } = useApp();
   const now = Date.now();
   const [view, setView] = useState<DetailView>('cars');
   const [selectedCar, setSelectedCar] = useState<string | null>(null);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [photoUrlInput, setPhotoUrlInput] = useState('');
   const cols = useGridColumns();
 
   const customTrackObj = useMemo(
     () => customTracks.find((t) => t.name === track),
     [customTracks, track]
   );
+
+  async function saveTrackPhoto() {
+    if (!league || !userId) return;
+    try {
+      await addCustom('tracks', {
+        name: track,
+        kind: 'mod',
+        url: photoUrlInput.trim() || undefined,
+      });
+      setShowPhotoModal(false);
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'No se pudo guardar la imagen del mapa.');
+    }
+  }
 
   const trackLaps = useMemo(() => lapsForTrack(laps, track), [laps, track]);
 
@@ -158,12 +176,21 @@ export default function TrackDetailScreen() {
               📍 {track}
             </Text>
           </View>
-          <TrackMap
-            track={track}
-            imageUrl={customTrackObj?.url}
-            size={110}
-            style={{ marginLeft: spacing.sm }}
-          />
+          <Pressable
+            onPress={() => {
+              setPhotoUrlInput(customTrackObj?.url ?? '');
+              setShowPhotoModal(true);
+            }}
+            hitSlop={8}
+          >
+            <TrackMap
+              track={track}
+              imageUrl={customTrackObj?.url}
+              size={110}
+              style={{ marginLeft: spacing.sm }}
+            />
+            <Text style={styles.editPhotoHint}>📷 Editar foto</Text>
+          </Pressable>
         </View>
         <View style={styles.headerFoot}>
           <Text style={styles.subtitle}>
@@ -282,6 +309,45 @@ export default function TrackDetailScreen() {
           }
         />
       )}
+
+      <Modal
+        visible={showPhotoModal}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowPhotoModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>📷 Foto / Imagen del mapa</Text>
+            <Text style={styles.modalSub}>
+              Pega la URL de la foto o imagen del circuito para {track}.
+            </Text>
+            <TextInput
+              value={photoUrlInput}
+              onChangeText={setPhotoUrlInput}
+              placeholder="https://.../mapa.png"
+              placeholderTextColor={colors.textFaint}
+              style={styles.modalInput}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <View style={styles.modalBtnRow}>
+              <Pressable
+                style={[styles.modalBtn, styles.modalBtnSave]}
+                onPress={saveTrackPhoto}
+              >
+                <Text style={styles.modalBtnSaveText}>Guardar foto</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalBtn, styles.modalBtnCancel]}
+                onPress={() => setShowPhotoModal(false)}
+              >
+                <Text style={styles.modalBtnCancelText}>Cancelar</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -873,5 +939,79 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: spacing.xs,
     lineHeight: 16,
+  },
+  editPhotoHint: {
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+  },
+  modalTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '900',
+    marginBottom: spacing.xs,
+  },
+  modalSub: {
+    color: colors.textDim,
+    fontSize: 13,
+    marginBottom: spacing.md,
+    lineHeight: 18,
+  },
+  modalInput: {
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    color: colors.text,
+    paddingHorizontal: spacing.md,
+    height: 48,
+    fontSize: 14,
+    marginBottom: spacing.lg,
+  },
+  modalBtnRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  modalBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBtnSave: {
+    backgroundColor: colors.accent,
+  },
+  modalBtnSaveText: {
+    color: colors.bgDeep,
+    fontWeight: '900',
+    fontSize: 14,
+  },
+  modalBtnCancel: {
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalBtnCancelText: {
+    color: colors.textDim,
+    fontWeight: '800',
+    fontSize: 14,
   },
 });
