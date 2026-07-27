@@ -27,11 +27,11 @@ import {
   TrackRecord,
 } from '../utils/leaderboard';
 import { formatTime, formatDelta, timeAgo } from '../utils/time';
-import { Lap } from '../types';
+import { Lap, CatalogEntry } from '../types';
 import { deleteLap } from '../firebase/db';
 import { RootStackParamList } from '../navigation/types';
 import TrackMap from '../components/TrackMap';
-import { findCustomTrack } from '../utils/trackMatching';
+import { findCustomTrack, normTrackKey } from '../utils/trackMatching';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -73,14 +73,19 @@ export default function LapsScreen() {
     switch (mode) {
       case 'byTrack': {
         const records = recordsByTrack(filtered);
-        const existingNames = new Set(records.map((r) => r.track));
-        const emptyRecords = customTracks
-          .filter((t) => !existingNames.has(t.name))
-          .map((t) => ({
-            track: t.name,
-            lap: null as any,
-            count: 0,
-          }));
+        const existingKeys = new Set(records.map((r) => normTrackKey(r.track)));
+        const uniqueCustomMap = new Map<string, CatalogEntry>();
+        for (const t of customTracks) {
+          const key = normTrackKey(t.name);
+          if (!existingKeys.has(key) && !uniqueCustomMap.has(key)) {
+            uniqueCustomMap.set(key, t);
+          }
+        }
+        const emptyRecords = Array.from(uniqueCustomMap.values()).map((t) => ({
+          track: t.name,
+          lap: null as any,
+          count: 0,
+        }));
         return [...records, ...emptyRecords];
       }
       case 'bestPerDriver':

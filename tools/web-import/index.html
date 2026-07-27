@@ -461,10 +461,40 @@ async function handleTrackFiles(fileList) {
       }
     }
 
-    // 1. Nombre bonito por defecto derivado exactamente de sus propias carpetas
-    const prettyTrack = prettify(trackFolderName);
-    const prettyLayout = layoutFolderName ? prettify(layoutFolderName) : '';
-    let name = prettyLayout ? `${prettyTrack} · ${prettyLayout}` : prettyTrack;
+const TRACK_LABELS = {
+  'ks_silverstone-gp': 'Silverstone · GP',
+  'imola': 'Imola · GP',
+  'spa': 'Spa-Francorchamps · GP',
+  'trento-bondone': 'Trento-Bondone · Hillclimb',
+  'ks_laguna_seca': 'Laguna Seca · Full',
+  'drift': 'Drift · Track',
+};
+
+const NAME_ALIAS = {
+  'ks_barcelona': 'Barcelona-Catalunya',
+  'ks_nurburgring': 'Nürburgring',
+};
+
+const LAYOUT_CASE = { gp: 'GP' };
+
+function trackDisplayName(trackFolder, layoutFolder) {
+  const k = layoutFolder ? `${trackFolder}-${layoutFolder}` : trackFolder;
+  if (TRACK_LABELS[k]) return TRACK_LABELS[k];
+
+  let base = trackFolder;
+  let layout = layoutFolder;
+
+  let name = NAME_ALIAS[base] || prettify(base);
+  if (layout && layout.trim() !== '') {
+    layout = layout.replace(/^layout_/, '');
+    const formattedLayout = LAYOUT_CASE[layout.toLowerCase()] || prettify(layout);
+    return `${name} · ${formattedLayout}`;
+  }
+  return name;
+}
+
+    // 1. Nombre bonito idéntico al mod de Lua de CSP en Assetto Corsa
+    let name = trackDisplayName(trackFolderName, layoutFolderName);
 
     // 2. Búsqueda GRANULAR ESTRICTA de JSON en su propia carpeta (SIN SALIR DEL CIRCUITO)
     const outlineDir = relPath.substring(0, relPath.lastIndexOf('/')).toLowerCase();
@@ -518,8 +548,18 @@ async function handleTrackFiles(fileList) {
     });
   }
 
-  S.detectedTracks = detected;
-  setStatus($('tracks-status'), `Detectados ${detected.length} trazados.`, 'ok');
+  // Desduplicar trazados por nombre normalizado
+  const uniqueDetectedMap = new Map();
+  for (const item of detected) {
+    const key = normName(item.name);
+    if (!uniqueDetectedMap.has(key)) {
+      uniqueDetectedMap.set(key, item);
+    }
+  }
+  const finalDetected = Array.from(uniqueDetectedMap.values());
+
+  S.detectedTracks = finalDetected;
+  setStatus($('tracks-status'), `Detectados ${finalDetected.length} trazados únicos.`, 'ok');
   renderTracksPreview();
 }
 
@@ -620,9 +660,23 @@ async function uploadSelectedTracks() {
   }
 
   $('btn-upload-tracks').disabled = true;
-  setStatus($('tracks-upload-status'), `Subiendo ${toUpload.length} circuitos a tu liga…`);
+  setStatus($('tracks-upload-status'), `Sincronizando ${toUpload.length} circuitos con tu liga…`);
 
   try {
+    const existingUrl = `${FIRESTORE}/${FS_BASE}/leagues/${S.leagueId}/tracks`;
+    const existingRes = await getJson(existingUrl, { Authorization: `Bearer ${S.idToken}` }).catch(() => ({ documents: [] }));
+    const existingDocs = existingRes.documents || [];
+
+    const existingMap = new Map();
+    existingDocs.forEach(d => {
+      const f = d.fields || {};
+      const tName = f.name?.stringValue || '';
+      const docId = d.name.substring(d.name.lastIndexOf('/') + 1);
+      if (tName && docId) {
+        existingMap.set(normName(tName), docId);
+      }
+    });
+
     const ID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     function genId() {
       let out = '';
@@ -631,19 +685,23 @@ async function uploadSelectedTracks() {
       return out;
     }
 
-    const writes = toUpload.map(item => ({
-      update: {
-        name: `${FS_BASE}/leagues/${S.leagueId}/tracks/${genId()}`,
-        fields: {
-          name: { stringValue: item.name.trim() },
-          kind: { stringValue: 'mod' },
-          url: { stringValue: item.outlineDataUrl },
-          createdBy: { stringValue: S.uid },
-          createdByName: { stringValue: S.driverName || 'Piloto' },
-          createdAt: { integerValue: String(Date.now()) },
+    const writes = toUpload.map(item => {
+      const key = normName(item.name);
+      const targetDocId = existingMap.get(key) || genId();
+      return {
+        update: {
+          name: `${FS_BASE}/leagues/${S.leagueId}/tracks/${targetDocId}`,
+          fields: {
+            name: { stringValue: item.name.trim() },
+            kind: { stringValue: 'mod' },
+            url: { stringValue: item.outlineDataUrl },
+            createdBy: { stringValue: S.uid },
+            createdByName: { stringValue: S.driverName || 'Piloto' },
+            createdAt: { integerValue: String(Date.now()) },
+          },
         },
-      },
-    }));
+      };
+    });
 
     await postJson(
       `${FIRESTORE}/${FS_BASE}:commit`,
@@ -651,8 +709,8 @@ async function uploadSelectedTracks() {
       { Authorization: `Bearer ${S.idToken}` },
     );
 
-    setStatus($('tracks-upload-status'), `Subidos ${toUpload.length} circuitos correctamente ✓`, 'ok');
-    $('success-msg').textContent = `Se han subido y actualizado ${toUpload.length} mapas de circuitos a tu liga.`;
+    setStatus($('tracks-upload-status'), `Sincronizados ${toUpload.length} circuitos correctamente ✓`, 'ok');
+    $('success-msg').textContent = `Se han subido y actualizado ${toUpload.length} mapas de circuitos a tu liga sin duplicados.`;
     show('success-modal');
   } catch (e) {
     setStatus($('tracks-upload-status'), 'Error subiendo circuitos: ' + e.message, 'err');
