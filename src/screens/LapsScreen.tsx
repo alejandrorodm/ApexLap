@@ -422,8 +422,7 @@ function LapRow({
 
 // Fila del modo "Por circuito": una tarjeta por trazado, con el circuito como
 // protagonista, el mejor tiempo grande a la derecha y debajo el coche que lo
-// logró y el piloto que lo firmó. Pulsable: abre el detalle (leaderboard) del
-// circuito para ver el pique completo.
+// logró y el piloto que lo firmó. Pulsable
 function TrackRecordRow({
   record,
   isMine,
@@ -454,37 +453,33 @@ function TrackRecordRow({
       ]}
       {...({ dataSet: { anim: 'rise' } } as any)}
     >
-      {/* Silueta directamente en el panel sin caja */}
-      <View style={styles.trackMapDirect}>
+      {/* Silueta a la derecha y de fondo (sin caja) */}
+      <View style={styles.trackBgMap} pointerEvents="none">
         <TrackMap
           track={trackName}
           imageUrl={customTrackObj?.url}
-          size={grid ? 160 : 190}
+          size={grid ? 140 : 175}
         />
       </View>
 
-      {/* Nombre y tiempo más grande */}
-      <View style={styles.trackContent}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.trackName} numberOfLines={1}>
-            {trackName}
-          </Text>
-          {lap ? (
-            <View style={styles.trackMetaRow}>
-              <Text style={styles.trackRefTime}>
-                ⏱️ {formatTime(lap.timeMs)}
-              </Text>
-              <Text style={styles.trackRefMeta} numberOfLines={1}>
-                · {lap.driverName || 'Piloto'} ({lap.car})
-              </Text>
-            </View>
-          ) : (
-            <Text style={styles.trackRefMeta}>Sin vueltas registradas aún</Text>
-          )}
-        </View>
-        <Text style={styles.trackCount}>
-          {count} {count === 1 ? 'vuelta' : 'vueltas'} ›
+      {/* Nombre grande arriba a la izquierda + tiempo y datos */}
+      <View style={styles.trackCardLeft}>
+        <Text style={styles.trackName} numberOfLines={2}>
+          {trackName}
         </Text>
+
+        {lap ? (
+          <>
+            <Text style={styles.trackRefTime}>
+              ⏱️ {formatTime(lap.timeMs)}
+            </Text>
+            <Text style={styles.trackRefMeta} numberOfLines={1}>
+              · {lap.driverName || 'Piloto'} ({lap.car})  {count} {count === 1 ? 'vuelta' : 'vueltas'} ›
+            </Text>
+          </>
+        ) : (
+          <Text style={styles.trackRefMeta}>Sin vueltas registradas aún</Text>
+        )}
       </View>
     </Pressable>
   );
@@ -498,8 +493,6 @@ function Badge({ text, color }: { text: string; color: string }) {
   );
 }
 
-// Chips descriptivos de ABS/TC (los sube el mod por vuelta). Solo se pintan si la
-// vuelta trae el dato: "sin ABS"/"sin TC" en verde (mérito), "ABS"/"TC" en tenue.
 function AbsTcBadges({ lap }: { lap: Lap }) {
   if (lap.abs === undefined && lap.tc === undefined) return null;
   return (
@@ -545,7 +538,6 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: colors.primary,
   },
-  // Podio (top-3) en los rankings por tiempo: destacado y separado del resto.
   rowPodium: {
     backgroundColor: colors.surfaceAlt,
     borderLeftWidth: 4,
@@ -623,58 +615,57 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   fabText: { color: colors.text, fontSize: 32, fontWeight: '300', marginTop: -2 },
-  // Rejilla de circuitos en pantalla ancha
   gridRow: { gap: spacing.md, alignItems: 'stretch' },
-  // Tarjeta del modo "Por circuito" rediseñada directamente en panel
+  // Tarjeta del modo "Por circuito" alineada a la izquierda con silueta de fondo
   trackCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
+    position: 'relative',
     overflow: 'hidden',
+    minHeight: 125,
+    justifyContent: 'center',
   },
   trackCardGrid: { flex: 1 },
   trackCardMine: {
     borderColor: colors.accent,
     shadowColor: colors.accent,
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.18,
     shadowRadius: 10,
   },
-  trackMapDirect: {
-    width: '100%',
-    height: 155,
-    alignItems: 'center',
+  trackBgMap: {
+    position: 'absolute',
+    right: 12,
+    top: 6,
+    bottom: 6,
     justifyContent: 'center',
+    alignItems: 'center',
+    opacity: 0.9,
   },
-  trackContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    marginTop: spacing.sm,
-    gap: spacing.sm,
+  trackCardLeft: {
+    maxWidth: '68%',
+    zIndex: 2,
   },
   trackName: {
     color: colors.text,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
-    letterSpacing: 0.3,
-  },
-  trackMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginTop: 4,
-    gap: 6,
-    flexWrap: 'wrap',
+    letterSpacing: -0.2,
+    lineHeight: 26,
+    marginBottom: 6,
   },
   trackRefTime: {
     color: colors.accent,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
     fontFamily: font.display,
     fontVariant: ['tabular-nums'],
     letterSpacing: 0.5,
+    marginBottom: 4,
   },
   trackRefMeta: {
     color: colors.textDim,
@@ -685,6 +676,5 @@ const styles = StyleSheet.create({
     color: colors.textFaint,
     fontSize: 12,
     fontWeight: '700',
-    paddingBottom: 2,
   },
 });

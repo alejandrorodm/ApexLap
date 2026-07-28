@@ -315,17 +315,13 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(20, 24, 33, 0.6)',
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 6,
+    backgroundColor: 'transparent',
     overflow: 'hidden',
   },
   image: {
     width: '100%',
     height: '100%',
-    borderRadius: radius.sm,
+    objectFit: 'contain' as any,
   },
   fallbackLabel: {
     position: 'absolute',
