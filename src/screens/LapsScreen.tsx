@@ -454,16 +454,16 @@ function TrackRecordRow({
       ]}
       {...({ dataSet: { anim: 'rise' } } as any)}
     >
-      {/* Silueta en grande del circuito */}
-      <View style={styles.trackMapBox}>
+      {/* Silueta directamente en el panel sin caja */}
+      <View style={styles.trackMapDirect}>
         <TrackMap
           track={trackName}
           imageUrl={customTrackObj?.url}
-          size={grid ? 150 : 170}
+          size={grid ? 160 : 190}
         />
       </View>
 
-      {/* Nombre en grande y mejor tiempo en pequeño */}
+      {/* Nombre y tiempo más grande */}
       <View style={styles.trackContent}>
         <View style={{ flex: 1 }}>
           <Text style={styles.trackName} numberOfLines={1}>
@@ -625,13 +625,13 @@ const styles = StyleSheet.create({
   fabText: { color: colors.text, fontSize: 32, fontWeight: '300', marginTop: -2 },
   // Rejilla de circuitos en pantalla ancha
   gridRow: { gap: spacing.md, alignItems: 'stretch' },
-  // Tarjeta del modo "Por circuito" rediseñada
+  // Tarjeta del modo "Por circuito" rediseñada directamente en panel
   trackCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.md,
+    padding: spacing.lg,
     marginBottom: spacing.md,
     overflow: 'hidden',
   },
@@ -639,54 +639,52 @@ const styles = StyleSheet.create({
   trackCardMine: {
     borderColor: colors.accent,
     shadowColor: colors.accent,
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
   },
-  trackMapBox: {
+  trackMapDirect: {
     width: '100%',
-    height: 145,
-    backgroundColor: 'rgba(12, 14, 18, 0.75)',
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    height: 155,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.xs,
   },
   trackContent: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     gap: spacing.sm,
   },
   trackName: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '900',
     letterSpacing: 0.3,
   },
   trackMetaRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 3,
-    gap: 4,
+    alignItems: 'baseline',
+    marginTop: 4,
+    gap: 6,
+    flexWrap: 'wrap',
   },
   trackRefTime: {
     color: colors.accent,
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '900',
     fontFamily: font.display,
     fontVariant: ['tabular-nums'],
+    letterSpacing: 0.5,
   },
   trackRefMeta: {
     color: colors.textDim,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
   },
   trackCount: {
     color: colors.textFaint,
     fontSize: 12,
     fontWeight: '700',
+    paddingBottom: 2,
   },
 });
