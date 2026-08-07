@@ -15,7 +15,7 @@ No depende de Python ni de CSP. Funciona en Windows, Mac y Linux.
 ## Cómo se sirve
 
 Los ficheros de la web viven aquí en el repo. Para hospedarlos, súbelos a
-**Firebase Hosting** del proyecto (`laptimersaver`).
+**Firebase Hosting** del proyecto (`apexlap`).
 
 ### Opción rápida (mismo deploy que la app)
 
@@ -27,7 +27,7 @@ cp tools/web-import/index.html dist/import/index.html
 firebase deploy --only hosting
 ```
 
-Quedará en `https://<tu-dominio-firebase>.web.app/import/`. Los ficheros estáticos
+Quedará en `https://apexlap.web.app/import/`. Los ficheros estáticos
 ganan al rewrite SPA de la app, así que no choca con `dist/index.html`.
 
 ### Opción limpia (sitio independiente)
@@ -38,7 +38,7 @@ Si prefieres una URL aparte (`apexlap-import.web.app`):
 2. Asocia un target:
    ```bash
    firebase target:apply hosting import apexlap-import
-   firebase target:apply hosting app laptimersaver
+   firebase target:apply hosting app apexlap
    ```
 3. Cambia `firebase.json` a un array con dos entradas (uno por target) y apunta
    el target `import` a `tools/web-import/`.

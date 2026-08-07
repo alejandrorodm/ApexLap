@@ -4,12 +4,12 @@ App para guardar y competir con los tiempos de vuelta de **Assetto Corsa** entre
 colegas. Hecha con **Expo (React Native + TypeScript)** y **Firebase**
 (Authentication + Firestore en tiempo real).
 
-- **Web en vivo:** https://laptimersaver.web.app
+- **Web en vivo:** https://apexlap.web.app
 - **Repositorio:** https://github.com/alejandrorodm/ApexLap
 
-> Nota: el ID del proyecto Firebase es `laptimersaver` (no se puede renombrar), por
-> eso la URL y el slug interno conservan ese nombre. El nombre visible de la app es
-> **ApexLap**.
+> Nota: el proyecto de Firebase es `apexlap`. El anterior, `laptimersaver`, sigue
+> declarado en `.firebaserc` como `old` por si queda algo que rescatar, pero la app
+> ya no lo usa (ver `src/firebase/config.ts`).
 
 ---
 
