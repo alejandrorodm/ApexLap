@@ -1,10 +1,10 @@
 // "Muro de rivalidad": construye un feed cronológico de la actividad de la liga
 // a partir de las vueltas y los piques que ya hay (no escribe nada nuevo).
-// Eventos: vuelta marcada, récord batido, "te quitaron el récord", pique nuevo
-// y pique ganado.
+// Eventos: vuelta marcada, mejor marca personal, récord batido (con a quién se
+// lo quitó y por cuánto), "te quitaron el récord", pique nuevo y pique ganado.
 import { Lap, Challenge } from '../types';
-import { recordsByCombo, isCounted } from './leaderboard';
-import { formatTime } from './time';
+import { isCounted } from './leaderboard';
+import { formatTime, formatDelta } from './time';
 
 export type FeedTone = 'normal' | 'record' | 'against' | 'win' | 'challenge';
 
@@ -15,6 +15,10 @@ export interface FeedEvent {
   text: string; // línea principal
   sub?: string; // coche · circuito · etc.
   tone: FeedTone;
+  // Destino al pulsar la fila. Sin esto el muro es un callejón sin salida.
+  track?: string;
+  car?: string;
+  challengeId?: string;
 }
 
 const MAX = 60;
@@ -26,53 +30,87 @@ export function buildFeed(
 ): FeedEvent[] {
   const events: FeedEvent[] = [];
 
-  // Récord actual por combo coche+circuito → id de la vuelta récord.
-  const recordLapIds = new Set(recordsByCombo(laps).map((r) => r.lap.id));
-
-  // ¿En qué combos tengo yo alguna vuelta? (para detectar "te quitaron el récord")
-  const myCombos = new Set<string>();
-  if (userId) {
-    for (const l of laps) {
-      if (isCounted(l) && l.userId === userId) myCombos.add(`${l.car}|${l.track}`);
-    }
-  }
-
+  // Las vueltas se recorren por combo y en orden cronológico, llevando la mejor
+  // marca vigente en cada momento. Así "batió el récord" significa que lo batió
+  // ENTONCES (y sabemos a quién se lo quitó), no que la vuelta sea la mejor hoy.
+  const byCombo = new Map<string, Lap[]>();
   for (const l of laps) {
     if (!isCounted(l)) continue;
-    const mine = l.userId === userId;
-    const isRecord = recordLapIds.has(l.id);
-    const combo = `${l.car}|${l.track}`;
-    const sub = `🚗 ${l.car} · ${l.track}`;
-    const who = l.driverName || 'Anónimo';
+    const key = `${l.car}|${l.track}`;
+    const arr = byCombo.get(key);
+    if (arr) arr.push(l);
+    else byCombo.set(key, [l]);
+  }
 
-    if (isRecord && !mine && myCombos.has(combo)) {
-      // Alguien tiene el récord de un combo donde yo también ruedo: pique directo.
-      events.push({
+  for (const comboLaps of byCombo.values()) {
+    const chrono = [...comboLaps].sort((a, b) => a.createdAt - b.createdAt);
+    let best: Lap | null = null; // récord vigente del combo
+    const bestByDriver = new Map<string, Lap>(); // mejor marca vigente de cada piloto
+
+    for (const l of chrono) {
+      const mine = l.userId === userId;
+      const who = l.driverName || 'Anónimo';
+      const sub = `🚗 ${l.car} · ${l.track}`;
+      const prevBest = best;
+      const prevMine = bestByDriver.get(l.userId) ?? null;
+
+      const isRecord = !prevBest || l.timeMs < prevBest.timeMs;
+      const isPB = !!prevMine && l.timeMs < prevMine.timeMs;
+
+      const base = {
         id: `lap-${l.id}`,
         at: l.createdAt,
-        icon: '🔥',
-        text: `${who} manda en este combo · ${formatTime(l.timeMs)}`,
-        sub: `${sub} · ¡a por él!`,
-        tone: 'against',
-      });
-    } else if (isRecord) {
-      events.push({
-        id: `lap-${l.id}`,
-        at: l.createdAt,
-        icon: '👑',
-        text: `${mine ? 'Batiste' : `${who} batió`} el récord · ${formatTime(l.timeMs)}`,
-        sub,
-        tone: mine ? 'win' : 'record',
-      });
-    } else {
-      events.push({
-        id: `lap-${l.id}`,
-        at: l.createdAt,
-        icon: '🏁',
-        text: `${mine ? 'Marcaste' : `${who} marcó`} ${formatTime(l.timeMs)}`,
-        sub,
-        tone: 'normal',
-      });
+        track: l.track,
+        car: l.car,
+        challengeId: l.challengeId,
+      };
+
+      if (isRecord && prevBest && prevBest.userId === userId && !mine) {
+        // El evento que más pica: te acaban de quitar el récord.
+        events.push({
+          ...base,
+          icon: '🔥',
+          text: `${who} te quitó el récord · ${formatTime(l.timeMs)}`,
+          sub: `${sub} · ${formatDelta(l.timeMs, prevBest.timeMs)} · ¡a por él!`,
+          tone: 'against',
+        });
+      } else if (isRecord && prevBest) {
+        const victim = prevBest.driverName || 'Anónimo';
+        events.push({
+          ...base,
+          icon: '👑',
+          text: `${mine ? 'Batiste' : `${who} batió`} el récord · ${formatTime(l.timeMs)}`,
+          sub: `${sub} · le quitó ${formatDelta(l.timeMs, prevBest.timeMs).replace('-', '')} a ${victim}`,
+          tone: mine ? 'win' : 'record',
+        });
+      } else if (isRecord) {
+        events.push({
+          ...base,
+          icon: '🏁',
+          text: `${mine ? 'Estrenaste' : `${who} estrenó`} el combo · ${formatTime(l.timeMs)}`,
+          sub,
+          tone: mine ? 'win' : 'normal',
+        });
+      } else if (isPB) {
+        events.push({
+          ...base,
+          icon: '⚡',
+          text: `${mine ? 'Mejoraste tu marca' : `${who} mejoró su marca`} · ${formatTime(l.timeMs)}`,
+          sub: `${sub} · ${formatDelta(l.timeMs, prevMine!.timeMs)}`,
+          tone: mine ? 'win' : 'normal',
+        });
+      } else {
+        events.push({
+          ...base,
+          icon: '🏁',
+          text: `${mine ? 'Marcaste' : `${who} marcó`} ${formatTime(l.timeMs)}`,
+          sub,
+          tone: 'normal',
+        });
+      }
+
+      if (isRecord) best = l;
+      if (!prevMine || l.timeMs < prevMine.timeMs) bestByDriver.set(l.userId, l);
     }
   }
 
@@ -87,6 +125,9 @@ export function buildFeed(
         }`,
         sub: `🚗 ${c.car} · ${c.track}`,
         tone: 'win',
+        challengeId: c.id,
+        track: c.track,
+        car: c.car,
       });
     } else {
       events.push({
@@ -96,6 +137,9 @@ export function buildFeed(
         text: `Nuevo pique: ${c.car}`,
         sub: `${c.track} · por ${c.createdByName || 'alguien'}`,
         tone: 'challenge',
+        challengeId: c.id,
+        track: c.track,
+        car: c.car,
       });
     }
   }
