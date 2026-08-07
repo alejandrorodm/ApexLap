@@ -98,6 +98,45 @@ export function lapsForTrack(laps: Lap[], track: string): Lap[] {
   return byTime(laps.filter((l) => isCounted(l) && l.track === track));
 }
 
+/** Marcas de referencia de un combo coche+circuito para un piloto. */
+export interface ComboBenchmark {
+  record: Lap | null; // la más rápida de la liga
+  myBest: Lap | null; // la tuya
+}
+
+/** Qué consigue un tiempo nuevo en ese combo. */
+export type LapFeat = 'record' | 'pb' | 'none';
+
+/** Récord de la liga y tu mejor marca en un combo coche+circuito. */
+export function comboBenchmark(
+  laps: Lap[],
+  car: string,
+  track: string,
+  userId: string | null
+): ComboBenchmark {
+  let record: Lap | null = null;
+  let myBest: Lap | null = null;
+  for (const l of laps) {
+    if (!isCounted(l) || l.car !== car || l.track !== track) continue;
+    if (!record || l.timeMs < record.timeMs) record = l;
+    if (userId && l.userId === userId && (!myBest || l.timeMs < myBest.timeMs)) {
+      myBest = l;
+    }
+  }
+  return { record, myBest };
+}
+
+/**
+ * Si un tiempo bate el récord de la liga, solo tu marca personal, o ninguna.
+ * Un récord de liga que además es tu mejor marca se declara 'record': manda la
+ * noticia más gorda.
+ */
+export function classifyTime(ms: number, bench: ComboBenchmark): LapFeat {
+  if (!bench.record || ms < bench.record.timeMs) return 'record';
+  if (!bench.myBest || ms < bench.myBest.timeMs) return 'pb';
+  return 'none';
+}
+
 export interface CarRecord {
   car: string;
   lap: Lap; // mejor vuelta de ese coche en el circuito

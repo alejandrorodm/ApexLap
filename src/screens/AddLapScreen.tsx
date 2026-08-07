@@ -1,5 +1,5 @@
 // Formulario para registrar una vuelta nueva.
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -19,10 +19,18 @@ import { useApp } from '../context/AppContext';
 import { CAR_GROUPS } from '../data/cars';
 import { TRACKS, trackLabel } from '../data/tracks';
 import { CatalogEntry } from '../types';
-import { parseTime, formatTime } from '../utils/time';
+import { parseTime, formatTime, formatDelta } from '../utils/time';
+import {
+  comboBenchmark,
+  classifyTime,
+  ComboBenchmark,
+  LapFeat,
+} from '../utils/leaderboard';
 import { addLap, getLeagueMemberTokens } from '../firebase/db';
 import { sendPushToTokens } from '../notifications';
 import { notify } from '../utils/alerts';
+import { win } from '../utils/feedback';
+import Confetti from '../components/Confetti';
 import { Conditions, Gearbox } from '../types';
 import { RootStackParamList } from '../navigation/types';
 
@@ -53,8 +61,16 @@ function withCustom(
 }
 
 export default function AddLapScreen({ navigation, route }: Props) {
-  const { userId, profile, league, customCars, customTracks, addCustom, deleteCustom } =
-    useApp();
+  const {
+    userId,
+    profile,
+    league,
+    laps,
+    customCars,
+    customTracks,
+    addCustom,
+    deleteCustom,
+  } = useApp();
   const params = route.params ?? {};
 
   const carGroups = useMemo(
@@ -83,8 +99,27 @@ export default function AddLapScreen({ navigation, route }: Props) {
   const parsedMs = useMemo(() => parseTime(timeStr), [timeStr]);
   const canSave = !!car && !!track && parsedMs != null && parsedMs > 0;
 
+  // Referencia del combo para decir, mientras escribes, si el tiempo vale algo.
+  const bench = useMemo(
+    () => (car && track ? comboBenchmark(laps, car, track, userId) : null),
+    [laps, car, track, userId]
+  );
+  const feat: LapFeat | null =
+    bench && parsedMs != null && parsedMs > 0 ? classifyTime(parsedMs, bench) : null;
+
+  // Celebración antes de volver: confeti + fanfarria si la vuelta es récord o PB.
+  const [confetti, setConfetti] = useState(0);
+  const [celebrating, setCelebrating] = useState<LapFeat | null>(null);
+  const goBackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (goBackTimer.current) clearTimeout(goBackTimer.current);
+    },
+    []
+  );
+
   async function save() {
-    if (!canSave || !userId || !league) return;
+    if (!canSave || !userId || !league || busy || celebrating) return;
     setBusy(true);
     try {
       const driverName = profile?.driverName ?? 'Anónimo';
@@ -116,7 +151,18 @@ export default function AddLapScreen({ navigation, route }: Props) {
       } catch {
         /* notificar es opcional */
       }
-      navigation.goBack();
+      // Nunca se vuelve en seco: siempre hay acuse de recibo, y si la vuelta
+      // vale algo, además confeti y fanfarria.
+      const achieved = feat ?? 'none';
+      setCelebrating(achieved);
+      if (achieved !== 'none') {
+        setConfetti((c) => c + 1);
+        win();
+      }
+      goBackTimer.current = setTimeout(
+        () => navigation.goBack(),
+        achieved === 'none' ? 1100 : 1800
+      );
     } catch (e: any) {
       notify('Error', e?.message ?? 'No se pudo guardar la vuelta.');
     } finally {
@@ -174,6 +220,7 @@ export default function AddLapScreen({ navigation, route }: Props) {
               ? `✓ ${formatTime(parsedMs)}`
               : 'Formato: m:ss.mmm  (también valen "102.356" o ms sueltos)'}
           </Text>
+          <PaceLine parsedMs={parsedMs} bench={bench} feat={feat} />
 
           <Label>Condiciones</Label>
           <View style={styles.rowChips}>
@@ -214,10 +261,35 @@ export default function AddLapScreen({ navigation, route }: Props) {
             maxLength={200}
           />
 
+          {celebrating ? (
+            <View
+              style={[
+                styles.celebration,
+                celebrating === 'record' && styles.celebrationRecord,
+                celebrating === 'none' && styles.celebrationPlain,
+              ]}
+            >
+              <Text style={styles.celebrationTitle}>
+                {celebrating === 'record'
+                  ? '🏆 ¡RÉCORD DE LA LIGA!'
+                  : celebrating === 'pb'
+                    ? '⚡ ¡TU MEJOR MARCA!'
+                    : '✓ Vuelta guardada'}
+              </Text>
+              <Text style={styles.celebrationSub}>
+                {formatTime(parsedMs!)} · {car} · {track}
+              </Text>
+              {/* El alta manual entra pendiente: no contará hasta que la validen. */}
+              <Text style={styles.celebrationNote}>
+                Pendiente de que la valide el anfitrión
+              </Text>
+            </View>
+          ) : null}
+
           <Button
             title="Guardar vuelta"
             onPress={save}
-            disabled={!canSave}
+            disabled={!canSave || !!celebrating}
             loading={busy}
             style={{ marginTop: spacing.lg }}
           />
@@ -250,7 +322,54 @@ export default function AddLapScreen({ navigation, route }: Props) {
         onAdd={(e) => addCustom('tracks', e)}
         onDelete={(it) => deleteCustom('tracks', it.id)}
       />
+      <Confetti fire={confetti} />
     </SafeAreaView>
+  );
+}
+
+/**
+ * Lo que vale el tiempo que estás escribiendo: cuánto te falta para el récord
+ * de la liga en ese coche+circuito y para tu propia marca. Es el "pique" en
+ * vivo del formulario; sin esto tecleas un número a ciegas.
+ */
+function PaceLine({
+  parsedMs,
+  bench,
+  feat,
+}: {
+  parsedMs: number | null;
+  bench: ComboBenchmark | null;
+  feat: LapFeat | null;
+}) {
+  if (!bench || parsedMs == null || parsedMs <= 0) return null;
+  const { record, myBest } = bench;
+  if (!record) {
+    return (
+      <Text style={[styles.pace, styles.paceRecord]}>
+        🏆 Primera vuelta de la liga en este combo
+      </Text>
+    );
+  }
+
+  const vsRecord = formatDelta(parsedMs, record.timeMs);
+  const recordLine =
+    feat === 'record'
+      ? `🏆 Récord de la liga · ${vsRecord} a ${record.driverName || 'la marca'}`
+      : `🥇 ${record.driverName || 'Récord'} ${formatTime(record.timeMs)} · ${vsRecord}`;
+
+  return (
+    <View style={styles.paceWrap}>
+      <Text style={[styles.pace, feat === 'record' && styles.paceRecord]}>
+        {recordLine}
+      </Text>
+      {myBest && myBest.id !== record.id ? (
+        <Text style={[styles.pace, feat === 'pb' && styles.pacePb]}>
+          {feat === 'pb'
+            ? `⚡ Tu mejor marca · ${formatDelta(parsedMs, myBest.timeMs)}`
+            : `👤 Tu mejor ${formatTime(myBest.timeMs)} · ${formatDelta(parsedMs, myBest.timeMs)}`}
+        </Text>
+      ) : null}
+    </View>
   );
 }
 
@@ -321,6 +440,55 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontFamily: font.display,
     letterSpacing: 0.5,
+  },
+  // Sube para quedar pegado al "✓ tiempo", que arrastra el margen de `hint`.
+  paceWrap: { marginTop: -spacing.md, marginBottom: spacing.lg, gap: 2 },
+  pace: {
+    color: colors.textDim,
+    fontSize: 13,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  paceRecord: { color: colors.accent, fontWeight: '900' },
+  pacePb: { color: colors.green, fontWeight: '900' },
+  celebration: {
+    marginTop: spacing.lg,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.green,
+    backgroundColor: 'rgba(57,211,83,0.12)',
+    alignItems: 'center',
+  },
+  celebrationRecord: {
+    borderColor: colors.accent,
+    backgroundColor: 'rgba(255,214,10,0.12)',
+  },
+  celebrationPlain: {
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+  },
+  celebrationTitle: {
+    color: colors.text,
+    fontFamily: font.display,
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
+  celebrationSub: {
+    marginTop: 4,
+    color: colors.textDim,
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  celebrationNote: {
+    marginTop: 6,
+    color: colors.textFaint,
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   select: {
     backgroundColor: colors.surfaceAlt,
