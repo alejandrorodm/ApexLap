@@ -9,7 +9,8 @@ import { colors, spacing, radius, font } from '../theme';
 import { EmptyState, Button, Chip, Label, ScreenHeader } from '../components/ui';
 import { PickerModal, PickerGroup, PickerItem } from '../components/PickerModal';
 import { useApp } from '../context/AppContext';
-import { recordsByCombo } from '../utils/leaderboard';
+import { recordsByCombo, lapsByChallenge, challengeLive } from '../utils/leaderboard';
+import { ChallengeLiveLine } from '../components/ChallengeLiveLine';
 import { formatTime, timeAgo } from '../utils/time';
 import { shareCard } from '../utils/share';
 import {
@@ -78,6 +79,12 @@ export default function RecordsScreen() {
   }, [league?.id]);
 
   const records = useMemo(() => recordsByCombo(laps), [laps]);
+  // Una sola pasada por las vueltas para todas las tarjetas de pique.
+  const lapsPerChallenge = useMemo(() => lapsByChallenge(laps), [laps]);
+  const openChallenges = useMemo(
+    () => challenges.filter((c) => c.status !== 'closed').length,
+    [challenges]
+  );
 
   const sections = useMemo(
     () => [
@@ -204,7 +211,7 @@ export default function RecordsScreen() {
               <View>
                 <View style={styles.challengesHead}>
                   <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0 }]}>
-                    🎰 Piques activos ({challenges.length})
+                    🎰 Piques activos ({openChallenges})
                   </Text>
                   <Pressable
                     style={styles.newChallengeBtn}
@@ -255,6 +262,14 @@ export default function RecordsScreen() {
                                 ? `🏆 ${c.winnerName}`
                                 : `por ${c.createdByName} · ${timeAgo(c.createdAt, now)}`}
                             </Text>
+                            {!closed ? (
+                              <ChallengeLiveLine
+                                live={challengeLive(
+                                  lapsPerChallenge.get(c.id) ?? [],
+                                  userId
+                                )}
+                              />
+                            ) : null}
                           </View>
                           <Text style={styles.chCta}>
                             {closed ? 'Ver ›' : 'Apostar /\nvuelta ›'}

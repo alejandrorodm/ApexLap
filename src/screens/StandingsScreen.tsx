@@ -14,7 +14,11 @@ import {
   standings,
   ChallengeResult,
   POINTS,
+  ChallengeLive,
+  lapsByChallenge,
+  challengeLive,
 } from '../utils/leaderboard';
+import { ChallengeLiveLine } from '../components/ChallengeLiveLine';
 import { aggregateDrivers, motesByDriver } from '../utils/achievements';
 import { shareTableCard } from '../utils/share';
 import { formatTime, timeAgo } from '../utils/time';
@@ -49,6 +53,8 @@ export default function StandingsScreen() {
     () => challenges.filter((c) => c.status !== 'closed'),
     [challenges]
   );
+  // Una sola pasada por las vueltas para todas las filas de pique abierto.
+  const lapsPerChallenge = useMemo(() => lapsByChallenge(laps), [laps]);
 
   // Carga las apuestas de cada pique cerrado (para puntuar los aciertos).
   const closedIds = closed.map((c) => c.id).join(',');
@@ -202,6 +208,7 @@ export default function StandingsScreen() {
               key={c.id}
               c={c}
               now={now}
+              live={challengeLive(lapsPerChallenge.get(c.id) ?? [], userId)}
               onPress={() =>
                 navigation.navigate('Challenge', { challengeId: c.id })
               }
@@ -219,6 +226,7 @@ export default function StandingsScreen() {
                 key={c.id}
                 c={c}
                 now={now}
+                live={null}
                 onPress={() =>
                   navigation.navigate('Challenge', { challengeId: c.id })
                 }
@@ -244,10 +252,12 @@ export default function StandingsScreen() {
 function ChallengeRow({
   c,
   now,
+  live,
   onPress,
 }: {
   c: Challenge;
   now: number;
+  live: ChallengeLive | null;
   onPress: () => void;
 }) {
   const closed = c.status === 'closed';
@@ -277,6 +287,7 @@ function ChallengeRow({
             ? `🏆 ${c.winnerName}`
             : `por ${c.createdByName} · ${timeAgo(c.createdAt, now)}`}
         </Text>
+        {!closed && live ? <ChallengeLiveLine live={live} compact /> : null}
       </View>
       <Text style={styles.chCta}>{closed ? 'Ver ›' : 'Apostar ›'}</Text>
     </Pressable>

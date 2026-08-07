@@ -368,6 +368,52 @@ export function challengeWinner(laps: Lap[], challengeId: string): Lap | null {
   return sorted[0] ?? null;
 }
 
+/** Cómo va un pique ahora mismo, desde el punto de vista de un piloto. */
+export interface ChallengeLive {
+  leader: Lap | null; // vuelta que va ganando
+  entrants: number; // pilotos distintos con vuelta válida
+  myBest: Lap | null; // tu mejor vuelta en el pique
+  myPos: number | null; // tu posición (1 = líder)
+  myDeltaMs: number | null; // lo que te falta para el líder (0 si lideras)
+}
+
+/**
+ * Agrupa las vueltas por pique de una pasada. Una lista de piques que llamase a
+ * `lapsForChallenge` por tarjeta recorrería todas las vueltas N veces.
+ */
+export function lapsByChallenge(laps: Lap[]): Map<string, Lap[]> {
+  const map = new Map<string, Lap[]>();
+  for (const l of laps) {
+    if (!l.challengeId) continue;
+    const arr = map.get(l.challengeId);
+    if (arr) arr.push(l);
+    else map.set(l.challengeId, [l]);
+  }
+  return map;
+}
+
+/**
+ * Estado en vivo de un pique: quién manda y a cuánto estás. Es lo que convierte
+ * un pique abierto en algo que pica; sin esto la tarjeta solo dice quién lo
+ * convocó y cuándo. Recibe ya las vueltas de ESE pique (ver `lapsByChallenge`).
+ */
+export function challengeLive(
+  challengeLaps: Lap[],
+  userId: string | null
+): ChallengeLive {
+  const board = bestPerDriver(challengeLaps);
+  const leader = board[0] ?? null;
+  const myIndex = userId ? board.findIndex((l) => l.userId === userId) : -1;
+  const myBest = myIndex >= 0 ? board[myIndex] : null;
+  return {
+    leader,
+    entrants: board.length,
+    myBest,
+    myPos: myIndex >= 0 ? myIndex + 1 : null,
+    myDeltaMs: myBest && leader ? myBest.timeMs - leader.timeMs : null,
+  };
+}
+
 export interface ChallengeResult {
   challenge: Challenge;
   bets: Bet[];
