@@ -12,7 +12,6 @@ import {
   StyleSheet,
   FlatList,
   Pressable,
-  Alert,
   Modal,
   TextInput,
 } from 'react-native';
@@ -37,6 +36,7 @@ import {
   CarRecord,
 } from '../utils/leaderboard';
 import { formatTime, formatDelta, formatSector, timeAgo } from '../utils/time';
+import { confirmAction, notify } from '../utils/alerts';
 import { deleteLap } from '../firebase/db';
 import { Lap } from '../types';
 import { RootStackParamList } from '../navigation/types';
@@ -66,14 +66,16 @@ export default function TrackDetailScreen() {
   async function saveTrackPhoto() {
     if (!league || !userId) return;
     try {
+      // Cadena vacía (no undefined): el cuadro se abrió con la foto actual, así
+      // que guardarlo vacío significa quitarla.
       await addCustom('tracks', {
         name: track,
         kind: 'mod',
-        url: photoUrlInput.trim() || undefined,
+        url: photoUrlInput.trim(),
       });
       setShowPhotoModal(false);
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudo guardar la imagen del mapa.');
+      notify('Error', e?.message ?? 'No se pudo guardar la imagen del mapa.');
     }
   }
 
@@ -110,16 +112,20 @@ export default function TrackDetailScreen() {
     setSelectedCar(null);
   }
 
-  function confirmDelete(lap: Lap) {
+  async function confirmDelete(lap: Lap) {
     if (lap.userId !== userId || !league) return;
-    Alert.alert('Borrar vuelta', `${lap.car} · ${formatTime(lap.timeMs)}?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Borrar',
-        style: 'destructive',
-        onPress: () => deleteLap(league.id, lap.id).catch(() => {}),
-      },
-    ]);
+    const ok = await confirmAction({
+      title: 'Borrar vuelta',
+      message: `${lap.car} · ${formatTime(lap.timeMs)}?`,
+      confirmText: 'Borrar',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await deleteLap(league.id, lap.id);
+    } catch (e: any) {
+      notify('Error', e?.message ?? 'No se pudo borrar la vuelta.');
+    }
   }
 
   // Datos de la lista según la sub-vista activa.

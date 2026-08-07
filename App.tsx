@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
@@ -39,11 +39,24 @@ function Splash({ message }: { message?: string }) {
   );
 }
 
+function ErrorScreen({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <View style={styles.center}>
+      <Text style={styles.logo}>🏁</Text>
+      <Text style={styles.msg}>{message}</Text>
+      <Pressable style={styles.retry} onPress={onRetry} accessibilityRole="button">
+        <Text style={styles.retryText}>Reintentar</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function Gate() {
-  const { ready, userId, profile, league, error } = useApp();
+  const { ready, userId, profile, league, leagueLoading, error, retry } = useApp();
 
   if (!ready) return <Splash />;
-  if (error) return <Splash message={error} />;
+  // Un fallo puntual de red no puede dejar la app tapiada sin salida.
+  if (error) return <ErrorScreen message={error} onRetry={retry} />;
 
   // Sin sesión (ni cuenta ni invitado): pantalla de login.
   if (!userId) return <AuthScreen />;
@@ -51,15 +64,13 @@ function Gate() {
   const hasName = (profile?.driverName ?? '').trim().length > 0;
   if (!hasName) return <OnboardingScreen />;
 
-  // Si tiene liga asignada en el perfil pero los datos aún se están descargando de Firestore
-  if (profile?.leagueId && !league) {
+  // Solo mientras la liga se está descargando de verdad. Si terminó y no hay
+  // liga, el contexto ya habrá limpiado el leagueId y caemos al onboarding.
+  if (profile?.leagueId && leagueLoading) {
     return <Splash message="Cargando tu liga…" />;
   }
 
-  // Si no tiene liga en el perfil y tampoco hay liga cargada
-  if (!profile?.leagueId && !league) {
-    return <OnboardingScreen />;
-  }
+  if (!league) return <OnboardingScreen />;
 
   return <RootNavigator />;
 }
@@ -118,5 +129,19 @@ const styles = StyleSheet.create({
     marginTop: 16,
     textAlign: 'center',
     fontSize: 14,
+  },
+  retry: {
+    marginTop: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  retryText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
 });

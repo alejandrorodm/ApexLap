@@ -5,13 +5,13 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, font } from '../theme';
 import { Button, Card, SectionTitle, Label, Field, SpeedStripes } from '../components/ui';
+import { notify } from '../utils/alerts';
 import { useApp } from '../context/AppContext';
 
 export default function OnboardingScreen() {
@@ -36,14 +36,14 @@ export default function OnboardingScreen() {
 
   async function saveName() {
     if (name.trim().length < 2) {
-      Alert.alert('Nombre muy corto', 'Pon al menos 2 caracteres.');
+      notify('Nombre muy corto', 'Pon al menos 2 caracteres.');
       return;
     }
     setBusy(true);
     try {
       await setDriverName(name);
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudo guardar.');
+      notify('Error', e?.message ?? 'No se pudo guardar.');
     } finally {
       setBusy(false);
     }
@@ -51,14 +51,14 @@ export default function OnboardingScreen() {
 
   async function doCreate() {
     if (leagueName.trim().length < 2) {
-      Alert.alert('Nombre de liga', 'Ponle un nombre a tu liga.');
+      notify('Nombre de liga', 'Ponle un nombre a tu liga.');
       return;
     }
     setBusy(true);
     try {
       await createLeague(leagueName);
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudo crear la liga.');
+      notify('Error', e?.message ?? 'No se pudo crear la liga.');
     } finally {
       setBusy(false);
     }
@@ -66,14 +66,14 @@ export default function OnboardingScreen() {
 
   async function doJoin() {
     if (code.trim().length < 4) {
-      Alert.alert('Código', 'Introduce el código que te pasó tu colega.');
+      notify('Código', 'Introduce el código que te pasó tu colega.');
       return;
     }
     setBusy(true);
     try {
       await joinLeague(code);
     } catch (e: any) {
-      Alert.alert('No se pudo unir', e?.message ?? 'Código incorrecto.');
+      notify('No se pudo unir', e?.message ?? 'Código incorrecto.');
     } finally {
       setBusy(false);
     }

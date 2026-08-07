@@ -27,6 +27,15 @@ export function normTrackKey(s: string): string {
 }
 
 /**
+ * Entre varias fichas del mismo circuito, la que tenga mapa. Las ligas creadas
+ * antes del catálogo indexado por nombre arrastran duplicados, y sin esto una
+ * ficha vieja sin foto puede tapar a la que sí la tiene.
+ */
+function preferWithUrl(matches: CatalogEntry[]): CatalogEntry | undefined {
+  return matches.find((t) => !!t.url) ?? matches[0];
+}
+
+/**
  * Encuentra el circuito correspondiente en la lista de customTracks de la liga,
  * tolerando variaciones avanzadas ("Drag · Drag1000" vs "Drag 1000m", "ks_silverstone-gp" vs "Silverstone · GP").
  */
@@ -37,7 +46,7 @@ export function findCustomTrack(
   if (!trackName || !customTracks || !customTracks.length) return undefined;
 
   // 1. Coincidencia exacta
-  const exact = customTracks.find((t) => t.name === trackName);
+  const exact = preferWithUrl(customTracks.filter((t) => t.name === trackName));
   if (exact) return exact;
 
   const targetTokens = getTrackTokens(trackName);
@@ -45,7 +54,9 @@ export function findCustomTrack(
 
   // 2. Coincidencia normalizada directa
   const targetKey = targetTokens.join('');
-  const normMatch = customTracks.find((t) => normTrackKey(t.name) === targetKey);
+  const normMatch = preferWithUrl(
+    customTracks.filter((t) => normTrackKey(t.name) === targetKey)
+  );
   if (normMatch) return normMatch;
 
   // 3. Comparación por extracción de números de distancia/layout (ej: "1000" en Drag1000 y Drag 1000m)
@@ -85,7 +96,11 @@ export function findCustomTrack(
     }
 
     const score = matches / Math.max(targetTokens.length, 1);
-    if (score > bestScore && score >= 0.4) {
+    if (score < 0.4) continue;
+    // A igualdad de puntuación gana la que tenga mapa (ver preferWithUrl).
+    const better =
+      score > bestScore || (score === bestScore && !bestMatch?.url && !!item.url);
+    if (better) {
       bestScore = score;
       bestMatch = item;
     }

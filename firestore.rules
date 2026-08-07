@@ -48,12 +48,16 @@ service cloud.firestore {
       }
 
       // Catálogo de coches/circuitos personalizados de la liga (mods, DLC…).
-      // Lo crea cualquier miembro; lo borra quien lo creó O el anfitrión.
+      // Es un catálogo COMPARTIDO indexado por nombre normalizado: cualquier
+      // miembro lo crea y lo edita (p.ej. para ponerle el mapa a un circuito que
+      // dio de alta otro). Sin el update abierto, guardar la foto de una ficha
+      // ajena fallaría. Borrar sigue siendo de quien la creó O del anfitrión.
       match /cars/{carId} {
         allow read: if signedIn();
         allow create: if signedIn()
           && request.resource.data.createdBy == request.auth.uid;
-        allow update, delete: if signedIn() && (
+        allow update: if signedIn();
+        allow delete: if signedIn() && (
           resource.data.createdBy == request.auth.uid
           || get(/databases/$(database)/documents/leagues/$(leagueId)).data.createdBy == request.auth.uid
         );
@@ -62,7 +66,8 @@ service cloud.firestore {
         allow read: if signedIn();
         allow create: if signedIn()
           && request.resource.data.createdBy == request.auth.uid;
-        allow update, delete: if signedIn() && (
+        allow update: if signedIn();
+        allow delete: if signedIn() && (
           resource.data.createdBy == request.auth.uid
           || get(/databases/$(database)/documents/leagues/$(leagueId)).data.createdBy == request.auth.uid
         );

@@ -47,12 +47,17 @@ interface AppState {
   hasPassword: boolean; // true si la cuenta ya tiene método email+contraseña
   profile: Profile | null;
   league: League | null;
+  // true solo mientras se descarga la liga del perfil. Distinguirlo de
+  // `league === null` evita quedarse en la pantalla de carga para siempre.
+  leagueLoading: boolean;
   laps: Lap[];
   lapsLoading: boolean;
   // Catálogo de coches/circuitos añadidos a mano en la liga (mods, DLC…).
   customCars: CatalogEntry[];
   customTracks: CatalogEntry[];
   error: string | null;
+  // Descarta el error y relanza la carga de la liga y sus suscripciones.
+  retry: () => void;
   // sesión
   signInEmail: (email: string, password: string) => Promise<void>;
   signUpEmail: (name: string, email: string, password: string) => Promise<void>;
@@ -93,6 +98,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [hasPassword, setHasPassword] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [league, setLeague] = useState<League | null>(null);
+  // Id de la liga cuya descarga ya terminó (con o sin éxito). Comparándolo con
+  // el leagueId del perfil sabemos si estamos cargando SIN un frame de retraso:
+  // un booleano puesto desde un efecto llegaría un render tarde y haría
+  // parpadear el onboarding.
+  const [leagueResolvedFor, setLeagueResolvedFor] = useState<string | null>(null);
+  // Lo incrementa `retry` para volver a lanzar la carga de la liga y las
+  // suscripciones tras un fallo de red.
+  const [reloadKey, setReloadKey] = useState(0);
   const [laps, setLaps] = useState<Lap[]>([]);
   const [lapsLoading, setLapsLoading] = useState(false);
   const [customCars, setCustomCars] = useState<CatalogEntry[]>([]);
@@ -182,6 +195,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const leagueId = profile?.leagueId;
     if (!leagueId) {
       setLeague(null);
+      setLeagueResolvedFor(null);
       return;
     }
     setLapsLoading(true);
@@ -189,9 +203,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         const lg = await getLeague(leagueId);
-        if (!cancelled) setLeague(lg);
+        if (cancelled) return;
+        setLeague(lg);
+        // La liga del perfil ya no existe (borrada o id huérfano). Si no lo
+        // limpiásemos, el gate de App.tsx se quedaría en "Cargando tu liga…"
+        // para siempre: soltamos el id para caer en el onboarding.
+        if (!lg && userId) {
+          await saveProfile(userId, { leagueId: '' });
+          if (!cancelled) setProfile((p) => (p ? { ...p, leagueId: undefined } : p));
+        }
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? 'Error cargando la liga.');
+      } finally {
+        if (!cancelled) setLeagueResolvedFor(leagueId);
       }
     })();
     unsubLaps.current = subscribeLaps(
@@ -212,7 +236,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [profile?.leagueId]);
+  }, [profile?.leagueId, userId, reloadKey]);
 
   useEffect(
     () => () => {
@@ -352,6 +376,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setLeague(lg);
   }, [profile?.leagueId]);
 
+  const retry = useCallback(() => {
+    setError(null);
+    setLeagueResolvedFor(null);
+    setReloadKey((k) => k + 1);
+  }, []);
+
+  // Cargando = el perfil apunta a una liga que ni tenemos ya cargada ni hemos
+  // terminado de pedir. La comprobación de `league.id` evita el parpadeo al
+  // crear o unirse a una liga, que la dejan puesta antes de que corra el efecto.
+  const leagueLoading =
+    !!profile?.leagueId &&
+    leagueResolvedFor !== profile.leagueId &&
+    league?.id !== profile.leagueId;
+
   // ── Catálogo (coches/circuitos personalizados de la liga) ──────────────────
   const addCustom = useCallback(
     async (
@@ -362,7 +400,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await dbAddCatalogEntry(league.id, kind, {
         name: entry.name.trim(),
         kind: entry.kind,
-        url: entry.url?.trim() || undefined,
+        // Se conserva la cadena vacía: es la señal de "quitar el mapa".
+        url: entry.url === undefined ? undefined : entry.url.trim(),
         createdBy: userId,
         createdByName: profile?.driverName || undefined,
       });
@@ -405,11 +444,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         hasPassword,
         profile,
         league,
+        leagueLoading,
         laps,
         lapsLoading,
         customCars,
         customTracks,
         error,
+        retry,
         signInEmail,
         signUpEmail,
         signInGoogle,

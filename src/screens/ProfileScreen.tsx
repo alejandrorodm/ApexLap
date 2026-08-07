@@ -7,7 +7,6 @@ import {
   StyleSheet,
   ScrollView,
   Share,
-  Alert,
   Pressable,
   Platform,
   Linking,
@@ -147,7 +146,7 @@ export default function ProfileScreen() {
           await nav.share({ text: message, url: joinUrl });
         } else {
           await Clipboard.setStringAsync(joinUrl);
-          Alert.alert('Enlace copiado', 'Pásaselo a tus colegas para que se unan.');
+          notify('Enlace copiado', 'Pásaselo a tus colegas para que se unan.');
         }
       } catch {
         /* cancelado */
@@ -163,7 +162,7 @@ export default function ProfileScreen() {
 
   async function saveName() {
     if (name.trim().length < 2) {
-      Alert.alert('Nombre muy corto', 'Pon al menos 2 caracteres.');
+      notify('Nombre muy corto', 'Pon al menos 2 caracteres.');
       return;
     }
     setBusy(true);
@@ -175,15 +174,19 @@ export default function ProfileScreen() {
     }
   }
 
-  function confirmLeave() {
-    Alert.alert(
-      'Salir de la liga',
-      'Dejarás de ver los tiempos de esta liga. Podrás volver con el código.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Salir', style: 'destructive', onPress: () => leaveLeague() },
-      ]
-    );
+  async function confirmLeave() {
+    const ok = await confirmAction({
+      title: 'Salir de la liga',
+      message: 'Dejarás de ver los tiempos de esta liga. Podrás volver con el código.',
+      confirmText: 'Salir',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await leaveLeague();
+    } catch (e: any) {
+      notify('Error', e?.message ?? 'No se pudo salir de la liga.');
+    }
   }
 
   async function confirmSignOut() {

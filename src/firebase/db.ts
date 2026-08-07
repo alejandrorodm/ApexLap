@@ -13,6 +13,7 @@ import {
   getDoc,
   getDocs,
   deleteDoc,
+  deleteField,
   onSnapshot,
   query,
   where,
@@ -20,6 +21,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { getDb } from './config';
+import { normTrackKey } from '../utils/trackMatching';
 import {
   Lap,
   NewLap,
@@ -306,6 +308,23 @@ export function subscribeCatalog(
   );
 }
 
+/**
+ * Id de documento derivado del nombre normalizado ("Silverstone · GP" y
+ * "ks_silverstone-gp" dan el mismo). Es lo que hace que guardar dos veces el
+ * mismo circuito actualice su ficha en vez de crear un duplicado.
+ * Devuelve null si el nombre no deja ningún carácter utilizable.
+ */
+function catalogDocId(name: string): string | null {
+  const key = normTrackKey(name).slice(0, 200);
+  return key.length ? key : null;
+}
+
+/**
+ * Alta o actualización de una entrada del catálogo, indexada por nombre
+ * normalizado. Actualizar en vez de insertar evita que cada foto guardada
+ * cree otra ficha del mismo circuito (y que `findCustomTrack` acabe
+ * devolviendo la vieja, sin foto).
+ */
 export async function addCatalogEntry(
   leagueId: string,
   kind: CatalogKindCollection,
@@ -317,11 +336,32 @@ export async function addCatalogEntry(
     name: entry.name,
     kind: entry.kind,
     createdBy: entry.createdBy,
-    createdAt: Date.now(),
   };
   if (entry.url) data.url = entry.url;
   if (entry.createdByName) data.createdByName = entry.createdByName;
-  const ref = await addDoc(collection(db, 'leagues', leagueId, kind), data);
+  // `url: ''` es "quitar el mapa" (el cuadro de la foto se guardó vacío); que
+  // llegue sin `url` es "no toques el que haya".
+  const clearsUrl = entry.url === '';
+
+  const docId = catalogDocId(entry.name);
+  if (!docId) {
+    const ref = await addDoc(collection(db, 'leagues', leagueId, kind), {
+      ...data,
+      createdAt: Date.now(),
+    });
+    return ref.id;
+  }
+
+  const ref = doc(db, 'leagues', leagueId, kind, docId);
+  const existing = await getDoc(ref);
+  // `createdAt`/`createdBy` son de la primera alta: no los pisamos al editar.
+  if (existing.exists()) {
+    const { createdBy, ...rest } = data;
+    if (clearsUrl) rest.url = deleteField();
+    await setDoc(ref, rest, { merge: true });
+  } else {
+    await setDoc(ref, { ...data, createdAt: Date.now() });
+  }
   return ref.id;
 }
 

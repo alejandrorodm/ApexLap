@@ -6,7 +6,6 @@ import {
   FlatList,
   StyleSheet,
   Pressable,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -27,6 +26,7 @@ import {
   TrackRecord,
 } from '../utils/leaderboard';
 import { formatTime, formatDelta, timeAgo } from '../utils/time';
+import { confirmAction, notify } from '../utils/alerts';
 import { Lap, CatalogEntry } from '../types';
 import { deleteLap } from '../firebase/db';
 import { RootStackParamList } from '../navigation/types';
@@ -89,32 +89,36 @@ export default function LapsScreen() {
       ? (list[0] as Lap).timeMs
       : null;
 
-  function confirmDelete(lap: Lap) {
+  async function confirmDelete(lap: Lap) {
     if (lap.userId !== userId || !league) return;
-    Alert.alert('Borrar vuelta', `${lap.car} · ${formatTime(lap.timeMs)}?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Borrar',
-        style: 'destructive',
-        onPress: () => deleteLap(league.id, lap.id).catch(() => {}),
-      },
-    ]);
+    const ok = await confirmAction({
+      title: 'Borrar vuelta',
+      message: `${lap.car} · ${formatTime(lap.timeMs)}?`,
+      confirmText: 'Borrar',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await deleteLap(league.id, lap.id);
+    } catch (e: any) {
+      notify('Error', e?.message ?? 'No se pudo borrar la vuelta.');
+    }
   }
 
-  function confirmReject(lap: Lap) {
+  async function confirmReject(lap: Lap) {
     if (!isHost || !league) return;
-    Alert.alert(
-      'Rechazar vuelta',
-      `${lap.driverName}: ${lap.car} · ${formatTime(lap.timeMs)}\nNo contará para la clasificación.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Rechazar',
-          style: 'destructive',
-          onPress: () => rejectLap(lap.id).catch(() => {}),
-        },
-      ]
-    );
+    const ok = await confirmAction({
+      title: 'Rechazar vuelta',
+      message: `${lap.driverName}: ${lap.car} · ${formatTime(lap.timeMs)}\nNo contará para la clasificación.`,
+      confirmText: 'Rechazar',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await rejectLap(lap.id);
+    } catch (e: any) {
+      notify('Error', e?.message ?? 'No se pudo rechazar la vuelta.');
+    }
   }
 
   function toggle<K extends keyof LapFilter>(key: K, value: LapFilter[K]) {
@@ -239,7 +243,6 @@ export default function LapsScreen() {
             <TrackRecordRow
               record={item as TrackRecord}
               grid={gridCols > 1}
-              isMine={!!(item as TrackRecord).lap && (item as TrackRecord).lap?.userId === userId}
               onPress={() =>
                 navigation.navigate('Track', {
                   track: (item as TrackRecord).track,
@@ -425,13 +428,11 @@ function LapRow({
 // logró y el piloto que lo firmó. Pulsable
 function TrackRecordRow({
   record,
-  isMine,
   grid,
   onPress,
   onLongPress,
 }: {
   record: TrackRecord;
-  isMine: boolean;
   grid?: boolean;
   onPress: () => void;
   onLongPress: () => void;
@@ -446,11 +447,7 @@ function TrackRecordRow({
       onPress={onPress}
       onLongPress={lap ? onLongPress : undefined}
       delayLongPress={350}
-      style={[
-        styles.trackCard,
-        grid && styles.trackCardGrid,
-        isMine && styles.trackCardMine,
-      ]}
+      style={[styles.trackCard, grid && styles.trackCardGrid]}
       {...({ dataSet: { anim: 'rise' } } as any)}
     >
       {/* Silueta a la derecha y de fondo (sin caja) */}
@@ -631,12 +628,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   trackCardGrid: { flex: 1 },
-  trackCardMine: {
-    borderColor: colors.accent,
-    shadowColor: colors.accent,
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-  },
   trackBgMap: {
     position: 'absolute',
     right: 12,
