@@ -18,6 +18,7 @@ import ParticipantsScreen from '../screens/ParticipantsScreen';
 import TrackDetailScreen from '../screens/TrackDetailScreen';
 import NewChallengeScreen from '../screens/NewChallengeScreen';
 import CompareScreen from '../screens/CompareScreen';
+import H2HScreen from '../screens/H2HScreen';
 import ProgressScreen from '../screens/ProgressScreen';
 import SeasonScreen from '../screens/SeasonScreen';
 import SkillScreen from '../screens/SkillScreen';
@@ -114,6 +115,11 @@ export default function RootNavigator() {
       <Stack.Screen
         name="Compare"
         component={CompareScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="H2H"
+        component={H2HScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

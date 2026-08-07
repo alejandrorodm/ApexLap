@@ -31,7 +31,8 @@ const MEDAL = ['🥇', '🥈', '🥉'];
 export default function StandingsScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { league, userId, laps } = useApp();
+  const { league, userId, laps, profile } = useApp();
+  const myName = (profile?.driverName ?? '').trim();
   const wide = useIsWideWeb();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [betsByChallenge, setBetsByChallenge] = useState<Record<string, Bet[]>>(
@@ -161,9 +162,23 @@ export default function StandingsScreen() {
               </View>
               {table.map((r, i) => {
                 const mine = r.userId === userId;
+                // Tocar a un rival abre el cara a cara contigo.
+                const h2h =
+                  mine || !userId || !myName
+                    ? undefined
+                    : () =>
+                        navigation.navigate('H2H', {
+                          aId: userId,
+                          aName: myName,
+                          bId: r.userId,
+                          bName: r.driverName,
+                        });
+                const Row: any = h2h ? Pressable : View;
                 return (
-                  <View
+                  <Row
                     key={r.userId}
+                    onPress={h2h}
+                    accessibilityRole={h2h ? 'button' : undefined}
                     style={[
                       styles.row,
                       i < 3 && styles.rowTop,
@@ -188,7 +203,7 @@ export default function StandingsScreen() {
                       {r.correctBets}
                     </Text>
                     <Text style={[styles.ptsCol, styles.pts]}>{r.points}</Text>
-                  </View>
+                  </Row>
                 );
               })}
             </>

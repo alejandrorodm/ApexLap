@@ -13,6 +13,7 @@ export type RootStackParamList = {
   Track: { track: string };
   NewChallenge: { track?: string };
   Compare: { track: string; car?: string };
+  H2H: { aId: string; aName: string; bId: string; bName: string };
   Progress: { car?: string; track?: string } | undefined;
   Season: undefined;
   Skill: undefined;

@@ -394,6 +394,70 @@ export function driverStats(laps: Lap[]): DriverStats[] {
   );
 }
 
+// ── Cara a cara entre dos pilotos ───────────────────────────────────────────
+
+/** Un combo coche+circuito donde ambos pilotos tienen vuelta. */
+export interface H2HCombo {
+  key: string; // "car|track"
+  car: string;
+  track: string;
+  aLap: Lap;
+  bLap: Lap;
+  winner: 'a' | 'b' | 'tie';
+  deltaMs: number; // diferencia absoluta entre ambos
+}
+
+export interface H2H {
+  winsA: number;
+  winsB: number;
+  ties: number;
+  combos: H2HCombo[]; // más reñidos primero
+}
+
+/**
+ * Marcador entre dos pilotos: solo los combos coche+circuito donde AMBOS han
+ * rodado, comparando la mejor vuelta de cada uno. Es la comparación justa;
+ * contar combos donde solo ha rodado uno premiaría al que más variedad prueba.
+ */
+export function headToHead(laps: Lap[], aId: string, bId: string): H2H {
+  const bestA = new Map<string, Lap>();
+  const bestB = new Map<string, Lap>();
+  for (const l of laps) {
+    if (!isCounted(l)) continue;
+    const target = l.userId === aId ? bestA : l.userId === bId ? bestB : null;
+    if (!target) continue;
+    const key = `${l.car}|${l.track}`;
+    const cur = target.get(key);
+    if (!cur || l.timeMs < cur.timeMs) target.set(key, l);
+  }
+
+  const combos: H2HCombo[] = [];
+  let winsA = 0;
+  let winsB = 0;
+  let ties = 0;
+  for (const [key, aLap] of bestA) {
+    const bLap = bestB.get(key);
+    if (!bLap) continue;
+    const winner =
+      aLap.timeMs < bLap.timeMs ? 'a' : bLap.timeMs < aLap.timeMs ? 'b' : 'tie';
+    if (winner === 'a') winsA++;
+    else if (winner === 'b') winsB++;
+    else ties++;
+    combos.push({
+      key,
+      car: aLap.car,
+      track: aLap.track,
+      aLap,
+      bLap,
+      winner,
+      deltaMs: Math.abs(aLap.timeMs - bLap.timeMs),
+    });
+  }
+
+  combos.sort((x, y) => x.deltaMs - y.deltaMs);
+  return { winsA, winsB, ties, combos };
+}
+
 // ── Piques: ganador, puntos y clasificación ─────────────────────────────────
 
 /** Vueltas registradas para un pique concreto. */

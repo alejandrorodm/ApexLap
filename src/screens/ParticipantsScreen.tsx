@@ -6,7 +6,9 @@ import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius, font } from '../theme';
+import { RootStackParamList } from '../navigation/types';
 import { Card, EmptyState, ScreenHeader } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import { getLeagueMembers } from '../firebase/db';
@@ -28,8 +30,10 @@ interface MemberRow {
 }
 
 export default function ParticipantsScreen() {
-  const navigation = useNavigation();
-  const { league, laps, userId } = useApp();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { league, laps, userId, profile } = useApp();
+  const myName = (profile?.driverName ?? '').trim();
   const [members, setMembers] = useState<Profile[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -118,9 +122,22 @@ export default function ParticipantsScreen() {
         ) : (
           <Card>
             {rows.map((r, i) => (
-              <View
+              <Pressable
                 key={r.userId}
                 style={[styles.row, i === rows.length - 1 && styles.rowLast]}
+                // Tú contra ese piloto. Sobre ti mismo no hay cara a cara.
+                onPress={
+                  r.isMe || !userId || !myName
+                    ? undefined
+                    : () =>
+                        navigation.navigate('H2H', {
+                          aId: userId,
+                          aName: myName,
+                          bId: r.userId,
+                          bName: r.driverName,
+                        })
+                }
+                accessibilityRole={r.isMe ? undefined : 'button'}
               >
                 <View style={{ flex: 1 }}>
                   <View style={styles.rowTitle}>
@@ -145,7 +162,10 @@ export default function ParticipantsScreen() {
                     </Text>
                   )}
                 </View>
-              </View>
+                {!r.isMe && userId && myName ? (
+                  <Text style={styles.h2hCta}>🆚</Text>
+                ) : null}
+              </Pressable>
             ))}
           </Card>
         )}
@@ -206,6 +226,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   rowLast: { borderBottomWidth: 0 },
+  h2hCta: { fontSize: 18, marginLeft: spacing.sm },
   backBtn: { marginBottom: spacing.xs },
   backText: { color: colors.primary, fontSize: 15, fontWeight: '700' },
   rowTitle: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
