@@ -23,6 +23,12 @@ colegas. Hecha con **Expo (React Native + TypeScript)** y **Firebase**
 - **Ruleta de piques**: sortea coche + circuito (+ condiciones) tipo tragaperras y
   convoca un "pique" (reto) para la liga. Permite fijar coche o circuito.
 - **Notificaciones push** (Android nativo) cuando alguien registra una vuelta.
+- **Muro**: actividad de la liga en tiempo real (vueltas, récords robados, piques).
+- **Cara a cara, Progreso, Temporada y Habilidad**: comparativas entre dos pilotos
+  y evolución propia.
+- **Mod de Assetto Corsa** (`tools/ApexLap/`, app de CSP en Lua) que detecta la
+  vuelta y la sube sola, más un **subidor de Content Manager**
+  (`tools/cm-uploader/`, Python). El `.zip` del mod se descarga desde Perfil.
 
 ## 🆕 Puntos y apuestas (nuevo)
 
@@ -59,9 +65,11 @@ Sistema competitivo de liga, decidido contigo:
 
 ```
 src/
-  screens/      Onboarding, Auth, Setup, Laps, Records, Roulette,
-                Standings (Liga), Challenge (detalle), Profile, AddLap
-  navigation/   Tabs (Tiempos · Récords · Ruleta · Liga · Perfil) + stack
+  screens/      Onboarding, Auth, Setup, Laps, Records, Roulette, Feed (Muro),
+                Standings (Liga), Challenge, NewChallenge, Participants,
+                TrackDetail, Compare, H2H, Progress, Season, Skill,
+                Profile, AddLap
+  navigation/   Tabs (Tiempos · Récords · Piques · Muro · Liga · Perfil) + stack
   firebase/     config.ts (claves) · db.ts (acceso a Firestore)
   context/      AppContext.tsx (sesión + perfil + liga + vueltas)
   utils/        leaderboard.ts (puntos, récords, clasificación) · time · alerts
@@ -88,27 +96,38 @@ solo las escribe su dueño y solo si el pique no está cerrado).
 | Typecheck | `npx tsc --noEmit` |
 | Bundle de prueba (web) | `npx expo export --platform web --output-dir /tmp/x` |
 | Build web | `npm run build:web` |
-| Desplegar web | `firebase deploy --only hosting` |
-| Desplegar reglas | `firebase deploy --only firestore:rules` |
-| Build APK (EAS) | `npx eas-cli@latest build -p android --profile preview` |
+| Desplegar todo (web + mod + reglas) | `npm run deploy:web` |
+| Desplegar solo reglas | `npx firebase-tools deploy --only firestore:rules` |
+| Build APK (EAS) | `npm run build:apk` |
 
 ---
 
-## ✅ Estado actual
+## ✅ Estado actual (8 de agosto de 2026)
 
-- Puntos + apuestas + login real: **implementado y verificado** (`tsc` limpio y
-  `expo export` web correcto).
-- **Aún NO desplegado**: la web/APK en vivo siguen con la versión anterior.
+- **Web desplegada y al día**: el bundle en vivo en https://apexlap.web.app coincide
+  con el de `dist/`, e incluye todo lo del 7-8 de agosto (muro navegable, cara a
+  cara, acuse de recibo al guardar vuelta, piques con líder y delta).
+- **Reglas de Firestore desplegadas**: comprobado el 8 de agosto; el despliegue
+  respondió *"already up to date"*, así que la versión en producción es la de
+  `firestore.rules`.
+- **`ApexLap-mod.zip` publicado** y descargable desde Perfil.
+- **Authentication**: Email/Password activo (verificado contra la API). El acceso
+  como invitado y el de Google (web) están en uso.
+- `git`: rama `main` limpia y sincronizada con `origin/main`.
 
 ## ⏳ Pendiente
 
-1. **Desplegar** (requiere tu login interactivo de Firebase/EAS):
-   - `firebase deploy --only firestore:rules` ← importante: reglas nuevas de apuestas.
-   - `npm run build:web && firebase deploy --only hosting`.
-   - Recompilar el APK con EAS.
-2. **Firebase Console → Authentication → Sign-in method**: habilitar
-   **Email/Password** y **Google** (sin esto el login real falla; el de invitado sí
-   funciona).
-3. **Pantalla de Participantes** de la liga (no hecha; `getLeagueMembers` ya existe).
-4. **Subidor de Content Manager** (script de escritorio que sube las vueltas válidas
-   de AC automáticamente) — pendiente de construir.
+1. **APK de Android — roto**. El botón *"Descargar app (.apk)"* del Perfil apunta a
+   `expo.dev/artifacts/eas/q3HANVGfPU8X9pAUmCNJVC.apk`, un artefacto de EAS que ya
+   **ha caducado y devuelve 404**; además era el build del 8 de junio, sin nada de
+   julio ni agosto. Hay que `npm run build:apk` y actualizar `APK_URL` en
+   `src/screens/ProfileScreen.tsx`. Como los artefactos de EAS expiran, para una URL
+   estable habría que alojarlo en Firebase Storage (Hosting en plan Spark no sirve
+   `.apk`: la ruta `/ApexLap.apk` cae en el rewrite y devuelve el `index.html`).
+2. **Backlog de la auditoría del 7-8 de agosto** (detectado y verificado, sin
+   arreglar): una sola suscripción a `challenges` en `AppContext` (hoy son seis con
+   límites distintos y descuadran los "piques ganados"), `profiles` legible por
+   cualquier autenticado, `challenges/create` sin validar `status`/`winnerId`, fotos
+   de circuito como dataURL base64 dentro del documento, `subscribeLaps` sin
+   `limit()`, contraste por debajo de AA en placeholders y botones, y `index.html`
+   sin descripción ni Open Graph (compartir el enlace no muestra nada).
