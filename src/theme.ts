@@ -14,7 +14,11 @@ export const colors = {
   surfaceHi: '#262B3D', // superficie elevada (hover / destacados)
   border: '#2E3342',
   borderHi: '#3C4356',
-  primary: '#FF1E14', // rojo carrera (vivo)
+  primary: '#FF1E14', // rojo carrera (vivo): acentos, brillos, texto sobre oscuro
+  // Rojo de RELLENO para superficies grandes con texto blanco encima. El
+  // primario vivo solo da 3,6:1 con blanco y no pasa AA; este da 4,95:1 y a
+  // simple vista es el mismo rojo.
+  primaryFill: '#D6140D',
   primaryDim: '#7A0A06',
   primaryGlow: 'rgba(255,30,20,0.45)',
   accent: '#FFD60A', // amarillo bandera
@@ -23,7 +27,9 @@ export const colors = {
   blue: '#3B82F6',
   text: '#F6F7FB',
   textDim: '#9AA0AE',
-  textFaint: '#5C6373',
+  // Antes #5C6373: daba 3,0:1 sobre las tarjetas y se usa para TODOS los
+  // placeholders y las pestañas inactivas. Este llega a 4,9:1 (AA).
+  textFaint: '#858DA0',
   gold: '#FFD24A',
   silver: '#C8CEDA',
   bronze: '#E08A4B',
@@ -32,17 +38,33 @@ export const colors = {
 // Colores de podio por posición (1º, 2º, 3º). El resto usa textDim.
 export const PODIUM = [colors.gold, colors.silver, colors.bronze];
 
-// Color de texto legible (claro u oscuro) sobre un fondo dado. Sirve para que las
-// letras de un botón/chip resalten también sobre fondos claros como el amarillo.
+// Luminancia relativa WCAG de un color '#rrggbb' (0 = negro, 1 = blanco).
+function luminance(hex: string): number | null {
+  const h = hex.replace('#', '');
+  if (h.length < 6) return null;
+  const channel = (i: number) => {
+    const c = parseInt(h.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+}
+
+/** Contraste WCAG entre dos colores (1 = ninguno, 21 = negro sobre blanco). */
+export function contrastRatio(a: string, b: string): number {
+  const la = luminance(a);
+  const lb = luminance(b);
+  if (la === null || lb === null) return 1;
+  const [hi, lo] = la > lb ? [la, lb] : [lb, la];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+// Color de texto legible (claro u oscuro) sobre un fondo dado. Elige el que MÁS
+// contraste da, no el que sugiere el "brillo" del fondo: sobre el rojo vivo el
+// blanco se queda en 3,6:1 mientras que el oscuro llega a 5,2:1.
 export function readableTextOn(bg: string): string {
-  const hex = bg.replace('#', '');
-  if (hex.length < 6) return colors.text;
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  // Luminancia perceptual (0–1). Por encima del umbral, el fondo es claro.
-  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return lum > 0.55 ? colors.bgDeep : colors.text;
+  return contrastRatio(colors.text, bg) >= contrastRatio(colors.bgDeep, bg)
+    ? colors.text
+    : colors.bgDeep;
 }
 
 // Resplandor de color (en web se traduce a box-shadow; en nativo a sombra/elevación).

@@ -15,6 +15,8 @@ export interface FeedEvent {
   text: string; // línea principal
   sub?: string; // coche · circuito · etc.
   tone: FeedTone;
+  // Quién lo provocó. Sirve para no avisarte de tus propios movimientos.
+  actorId?: string;
   // Destino al pulsar la fila. Sin esto el muro es un callejón sin salida.
   track?: string;
   car?: string;
@@ -60,6 +62,7 @@ export function buildFeed(
       const base = {
         id: `lap-${l.id}`,
         at: l.createdAt,
+        actorId: l.userId,
         track: l.track,
         car: l.car,
         challengeId: l.challengeId,
@@ -125,6 +128,7 @@ export function buildFeed(
         }`,
         sub: `🚗 ${c.car} · ${c.track}`,
         tone: 'win',
+        actorId: c.winnerId,
         challengeId: c.id,
         track: c.track,
         car: c.car,
@@ -137,6 +141,7 @@ export function buildFeed(
         text: `Nuevo pique: ${c.car}`,
         sub: `${c.track} · por ${c.createdByName || 'alguien'}`,
         tone: 'challenge',
+        actorId: c.createdBy,
         challengeId: c.id,
         track: c.track,
         car: c.car,

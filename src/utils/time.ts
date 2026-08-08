@@ -89,6 +89,24 @@ export function parseTime(input: string): number | null {
   return parseInt(m, 10) * 60_000 + seconds * 1000 + millis;
 }
 
+/**
+ * Cuenta atrás hasta una fecha límite: "2 d 4 h", "3 h 12 min", "8 min 30 s".
+ * Devuelve null si ya se cumplió el plazo (quien llama decide qué enseñar).
+ */
+export function formatCountdown(deadlineMs: number, nowMs: number): string | null {
+  const left = deadlineMs - nowMs;
+  if (left <= 0) return null;
+  const s = Math.floor(left / 1000);
+  const d = Math.floor(s / 86_400);
+  const h = Math.floor((s % 86_400) / 3600);
+  const min = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (d > 0) return `${d} d ${h} h`;
+  if (h > 0) return `${h} h ${min} min`;
+  // En la última hora se ven los segundos: es cuando aprieta de verdad.
+  return `${min} min ${String(sec).padStart(2, '0')} s`;
+}
+
 /** Fecha relativa breve en español: "hace 3 d", "hace 2 h", "ahora". */
 export function timeAgo(epochMs: number, nowMs: number): string {
   const diff = Math.max(0, nowMs - epochMs);

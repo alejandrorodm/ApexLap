@@ -115,6 +115,33 @@ solo las escribe su dueño y solo si el pique no está cerrado).
   como invitado y el de Google (web) están en uso.
 - `git`: rama `main` limpia y sincronizada con `origin/main`.
 
+## 🆕 Mejoras de la web (hechas, **sin desplegar** todavía)
+
+- **Compartir el enlace ya se ve**: `tools/web-assets.js` inyecta tras el export
+  el idioma, la descripción, Open Graph/Twitter con una tarjeta 1200×630
+  generada desde el icono (`dist/og.png`), `theme-color` y un **manifiesto PWA**
+  con sus iconos, así que también se puede instalar desde el navegador.
+- **URLs de verdad**: `/pique/:id`, `/circuito/:nombre`, `/liga`, `/muro`… Se
+  puede compartir una pantalla concreta, recargar sin perderse y usar el botón
+  Atrás del navegador. El mapa vive en `src/navigation/routes.ts` y
+  `npm run check:routes` comprueba que todas las rutas van y vuelven.
+- **Caché**: el bundle con hash de `_expo/` se cachea un año; `index.html` y el
+  manifiesto se revalidan siempre.
+- **Escritorio**: el contenido se acota y se centra en todas las pantallas
+  (`withContentWidth` en el navegador raíz), no solo en tres.
+- **Accesibilidad**: foco visible al navegar con teclado, y contraste AA en los
+  placeholders (`textFaint`) y en los botones rojos (relleno `primaryFill`).
+  `readableTextOn` ahora elige el texto por contraste real, no por brillo.
+- **Piques con fecha límite**: al convocar se elige plazo (1 h, 6 h, 24 h,
+  3 días o sin límite); las tarjetas muestran la cuenta atrás, que **late en la
+  última hora**. Cumplido el plazo, el pique avisa y quien puede cerrarlo (su
+  creador o el anfitrión) lo cierra con un botón.
+- **Avisos del navegador**: con la pestaña detrás (jugando a AC) salta un aviso
+  cuando alguien te quita un récord, marca vuelta o convoca un pique. Se activan
+  desde Perfil. Ver el límite en Pendiente.
+- **Una sola suscripción a los piques** en `AppContext` en lugar de seis con
+  límites distintos: los "piques ganados" del Perfil ya cuadran con la Liga.
+
 ## ⏳ Pendiente
 
 1. **APK de Android — roto**. El botón *"Descargar app (.apk)"* del Perfil apunta a
@@ -124,7 +151,13 @@ solo las escribe su dueño y solo si el pique no está cerrado).
    `src/screens/ProfileScreen.tsx`. Como los artefactos de EAS expiran, para una URL
    estable habría que alojarlo en Firebase Storage (Hosting en plan Spark no sirve
    `.apk`: la ruta `/ApexLap.apk` cae en el rewrite y devuelve el `index.html`).
-2. **Backlog de la auditoría del 7-8 de agosto** (detectado y verificado, sin
+2. **Push con el navegador cerrado: no se puede sin backend.** Mandar push web
+   exige FCM, y FCM solo acepta envíos firmados con una cuenta de servicio (la
+   API antigua de `server_key` está apagada); esa clave no puede ir en un
+   cliente. Haría falta una Cloud Function, que pide **plan Blaze**. Lo que hay
+   hoy son avisos con la pestaña abierta (aunque esté detrás) y push a móviles
+   Android vía Expo, que sigue funcionando igual.
+3. **Backlog de la auditoría del 7-8 de agosto** (detectado y verificado, sin
    arreglar): una sola suscripción a `challenges` en `AppContext` (hoy son seis con
    límites distintos y descuadran los "piques ganados"), `profiles` legible por
    cualquier autenticado, `challenges/create` sin validar `status`/`winnerId`, fotos

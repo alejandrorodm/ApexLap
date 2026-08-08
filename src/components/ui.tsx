@@ -63,13 +63,14 @@ export function Button({
 }) {
   const bg =
     variant === 'primary'
-      ? colors.primary
+      ? colors.primaryFill
       : variant === 'danger'
       ? colors.primaryDim
       : variant === 'secondary'
       ? colors.surfaceAlt
       : 'transparent';
-  const fg = variant === 'ghost' ? colors.textDim : colors.text;
+  // El texto lo decide el contraste real contra el relleno, no una constante.
+  const fg = variant === 'ghost' ? colors.textDim : readableTextOn(bg);
   const isDisabled = disabled || loading;
   const isLoud = variant === 'primary' || variant === 'danger';
   return (

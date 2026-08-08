@@ -31,13 +31,19 @@ import {
   createLeague as dbCreateLeague,
   joinLeagueByCode as dbJoinLeague,
   subscribeCatalog,
+  subscribeChallenges,
   addCatalogEntry as dbAddCatalogEntry,
   deleteCatalogEntry as dbDeleteCatalogEntry,
   CatalogKindCollection,
 } from '../firebase/db';
 import { registerForPushNotifications } from '../notifications';
 import { googleIdToken } from '../auth/googleSignIn';
-import { Lap, Profile, League, CatalogEntry, CatalogKind } from '../types';
+import { Lap, Profile, League, CatalogEntry, CatalogKind, Challenge } from '../types';
+
+// Piques que se mantienen en memoria. Tiene que cubrir el histórico ENTERO de la
+// liga: la clasificación, la temporada y el ELO recorren todos los piques
+// cerrados, así que un tope corto no "recorta la lista", falsea los puntos.
+const CHALLENGES_MAX = 200;
 
 interface AppState {
   ready: boolean; // se conoce el estado de auth (haya usuario o no)
@@ -52,6 +58,9 @@ interface AppState {
   leagueLoading: boolean;
   laps: Lap[];
   lapsLoading: boolean;
+  // Piques de la liga, en una ÚNICA suscripción compartida. Antes cada pantalla
+  // abría la suya con límites distintos y los puntos no cuadraban entre ellas.
+  challenges: Challenge[];
   // Catálogo de coches/circuitos añadidos a mano en la liga (mods, DLC…).
   customCars: CatalogEntry[];
   customTracks: CatalogEntry[];
@@ -108,10 +117,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [reloadKey, setReloadKey] = useState(0);
   const [laps, setLaps] = useState<Lap[]>([]);
   const [lapsLoading, setLapsLoading] = useState(false);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [customCars, setCustomCars] = useState<CatalogEntry[]>([]);
   const [customTracks, setCustomTracks] = useState<CatalogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const unsubLaps = useRef<(() => void) | null>(null);
+  const unsubChallenges = useRef<(() => void) | null>(null);
   const unsubCatalog = useRef<(() => void)[]>([]);
 
   // 1) Observa la sesión. NO inicia sesión solo: si no hay usuario, se muestra
@@ -182,13 +193,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [userId]);
 
-  // 3) Cargar liga + suscribirse a vueltas y al catálogo cuando cambia leagueId.
+  // 3) Cargar liga + suscribirse a vueltas, piques y catálogo cuando cambia leagueId.
   useEffect(() => {
     unsubLaps.current?.();
     unsubLaps.current = null;
+    unsubChallenges.current?.();
+    unsubChallenges.current = null;
     unsubCatalog.current.forEach((u) => u());
     unsubCatalog.current = [];
     setLaps([]);
+    setChallenges([]);
     setCustomCars([]);
     setCustomTracks([]);
 
@@ -229,6 +243,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setLapsLoading(false);
       }
     );
+    // Los piques no cortan la app si fallan: las pantallas que los usan se
+    // quedan sin ellos, pero las vueltas siguen entrando.
+    unsubChallenges.current = subscribeChallenges(
+      leagueId,
+      setChallenges,
+      () => {},
+      CHALLENGES_MAX
+    );
     unsubCatalog.current = [
       subscribeCatalog(leagueId, 'cars', setCustomCars, () => {}),
       subscribeCatalog(leagueId, 'tracks', setCustomTracks, () => {}),
@@ -241,6 +263,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(
     () => () => {
       unsubLaps.current?.();
+      unsubChallenges.current?.();
       unsubCatalog.current.forEach((u) => u());
     },
     []
@@ -447,6 +470,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         leagueLoading,
         laps,
         lapsLoading,
+        challenges,
         customCars,
         customTracks,
         error,

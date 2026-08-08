@@ -5,7 +5,7 @@
 import React, { useEffect } from 'react';
 import { Platform, View, Text, StyleSheet } from 'react-native';
 import { colors, spacing } from '../theme';
-import { useIsWideWeb } from '../responsive';
+import { useIsWideWeb, CONTENT_MAX_WIDTH } from '../responsive';
 
 const COLUMN_NARROW = 560; // móvil / ventana estrecha (en ancho: pantalla completa)
 
@@ -35,6 +35,18 @@ body {
 }
 [role="button"]:hover { filter: brightness(1.11); transform: translateY(-1px); }
 [role="button"]:active { transform: translateY(1px) scale(0.997); filter: brightness(1.02); }
+/* Navegación con teclado: sin esto, tabular por la app es invisible. Solo se ve
+   con :focus-visible, así que el ratón no deja cercos por todas partes. */
+:focus { outline: none; }
+:focus-visible {
+  outline: 3px solid ${colors.accent};
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+[role="button"]:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 3px solid ${colors.accent};
+  outline-offset: 2px;
+}
 /* Fundido de entrada del marco. */
 @keyframes apexFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 [data-apexframe] { animation: apexFadeIn .35s ease both; }
@@ -123,14 +135,18 @@ export default function WebFrame({ children }: { children: React.ReactNode }) {
         </View>
 
         <View style={styles.brandBar}>
-          <Stripes />
-          <Text style={styles.brand} {...({ dataSet: { brandglow: '' } } as any)}>
-            <Text style={styles.flag}>🏁 </Text>
-            <Text style={styles.brandApex}>APEX</Text>
-            <Text style={styles.brandLap}>LAP</Text>
-          </Text>
-          <View style={styles.brandRight}>
-            <Text style={styles.tagline}>LEAGUE · RACING</Text>
+          {/* Acotado igual que el contenido para que el logo quede alineado
+              con las tarjetas en un monitor, no pegado al borde. */}
+          <View style={styles.brandInner}>
+            <Stripes />
+            <Text style={styles.brand} {...({ dataSet: { brandglow: '' } } as any)}>
+              <Text style={styles.flag}>🏁 </Text>
+              <Text style={styles.brandApex}>APEX</Text>
+              <Text style={styles.brandLap}>LAP</Text>
+            </Text>
+            <View style={styles.brandRight}>
+              <Text style={styles.tagline}>LEAGUE · RACING</Text>
+            </View>
           </View>
         </View>
         <View style={styles.body}>{children}</View>
@@ -157,13 +173,19 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   brandBar: {
     height: 58,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: 'transparent',
+  },
+  brandInner: {
+    flex: 1,
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: 'transparent',
   },
   brand: {
     fontFamily: 'Orbitron, sans-serif',

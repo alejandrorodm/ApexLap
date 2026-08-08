@@ -13,6 +13,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius } from '../theme';
 import { Button, Chip, Label, ScreenHeader } from '../components/ui';
 import { PickerModal, PickerGroup, PickerItem } from '../components/PickerModal';
+import { DeadlinePicker, deadlineFrom } from '../components/DeadlinePicker';
 import { useApp } from '../context/AppContext';
 import { addChallenge } from '../firebase/db';
 import { notifyLeague } from '../notifications';
@@ -66,6 +67,7 @@ export default function NewChallengeScreen() {
   const [car, setCar] = useState('');
   const [track, setTrack] = useState(preTrack ?? '');
   const [conditions, setConditions] = useState<Conditions>('dry');
+  const [duration, setDuration] = useState<number | null>(null);
   const [picker, setPicker] = useState<null | 'car' | 'track'>(null);
   const [busy, setBusy] = useState(false);
 
@@ -86,6 +88,7 @@ export default function NewChallengeScreen() {
     }
     setBusy(true);
     try {
+      const deadline = deadlineFrom(duration);
       await addChallenge(league.id, {
         car,
         track,
@@ -93,6 +96,8 @@ export default function NewChallengeScreen() {
         createdBy: userId,
         createdByName: profile?.driverName ?? 'Anónimo',
         status: 'open',
+        // Firestore rechaza `undefined`: sin plazo, el campo no se manda.
+        ...(deadline ? { deadline } : {}),
       });
       notifyLeague(
         league.id,
@@ -158,6 +163,9 @@ export default function NewChallengeScreen() {
             color={colors.blue}
           />
         </View>
+
+        <Label>Fecha límite</Label>
+        <DeadlinePicker value={duration} onChange={setDuration} />
 
         <Button
           title="🎰 Convocar pique"

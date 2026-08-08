@@ -1,6 +1,6 @@
 // "Temporada": clasificación F1-style. Cada pique cerrado es un evento que
 // reparte puntos por posición (25-18-15…). Tabla acumulada + lista de eventos.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -8,12 +8,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius, font } from '../theme';
 import { EmptyState } from '../components/ui';
 import { useApp } from '../context/AppContext';
-import { subscribeChallenges } from '../firebase/db';
 import { season, SEASON_POINTS, SeasonEvent } from '../utils/leaderboard';
 import { motesByDriver, aggregateDrivers } from '../utils/achievements';
 import { shareTableCard } from '../utils/share';
 import { formatTime, timeAgo } from '../utils/time';
-import { Challenge } from '../types';
 import { RootStackParamList } from '../navigation/types';
 
 const MEDAL = ['🥇', '🥈', '🥉'];
@@ -21,14 +19,8 @@ const MEDAL = ['🥇', '🥈', '🥉'];
 export default function SeasonScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { league, userId, laps } = useApp();
+  const { league, userId, laps, challenges } = useApp();
   const now = Date.now();
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-
-  useEffect(() => {
-    if (!league) return;
-    return subscribeChallenges(league.id, setChallenges, () => {}, 200);
-  }, [league?.id]);
 
   const { events, table } = useMemo(
     () => season(laps, challenges),

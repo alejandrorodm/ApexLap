@@ -1,6 +1,6 @@
 // "Muro": feed de rivalidad en vivo de la liga (vueltas, récords, piques).
 // Se alimenta de las vueltas en tiempo real del contexto + los piques.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -9,10 +9,8 @@ import { colors, spacing, radius } from '../theme';
 import { EmptyState, ScreenHeader } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import { RootStackParamList } from '../navigation/types';
-import { subscribeChallenges } from '../firebase/db';
 import { buildFeed, FeedEvent, FeedTone } from '../utils/feed';
 import { timeAgo } from '../utils/time';
-import { Challenge } from '../types';
 
 const TONE_COLOR: Record<FeedTone, string> = {
   normal: colors.border,
@@ -25,14 +23,8 @@ const TONE_COLOR: Record<FeedTone, string> = {
 export default function FeedScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { laps, league, userId } = useApp();
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const { laps, league, userId, challenges } = useApp();
   const now = Date.now();
-
-  useEffect(() => {
-    if (!league) return;
-    return subscribeChallenges(league.id, setChallenges, () => {});
-  }, [league?.id]);
 
   const feed = useMemo(
     () => buildFeed(laps, challenges, userId),

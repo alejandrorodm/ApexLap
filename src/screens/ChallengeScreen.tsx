@@ -34,6 +34,7 @@ import { formatTime, timeAgo } from '../utils/time';
 import { shareCard } from '../utils/share';
 import { win } from '../utils/feedback';
 import Confetti from '../components/Confetti';
+import { Countdown } from '../components/Countdown';
 import { confirmAction, notify } from '../utils/alerts';
 import { Challenge, Bet, Profile, Comment } from '../types';
 import { RootStackParamList } from '../navigation/types';
@@ -110,6 +111,9 @@ export default function ChallengeScreen() {
 
   const isClosed = challenge?.status === 'closed';
   const isOwner = challenge?.createdBy === userId;
+  // Las reglas dejan cerrar al creador del pique y al anfitrión de la liga.
+  const canClose = isOwner || (!!league && league.createdBy === userId);
+  const expired = !!challenge?.deadline && challenge.deadline <= now;
 
   // Celebración: confeti + fanfarria cuando el pique se cierra MIENTRAS lo miras
   // (transición abierto→cerrado). Abrir uno ya cerrado no la dispara.
@@ -246,6 +250,12 @@ export default function ChallengeScreen() {
             {COND_LABEL[challenge.conditions]} · por {challenge.createdByName} ·{' '}
             {timeAgo(challenge.createdAt, now)}
           </Text>
+
+          {!isClosed && challenge.deadline ? (
+            <View style={{ marginTop: spacing.sm }}>
+              <Countdown deadline={challenge.deadline} />
+            </View>
+          ) : null}
 
           {isClosed && challenge.winnerId ? (
             <View style={styles.winnerBox}>
@@ -399,14 +409,24 @@ export default function ChallengeScreen() {
           )}
         </Card>
 
-        {/* Cierre (solo creador) */}
-        {isOwner && !isClosed ? (
+        {/* Cierre (creador del pique o anfitrión de la liga) */}
+        {canClose && !isClosed ? (
           <Button
-            title="🏁 Cerrar pique y repartir puntos"
+            title={
+              expired
+                ? '🏁 Se acabó el plazo · cerrar y repartir'
+                : '🏁 Cerrar pique y repartir puntos'
+            }
             loading={closeBusy}
             onPress={close}
             style={{ marginTop: spacing.lg }}
           />
+        ) : null}
+        {!canClose && !isClosed && expired ? (
+          <Text style={styles.expiredNote}>
+            ⏱ Se acabó el plazo. Falta que {challenge.createdByName} lo cierre
+            para repartir los puntos.
+          </Text>
         ) : null}
 
         {/* Comentarios (la pulla) */}
@@ -482,6 +502,14 @@ const styles = StyleSheet.create({
   },
   track: { color: colors.textDim, fontSize: 16, marginTop: 4, fontWeight: '600' },
   meta: { color: colors.textFaint, fontSize: 13, marginTop: 6 },
+  expiredNote: {
+    color: colors.textDim,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
+    marginTop: spacing.lg,
+    textAlign: 'center',
+  },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',

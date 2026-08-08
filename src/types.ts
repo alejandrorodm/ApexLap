@@ -66,6 +66,10 @@ export interface Challenge {
   title?: string;
   // Ciclo de vida del pique. Los piques antiguos sin este campo se tratan como 'open'.
   status?: ChallengeStatus;
+  // Fecha límite opcional (epoch ms). Cumplido el plazo el pique deja de admitir
+  // vueltas nuevas de cara al resultado y se cierra en cuanto lo abre quien puede
+  // cerrarlo (su creador o el anfitrión): sin servidor no hay quien lo haga solo.
+  deadline?: number;
   // Resultado, fijado al cerrarse el pique (mejor vuelta válida del pique).
   winnerId?: string;
   winnerName?: string;

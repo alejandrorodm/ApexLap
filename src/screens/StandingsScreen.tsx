@@ -9,7 +9,7 @@ import { colors, spacing, radius, font, PODIUM } from '../theme';
 import { Card, EmptyState, ScreenHeader } from '../components/ui';
 import { useIsWideWeb } from '../responsive';
 import { useApp } from '../context/AppContext';
-import { subscribeChallenges, getChallengeBets } from '../firebase/db';
+import { getChallengeBets } from '../firebase/db';
 import {
   standings,
   ChallengeResult,
@@ -19,6 +19,7 @@ import {
   challengeLive,
 } from '../utils/leaderboard';
 import { ChallengeLiveLine } from '../components/ChallengeLiveLine';
+import { Countdown } from '../components/Countdown';
 import { aggregateDrivers, motesByDriver } from '../utils/achievements';
 import { shareTableCard } from '../utils/share';
 import { formatTime, timeAgo } from '../utils/time';
@@ -31,20 +32,13 @@ const MEDAL = ['🥇', '🥈', '🥉'];
 export default function StandingsScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { league, userId, laps, profile } = useApp();
+  const { league, userId, laps, profile, challenges } = useApp();
   const myName = (profile?.driverName ?? '').trim();
   const wide = useIsWideWeb();
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [betsByChallenge, setBetsByChallenge] = useState<Record<string, Bet[]>>(
     {}
   );
   const now = Date.now();
-
-  // Trae bastantes piques para que la clasificación histórica sea fiel.
-  useEffect(() => {
-    if (!league) return;
-    return subscribeChallenges(league.id, setChallenges, () => {}, 200);
-  }, [league?.id]);
 
   const closed = useMemo(
     () => challenges.filter((c) => c.status === 'closed' && c.winnerId),
@@ -302,6 +296,11 @@ function ChallengeRow({
             ? `🏆 ${c.winnerName}`
             : `por ${c.createdByName} · ${timeAgo(c.createdAt, now)}`}
         </Text>
+        {!closed && c.deadline ? (
+          <View style={styles.chCountdown}>
+            <Countdown deadline={c.deadline} compact />
+          </View>
+        ) : null}
         {!closed && live ? <ChallengeLiveLine live={live} compact /> : null}
       </View>
       <Text style={styles.chCta}>{closed ? 'Ver ›' : 'Apostar ›'}</Text>
@@ -498,5 +497,6 @@ const styles = StyleSheet.create({
   chTitle: { color: colors.text, fontSize: 17, fontWeight: '900', flex: 1 },
   chTrack: { color: colors.textDim, fontSize: 14, marginTop: 2, fontWeight: '600' },
   chMeta: { color: colors.textFaint, fontSize: 12, marginTop: 4 },
+  chCountdown: { marginTop: 6 },
   chCta: { color: colors.accent, fontWeight: '900', fontSize: 14 },
 });

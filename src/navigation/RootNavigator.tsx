@@ -5,6 +5,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { colors } from '../theme';
 import { useIsWideWeb } from '../responsive';
+import { withContentWidth } from '../components/ContentWidth';
+import { useLeagueAlerts } from '../utils/leagueAlerts';
 import { RootStackParamList, TabParamList } from './types';
 import LapsScreen from '../screens/LapsScreen';
 import RecordsScreen from '../screens/RecordsScreen';
@@ -25,6 +27,25 @@ import SkillScreen from '../screens/SkillScreen';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// Todas las pantallas entran al navegador ya acotadas a un ancho máximo: es el
+// único sitio donde hace falta decirlo una vez en lugar de en cada pantalla.
+const Laps = withContentWidth(LapsScreen);
+const Records = withContentWidth(RecordsScreen);
+const Roulette = withContentWidth(RouletteScreen);
+const Feed = withContentWidth(FeedScreen);
+const Standings = withContentWidth(StandingsScreen);
+const Profile = withContentWidth(ProfileScreen);
+const AddLap = withContentWidth(AddLapScreen);
+const Challenge = withContentWidth(ChallengeScreen);
+const Participants = withContentWidth(ParticipantsScreen);
+const TrackDetail = withContentWidth(TrackDetailScreen);
+const NewChallenge = withContentWidth(NewChallengeScreen);
+const Compare = withContentWidth(CompareScreen);
+const H2H = withContentWidth(H2HScreen);
+const Progress = withContentWidth(ProgressScreen);
+const Season = withContentWidth(SeasonScreen);
+const Skill = withContentWidth(SkillScreen);
 
 const ICONS: Record<keyof TabParamList, string> = {
   Tiempos: '🏁',
@@ -66,17 +87,20 @@ function Tabs() {
         ),
       })}
     >
-      <Tab.Screen name="Tiempos" component={LapsScreen} />
-      <Tab.Screen name="Records" component={RecordsScreen} options={{ title: 'Récords' }} />
-      <Tab.Screen name="Ruleta" component={RouletteScreen} options={{ title: 'Piques' }} />
-      <Tab.Screen name="Muro" component={FeedScreen} />
-      <Tab.Screen name="Liga" component={StandingsScreen} />
-      <Tab.Screen name="Perfil" component={ProfileScreen} />
+      <Tab.Screen name="Tiempos" component={Laps} />
+      <Tab.Screen name="Records" component={Records} options={{ title: 'Récords' }} />
+      <Tab.Screen name="Ruleta" component={Roulette} options={{ title: 'Piques' }} />
+      <Tab.Screen name="Muro" component={Feed} />
+      <Tab.Screen name="Liga" component={Standings} />
+      <Tab.Screen name="Perfil" component={Profile} />
     </Tab.Navigator>
   );
 }
 
 export default function RootNavigator() {
+  // Aquí dentro ya hay sesión y liga: es donde tiene sentido vigilar la
+  // actividad para sacar avisos del navegador.
+  useLeagueAlerts();
   return (
     <Stack.Navigator
       screenOptions={{
@@ -89,52 +113,52 @@ export default function RootNavigator() {
       <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
       <Stack.Screen
         name="AddLap"
-        component={AddLapScreen}
+        component={AddLap}
         options={{ title: 'Nueva vuelta', presentation: 'modal' }}
       />
       <Stack.Screen
         name="Challenge"
-        component={ChallengeScreen}
+        component={Challenge}
         options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Participants"
-        component={ParticipantsScreen}
+        component={Participants}
         options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Track"
-        component={TrackDetailScreen}
+        component={TrackDetail}
         options={{ headerShown: false }}
       />
       <Stack.Screen
         name="NewChallenge"
-        component={NewChallengeScreen}
+        component={NewChallenge}
         options={{ headerShown: false, presentation: 'modal' }}
       />
       <Stack.Screen
         name="Compare"
-        component={CompareScreen}
+        component={Compare}
         options={{ headerShown: false }}
       />
       <Stack.Screen
         name="H2H"
-        component={H2HScreen}
+        component={H2H}
         options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Progress"
-        component={ProgressScreen}
+        component={Progress}
         options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Season"
-        component={SeasonScreen}
+        component={Season}
         options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Skill"
-        component={SkillScreen}
+        component={Skill}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

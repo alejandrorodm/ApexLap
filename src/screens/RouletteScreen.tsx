@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius, font } from '../theme';
 import { Button, Card, Chip, SectionTitle, ScreenHeader, Label } from '../components/ui';
 import { PickerModal, PickerGroup, PickerItem } from '../components/PickerModal';
+import { DeadlinePicker, deadlineFrom } from '../components/DeadlinePicker';
 import { useApp } from '../context/AppContext';
 import { ALL_CARS, CAR_GROUPS } from '../data/cars';
 import { ALL_TRACKS, TRACKS, trackLabel } from '../data/tracks';
@@ -72,6 +73,8 @@ export default function RouletteScreen() {
   const [dCond, setDCond] = useState<Conditions>('dry');
   const [dPicker, setDPicker] = useState<null | 'car' | 'track'>(null);
   const [dBusy, setDBusy] = useState(false);
+  // Plazo del pique, compartido por los dos modos (a dedo y ruleta).
+  const [duration, setDuration] = useState<number | null>(null);
 
   // Estado del modo "Ruleta"
   const carPool = useMemo(
@@ -124,6 +127,7 @@ export default function RouletteScreen() {
     }
     setDBusy(true);
     try {
+      const deadline = deadlineFrom(duration);
       await addChallenge(league.id, {
         car: dCar,
         track: dTrack,
@@ -131,6 +135,8 @@ export default function RouletteScreen() {
         createdBy: userId,
         createdByName: profile?.driverName ?? 'Anónimo',
         status: 'open',
+        // Firestore rechaza `undefined`: sin plazo, el campo no se manda.
+        ...(deadline ? { deadline } : {}),
       });
       notifyLeague(
         league.id,
@@ -215,6 +221,7 @@ export default function RouletteScreen() {
     if (!result || !league || !userId) return;
     const convened = result;
     try {
+      const deadline = deadlineFrom(duration);
       await addChallenge(league.id, {
         car: convened.car,
         track: convened.track,
@@ -222,6 +229,7 @@ export default function RouletteScreen() {
         createdBy: userId,
         createdByName: profile?.driverName ?? 'Anónimo',
         status: 'open',
+        ...(deadline ? { deadline } : {}),
       });
       notifyLeague(
         league.id,
@@ -319,6 +327,9 @@ export default function RouletteScreen() {
               />
             </View>
 
+            <Label>Fecha límite</Label>
+            <DeadlinePicker value={duration} onChange={setDuration} />
+
             <Button
               title="📣 Convocar este pique"
               onPress={convokeDirect}
@@ -350,12 +361,18 @@ export default function RouletteScreen() {
             />
 
             {result && !spinning ? (
-              <Button
-                title="📣 Convocar este pique"
-                variant="secondary"
-                onPress={convokeRoulette}
-                style={{ marginTop: spacing.sm }}
-              />
+              <>
+                <View style={{ marginTop: spacing.lg }}>
+                  <Label>Fecha límite</Label>
+                  <DeadlinePicker value={duration} onChange={setDuration} />
+                </View>
+                <Button
+                  title="📣 Convocar este pique"
+                  variant="secondary"
+                  onPress={convokeRoulette}
+                  style={{ marginTop: spacing.sm }}
+                />
+              </>
             ) : null}
 
             <Card style={{ marginTop: spacing.xl }}>

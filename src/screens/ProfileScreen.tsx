@@ -29,9 +29,13 @@ import {
 } from '../utils/achievements';
 import { formatTime, formatPlayTime } from '../utils/time';
 import { shareDriverCard } from '../utils/share';
-import { subscribeChallenges } from '../firebase/db';
-import { Challenge } from '../types';
 import { confirmAction, notify } from '../utils/alerts';
+import {
+  askWebNotifyPermission,
+  showWebNotification,
+  webNotifyPermission,
+  webNotifySupported,
+} from '../utils/webNotify';
 
 // APK de Android (artefacto de EAS Build, alojado por Expo; descargable sin
 // login). Firebase Hosting (plan Spark) PROHÍBE servir .apk, así que apuntamos
@@ -46,6 +50,7 @@ export default function ProfileScreen() {
     profile,
     league,
     laps,
+    challenges,
     userId,
     userEmail,
     isGuest,
@@ -61,6 +66,19 @@ export default function ProfileScreen() {
   const [busy, setBusy] = useState(false);
   const [pass, setPass] = useState('');
   const [passBusy, setPassBusy] = useState(false);
+  const [notifyPerm, setNotifyPerm] = useState(webNotifyPermission());
+
+  async function enableNotifications() {
+    const result = await askWebNotifyPermission();
+    setNotifyPerm(result);
+    if (result === 'granted') {
+      showWebNotification({
+        title: '🔔 Avisos activados',
+        body: 'Te avisaremos cuando se mueva algo en la liga.',
+        tag: 'apexlap-bienvenida',
+      });
+    }
+  }
 
   async function addPassword() {
     if (pass.length < 6) {
@@ -86,12 +104,6 @@ export default function ProfileScreen() {
   const myStats = stats.find((s) => s.userId === userId);
 
   // Logros y motes: necesitan los piques (cerrados) además de las vueltas.
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  useEffect(() => {
-    if (!league) return;
-    return subscribeChallenges(league.id, setChallenges, () => {});
-  }, [league?.id]);
-
   const { myBadges, myMote, myWins } = useMemo(() => {
     const aggs = aggregateDrivers(laps, challenges);
     const mine = aggs.find((a) => a.userId === userId);
@@ -435,6 +447,33 @@ export default function ProfileScreen() {
           />
         </Card>
 
+        {/* Avisos del navegador (solo web) */}
+        {webNotifySupported() ? (
+          <Card style={{ marginTop: spacing.lg }}>
+            <SectionTitle>Avisos en el navegador</SectionTitle>
+            <Text style={styles.hint}>
+              Salta un aviso cuando alguien te quita un récord, marca una vuelta
+              o convoca un pique, con la pestaña abierta por detrás — justo
+              mientras estás jugando. Con el navegador cerrado no llega nada.
+            </Text>
+            {notifyPerm === 'granted' ? (
+              <Text style={styles.notifyOk}>✓ Avisos activados</Text>
+            ) : notifyPerm === 'denied' ? (
+              <Text style={styles.hint}>
+                Los bloqueaste en este navegador. Se vuelven a permitir desde el
+                candado de la barra de direcciones.
+              </Text>
+            ) : (
+              <Button
+                title="🔔 Activar avisos"
+                variant="secondary"
+                onPress={enableNotifications}
+                style={{ marginTop: spacing.md }}
+              />
+            )}
+          </Card>
+        ) : null}
+
         {/* App de Android */}
         <Card style={{ marginTop: spacing.lg }}>
           <SectionTitle>App para Android</SectionTitle>
@@ -704,6 +743,12 @@ const styles = StyleSheet.create({
   code: { color: colors.accent, fontSize: 26, fontWeight: '900', letterSpacing: 6 },
   codeShare: { color: colors.primary, fontWeight: '700' },
   hint: { color: colors.textFaint, fontSize: 14 },
+  notifyOk: {
+    color: colors.green,
+    fontSize: 14,
+    fontWeight: '800',
+    marginTop: spacing.md,
+  },
   driverRow: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -11,13 +11,10 @@ import { PickerModal, PickerGroup, PickerItem } from '../components/PickerModal'
 import { useApp } from '../context/AppContext';
 import { recordsByCombo, lapsByChallenge, challengeLive } from '../utils/leaderboard';
 import { ChallengeLiveLine } from '../components/ChallengeLiveLine';
+import { Countdown } from '../components/Countdown';
 import { formatTime, timeAgo } from '../utils/time';
 import { shareCard } from '../utils/share';
-import {
-  subscribeChallenges,
-  updateChallenge,
-  deleteChallenge,
-} from '../firebase/db';
+import { updateChallenge, deleteChallenge } from '../firebase/db';
 import { confirmAction, notify } from '../utils/alerts';
 import { CAR_GROUPS } from '../data/cars';
 import { TRACKS, trackLabel } from '../data/tracks';
@@ -49,9 +46,16 @@ function withCustom(base: PickerGroup[], custom: CatalogEntry[]): PickerGroup[] 
 export default function RecordsScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { laps, league, userId, customCars, customTracks, addCustom, deleteCustom } =
-    useApp();
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const {
+    laps,
+    league,
+    userId,
+    challenges,
+    customCars,
+    customTracks,
+    addCustom,
+    deleteCustom,
+  } = useApp();
   const now = Date.now();
   // El anfitrión de la liga puede gestionar (editar/borrar) cualquier pique.
   const isHost = !!league && league.createdBy === userId;
@@ -72,11 +76,6 @@ export default function RecordsScreen() {
   const [eCond, setECond] = useState<Conditions>('dry');
   const [ePicker, setEPicker] = useState<null | 'car' | 'track'>(null);
   const [eBusy, setEBusy] = useState(false);
-
-  useEffect(() => {
-    if (!league) return;
-    return subscribeChallenges(league.id, setChallenges, () => {});
-  }, [league?.id]);
 
   const records = useMemo(() => recordsByCombo(laps), [laps]);
   // Una sola pasada por las vueltas para todas las tarjetas de pique.
@@ -262,6 +261,11 @@ export default function RecordsScreen() {
                                 ? `🏆 ${c.winnerName}`
                                 : `por ${c.createdByName} · ${timeAgo(c.createdAt, now)}`}
                             </Text>
+                            {!closed && c.deadline ? (
+                              <View style={styles.chCountdown}>
+                                <Countdown deadline={c.deadline} compact />
+                              </View>
+                            ) : null}
                             {!closed ? (
                               <ChallengeLiveLine
                                 live={challengeLive(
@@ -483,6 +487,7 @@ const styles = StyleSheet.create({
   chTitle: { color: colors.text, fontSize: 20, fontWeight: '900', flex: 1 },
   chTrack: { color: colors.textDim, fontSize: 15, marginTop: 3, fontWeight: '600' },
   chMeta: { color: colors.textFaint, fontSize: 13, marginTop: 4 },
+  chCountdown: { marginTop: 6 },
   chCta: { color: colors.accent, fontWeight: '900', fontSize: 14, textAlign: 'right' },
   ownerRow: {
     flexDirection: 'row',

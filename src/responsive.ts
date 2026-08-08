@@ -4,6 +4,11 @@ import { Platform, useWindowDimensions } from 'react-native';
 
 export const WIDE_BREAKPOINT = 840;
 
+// Ancho máximo del contenido en escritorio. Sin él, las listas y los formularios
+// se estiran de borde a borde en un monitor y las filas quedan kilométricas.
+// 1400 deja sitio de sobra a la rejilla de 4 columnas de `useGridColumns`.
+export const CONTENT_MAX_WIDTH = 1400;
+
 export function useIsWideWeb(): boolean {
   const { width } = useWindowDimensions();
   return Platform.OS === 'web' && width >= WIDE_BREAKPOINT;

@@ -9,6 +9,8 @@ import { colors } from './src/theme';
 import { isFirebaseConfigured } from './src/firebase/config';
 import { AppProvider, useApp } from './src/context/AppContext';
 import RootNavigator from './src/navigation/RootNavigator';
+import { linking } from './src/navigation/linking';
+import { navigationRef } from './src/navigation/ref';
 import { ShareCardHost } from './src/utils/nativeShare';
 import SetupScreen from './src/screens/SetupScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
@@ -94,7 +96,9 @@ export default function App() {
       <StatusBar style="light" />
       <WebFrame>
         <NavigationContainer
+          ref={navigationRef}
           theme={navTheme}
+          linking={linking}
           documentTitle={{
             formatter: (options, route) =>
               `ApexLap${route?.name ? ` · ${route.name}` : ''}`,

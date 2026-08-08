@@ -1,6 +1,6 @@
 // "Habilidad": ranking de pilotos por ELO. Cada pique cerrado actualiza el ELO
 // según a quién superas (ganas más si bates a alguien mejor que tú).
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -8,11 +8,9 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius, font } from '../theme';
 import { EmptyState } from '../components/ui';
 import { useApp } from '../context/AppContext';
-import { subscribeChallenges } from '../firebase/db';
 import { eloTable, EloRow } from '../utils/leaderboard';
 import { motesByDriver, aggregateDrivers } from '../utils/achievements';
 import { shareTableCard } from '../utils/share';
-import { Challenge } from '../types';
 import { RootStackParamList } from '../navigation/types';
 
 const MEDAL = ['🥇', '🥈', '🥉'];
@@ -20,13 +18,7 @@ const MEDAL = ['🥇', '🥈', '🥉'];
 export default function SkillScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { league, userId, laps } = useApp();
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-
-  useEffect(() => {
-    if (!league) return;
-    return subscribeChallenges(league.id, setChallenges, () => {}, 200);
-  }, [league?.id]);
+  const { league, userId, laps, challenges } = useApp();
 
   const table = useMemo(() => eloTable(laps, challenges), [laps, challenges]);
   const motes = useMemo(
